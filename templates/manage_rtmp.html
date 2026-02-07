@@ -9,6 +9,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         :root {
             --primary: #2563eb;
             --primary-light: #eff6ff;
@@ -692,6 +696,16 @@
 
             <form id="passwordFormLock" onsubmit="return false;">
                 <div class="modal-form-group-lock">
+                    <label>
+                        <i class="fas fa-user-shield"></i> User Account
+                    </label>
+                    <div class="modal-password-wrapper-lock" style="margin-bottom: 15px;">
+                        <input type="text" value="Superadmin" disabled
+                            style="background: #f8fafc; color: #64748b; font-weight: 600; cursor: not-allowed;">
+                    </div>
+                </div>
+
+                <div class="modal-form-group-lock">
                     <label for="modalPasswordLock">
                         <i class="fas fa-key"></i> Password
                     </label>
@@ -703,7 +717,8 @@
                     </div>
                 </div>
 
-                <button type="submit" class="modal-btn-submit-lock" onclick="verifyAdminPassword()">
+                <button type="submit" class="modal-btn-submit-lock" onclick="verifyAdminPassword()"
+                    style="margin-top: 10px;">
                     <i class="fas fa-unlock"></i> Unlock Page
                 </button>
             </form>

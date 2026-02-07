@@ -441,13 +441,13 @@
         .modal-icon {
             width: 80px;
             height: 80px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0 auto 30px;
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 10px 30px rgba(37, 99, 235, 0.2);
         }
 
         .modal-icon i {
@@ -497,8 +497,8 @@
         }
 
         .modal-password-wrapper input:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+            border-color: #2563eb;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
         }
 
         .modal-toggle-password {
@@ -521,7 +521,7 @@
         .modal-btn-submit {
             width: 100%;
             padding: 14px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
             color: white;
             border: none;
             border-radius: 10px;
@@ -529,7 +529,7 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
         }
 
         .modal-btn-submit:hover {
@@ -603,6 +603,16 @@
 
             <form id="passwordForm" onsubmit="return false;">
                 <div class="modal-form-group">
+                    <label>
+                        <i class="fas fa-user-shield"></i> User Account
+                    </label>
+                    <div class="modal-password-wrapper" style="margin-bottom: 15px;">
+                        <input type="text" value="Superadmin" disabled
+                            style="background: #f8fafc; color: #64748b; font-weight: 600; cursor: not-allowed;">
+                    </div>
+                </div>
+
+                <div class="modal-form-group">
                     <label for="modalPassword">
                         <i class="fas fa-key"></i> Password
                     </label>
@@ -614,7 +624,7 @@
                     </div>
                 </div>
 
-                <button type="submit" class="modal-btn-submit" onclick="verifyPassword()">
+                <button type="submit" class="modal-btn-submit" onclick="verifyPassword()" style="margin-top: 10px;">
                     <i class="fas fa-unlock"></i> Unlock Recordings
                 </button>
             </form>
