@@ -20,7 +20,8 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd "/home/lenovo/6-2-2026-GPS/Latest GPS"
-            git pull origin main
+            # Use the temporary GitHub token to pull without a password
+            git pull https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git main
             source venv/bin/activate || python3 -m venv venv
             pip install -r requirements.txt
             pkill -f "python3 app.py" || true
