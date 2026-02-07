@@ -787,9 +787,6 @@
                 return;
             }
 
-            // Auto trigger search when vehicle is selected
-            searchRecordings();
-
             // Show loading state in dropdown for cameras
             const loadingOpt = document.createElement('option');
             loadingOpt.text = "Loading cameras...";
@@ -817,9 +814,15 @@
                     opt.disabled = true;
                     cameraSelect.add(opt);
                 }
+
+                // NOW trigger search after cameras are loaded
+                searchRecordings();
+
             } catch (error) {
                 console.error("Fetch error:", error);
                 cameraSelect.remove(cameraSelect.length - 1);
+                // Still try to search even if cameras fetch failed (might show everything or nothing)
+                searchRecordings();
             }
         }
 
@@ -910,57 +913,39 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    // Filter items BEFORE rendering to prevent flash
                     let itemsToRender = data.items;
 
-                    if (currentPath === "" && activeCameraNames.length > 0 && !ignoreFilter) {
-                        itemsToRender = data.items.filter(item => activeCameraNames.includes(item.name));
+                    // Apply filter ONLY at root level and ONLY if a vehicle/cameras are active
+                    if (currentPath === "" && !ignoreFilter) {
+                        if (activeCameraNames.length > 0) {
+                            itemsToRender = data.items.filter(item => activeCameraNames.includes(item.name));
+                        } else if (vehicleSelect.value) {
+                            // If vehicle selected but no cameras loaded yet or none found
+                            itemsToRender = [];
+                        }
+                    }
 
-                        // AUTO-OPEN logic: if a specific camera is selected, find its folder and enter it.
-                        // We only do this at the root level (currentPath === "") to avoid weird loops.
+                    // AUTO-OPEN logic
+                    if (currentPath === "" && itemsToRender.length > 0 && !ignoreFilter) {
+                        // Case A: Specific Camera selected in dropdown
                         if (targetCameraId) {
-                            // Find folder that matches targetCameraId OR looks like "Cam {id}" 
-                            // IMPORTANT: In your case, 'activeCameraNames' holds the full stream names.
-                            // We need to find which of the filtered items corresponds to the selected camera ID.
-
-                            // Since we don't easily map "1" -> "stream_name_xyz", we rely on the fact that
-                            // handleVehicleChange populated cameraSelect with IDs matching their stream names usually?
-                            // Actually, handleVehicleChange adds options with value=cam.id (which is 1,2,3,4).
-                            // BUT we need to match the actual folder name.
-
-                            // Let's look at the itemsToRender. If we have a targetCameraId (e.g. "1"),
-                            // we need to know which folder corresponds to it.
-                            // Since we can't easily map "1" back to the stream name here without looking at the select options again...
-                            // Wait! The select options have value=cam.id and text=cam.name.
-                            // Let's trust that if the user selected a camera, 'targetCameraId' is the ID (1,2,3,4).
-
-                            // Improved Strategy:
-                            // We need to find the folder whose name contains "Cam {id}" OR matches the option text?
-                            // No, simpler: In `handleVehicleChange`, we populated activeCameraNames.
-                            // Let's iterate `itemsToRender`. If `targetCameraId` is "1", we look for a folder 
-                            // that might be the 1st one in the list? No, that's risky.
-
-                            // Let's assume the folder name ITSELF is what we want. 
-                            // The `handleVehicleChange` uses `fetch(/get_vehicle_cameras)`.
-                            // That returns { id: "1", name: "stream_name" }.
-                            // So we need to map targetCameraId ("1") -> "stream_name".
-
-                            // We can find this mapping by looking at the cameraSelect options!
                             const select = document.getElementById('cameraSelect');
                             const selectedOption = select.options[select.selectedIndex];
-                            // The option text is the stream name (based on previous code `opt.text = cam.name`).
-                            // Wait, previous code was: `opt.value = cam.id; opt.text = cam.name;`
-
                             if (selectedOption && selectedOption.value !== 'all') {
-                                const targetName = selectedOption.text; // This is the stream name!
+                                const targetName = selectedOption.text;
                                 const targetItem = itemsToRender.find(item => item.name === targetName);
                                 if (targetItem) {
-                                    // Found it! Open it.
-                                    targetCameraId = null; // Clear so we don't loop
-                                    loadFiles(targetItem.name); // Enter folder
-                                    return; // Stop rendering current level
+                                    targetCameraId = null;
+                                    loadFiles(targetItem.name);
+                                    return;
                                 }
                             }
+                        }
+
+                        // Case B: Vehicle selected and only ONE camera exists - AUTO OPEN IT
+                        if (itemsToRender.length === 1) {
+                            loadFiles(itemsToRender[0].name);
+                            return;
                         }
                     }
 
