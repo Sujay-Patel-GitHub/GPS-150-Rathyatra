@@ -912,19 +912,34 @@ def get_map_recordings_data():
     if not device_id or not date_str:
         return jsonify({"error": "Missing params"}), 400
         
-    # Query mongo
-    # timestamp is stored as datetime
+    # Query mongo with projection for speed
     try:
         start_dt = datetime.strptime(date_str, "%Y-%m-%d")
         end_dt = start_dt + timedelta(days=1)
         
+        # Optimized query using the new compound index and projection
         cursor = col_map_recordings.find({
             "device_id": device_id,
             "timestamp": {"$gte": start_dt, "$lt": end_dt}
-        }).sort("timestamp", 1)
+        }, {"lat": 1, "lng": 1, "speed": 1, "timestamp": 1, "_id": 0}).sort("timestamp", 1)
         
+        # Check count for potential downsampling
+        total_points = col_map_recordings.count_documents({
+            "device_id": device_id,
+            "timestamp": {"$gte": start_dt, "$lt": end_dt}
+        })
+
         points = []
+        # Downsample if excessive (e.g. > 5000 points) to speed up transfer and UI rendering
+        skip_n = 1
+        if total_points > 10000: skip_n = 5
+        elif total_points > 5000: skip_n = 2
+
+        count = 0
         for doc in cursor:
+            count += 1
+            if count % skip_n != 0: continue
+            
             points.append({
                 "lat": doc["lat"],
                 "lng": doc["lng"],
@@ -934,7 +949,7 @@ def get_map_recordings_data():
                 "ts": doc["timestamp"].timestamp()
             })
             
-        return jsonify({"points": points})
+        return jsonify({"points": points, "total_raw": total_points, "optimized": skip_n > 1})
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500

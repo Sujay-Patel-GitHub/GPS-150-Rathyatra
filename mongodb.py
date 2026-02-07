@@ -36,9 +36,12 @@ try:
     
     # 8. Live Map Recordings (from "View Live")
     col_map_recordings = db["map_recordings"]
+    
+    # Create indexes for optimization
+    col_map_recordings.create_index([("device_id", 1), ("timestamp", 1)])
 
     print("✅ Connected to Local MongoDB")
-    print("✅ Database Structure: Separate Collections for Roles & Vehicles Initialized.")
+    print("✅ Database Structure & Indexes Initialized.")
 
 except ImportError:
     print("❌ CRITICAL ERROR: 'pymongo' not installed. Run: pip install pymongo")
