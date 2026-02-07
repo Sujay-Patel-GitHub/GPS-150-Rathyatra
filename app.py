@@ -3818,7 +3818,7 @@ def play_rtmp():
         if stream_id not in PROCESS_TABLE or PROCESS_TABLE[stream_id].poll() is not None:
             PROCESS_TABLE[stream_id] = start_ffmpeg(src, out_dir)
 
-    for _ in range(20):
+    for _ in range(60):
         if (out_dir / "index.m3u8").exists(): break
         time.sleep(0.5)
 

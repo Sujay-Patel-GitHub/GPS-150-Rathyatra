@@ -1326,12 +1326,36 @@
                 const hls = new Hls({
                     startPosition: -1,
                     liveSyncDurationCount: 3,
-                    backBufferLength: 300 // Keep 5 mins in buffer for smooth scrubbing
+                    backBufferLength: 300,
+                    manifestLoadingMaxRetry: 10,
+                    manifestLoadingRetryDelay: 1000,
+                    levelLoadingMaxRetry: 10,
+                    levelLoadingRetryDelay: 1000,
+                    fragLoadingMaxRetry: 10,
+                    fragLoadingRetryDelay: 1000
                 });
                 hls.loadSource(src); hls.attachMedia(video);
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                    video.play();
+                    video.play().catch(e => console.log("Auto-play blocked"));
                     updateIndicator(uiKey, 'online');
+                });
+                hls.on(Hls.Events.ERROR, (event, data) => {
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                console.log("Fatal network error encountered, try to recover");
+                                hls.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                console.log("Fatal media error encountered, try to recover");
+                                hls.recoverMediaError();
+                                break;
+                            default:
+                                console.log("Unrecoverable error");
+                                hls.destroy();
+                                break;
+                        }
+                    }
                 });
                 players[uiKey] = hls;
             } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
