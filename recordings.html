@@ -833,8 +833,9 @@
                 return;
             }
 
-            // Show the browser
-            document.getElementById('browserCard').style.display = 'flex';
+            // HIDE the browser initially to prevent flash of unfiltered content
+            const browserCard = document.getElementById('browserCard');
+            browserCard.style.display = 'none';
 
             // Set active camera for filtering/opening
             targetCameraId = camera !== 'all' ? camera : null;
@@ -965,6 +966,9 @@
                     }
 
                     renderBrowser(itemsToRender);
+
+                    // Show the browser card AFTER rendering filtered content
+                    document.getElementById('browserCard').style.display = 'flex';
                 } else {
                     container.innerHTML = `
                         <div class="empty-state">
