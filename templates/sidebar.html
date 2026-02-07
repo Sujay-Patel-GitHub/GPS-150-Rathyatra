@@ -1,0 +1,210 @@
+<style>
+    /* Common Sidebar Styles */
+    .sidebar {
+        width: 240px;
+        background: white;
+        border-right: 1px solid #e5e7eb;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow-y: auto;
+        overflow-x: hidden;
+        position: fixed;
+        left: 0;
+        top: 70px;
+        bottom: 0;
+        z-index: 900;
+        background: white;
+    }
+
+    .sidebar.collapsed {
+        width: 75px;
+        padding: 16px 12px;
+    }
+
+    .sidebar.collapsed button span {
+        display: none;
+    }
+
+    .sidebar.collapsed button {
+        justify-content: center;
+        padding: 12px 0;
+        gap: 0;
+    }
+
+    .sidebar.collapsed button i {
+        width: 100%;
+        margin: 0;
+        font-size: 1.2rem;
+    }
+
+    .sidebar a {
+        text-decoration: none;
+        display: block;
+    }
+
+    .sidebar button {
+        width: 100%;
+        padding: 11px 14px;
+        border: none;
+        background: transparent;
+        color: #4b5563;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        text-align: left;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 500;
+        border-left: 3px solid transparent;
+        white-space: nowrap;
+    }
+
+    .sidebar button i {
+        width: 20px;
+        text-align: center;
+        color: #9ca3af;
+        transition: all 0.2s;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+
+    .sidebar button:hover {
+        background: #f3f4f6;
+        color: #111827;
+    }
+
+    .sidebar button:hover i {
+        color: #2563eb;
+        transform: scale(1.1);
+    }
+
+    .sidebar button.active {
+        background: #eff6ff;
+        color: #2563eb;
+        border-left: 3px solid #2563eb;
+        font-weight: 600;
+    }
+
+    .sidebar button.active i {
+        color: #2563eb;
+    }
+
+    /* Animation - Simplified and safer */
+    .sidebar button {
+        transition: background 0.2s, color 0.2s, transform 0.2s;
+    }
+
+    /* Standard Layout Fixes for pages using this sidebar */
+    body {
+        padding-top: 70px;
+        min-height: 100vh;
+    }
+
+    /* Shift content classes. We target top-level content containers */
+    body>.main-content,
+    body>.main,
+    body>.container,
+    body>.app-container,
+    body>.app-layout {
+        margin-left: 240px;
+        width: calc(100% - 240px) !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body.sidebar-collapsed>.main-content,
+    body.sidebar-collapsed>.main,
+    body.sidebar-collapsed>.container,
+    body.sidebar-collapsed>.app-container,
+    body.sidebar-collapsed>.app-layout {
+        margin-left: 75px;
+        width: calc(100% - 75px) !important;
+    }
+
+    /* Handle cases where main content is NOT a direct child of body */
+    .app-layout>.main-content,
+    .app-container>.main-content,
+    .container>.main-content,
+    .app-layout>.main,
+    .app-container>.main,
+    .container>.main {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+
+    /* Ensure layout containers take full width */
+    .app-layout,
+    .app-container,
+    .container {
+        display: block !important;
+        width: 100%;
+    }
+</style>
+
+<div class="sidebar" id="mainSidebar">
+    <a href="/add_user"><button class="{{ 'active' if request.path == '/add_user' else '' }}"><i
+                class="fas fa-user-plus"></i> <span>Add New User</span></button></a>
+    <a href="/admin_dashboard"><button class="{{ 'active' if request.path == '/admin_dashboard' else '' }}"><i
+                class="fas fa-list-ul"></i> <span>Show Devices</span></button></a>
+    <a href="/gps_monitoring"><button class="{{ 'active' if request.path == '/gps_monitoring' else '' }}"><i
+                class="fas fa-map-marked-alt"></i> <span>GPS Monitoring</span></button></a>
+    <a href="/list_roles"><button class="{{ 'active' if request.path == '/list_roles' else '' }}"><i
+                class="fas fa-users"></i> <span>List Roles</span></button></a>
+    <a href="/time_threshold"><button class="{{ 'active' if request.path == '/time_threshold' else '' }}"><i
+                class="fas fa-clock"></i> <span>Time Threshold</span></button></a>
+    <a href="/manage_rtmp"><button class="{{ 'active' if request.path == '/manage_rtmp' else '' }}"><i
+                class="fas fa-link"></i> <span>RTMP Link Management</span></button></a>
+    <a href="/recordings"><button class="{{ 'active' if request.path == '/recordings' else '' }}"><i
+                class="fas fa-video"></i> <span>Recordings</span></button></a>
+    <a href="/map_recording"><button class="{{ 'active' if request.path == '/map_recording' else '' }}"><i
+                class="fas fa-map-marked"></i> <span>Map Recording</span></button></a>
+</div>
+
+<script>
+    (function () {
+        // Run once DOM is partially loaded
+        function initSidebar() {
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebar = document.getElementById('mainSidebar');
+            const appContainer = document.querySelector('.container') || document.querySelector('.app-container');
+
+            if (sidebarToggle && sidebar) {
+                // Remove existing listeners
+                const newToggle = sidebarToggle.cloneNode(true);
+                sidebarToggle.parentNode.replaceChild(newToggle, sidebarToggle);
+
+                newToggle.addEventListener('click', function () {
+                    sidebar.classList.toggle('collapsed');
+                    document.body.classList.toggle('sidebar-collapsed');
+
+                    // Save state
+                    localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+
+                    // Trigger resize for maps if any
+                    setTimeout(() => {
+                        window.dispatchEvent(new Event('resize'));
+                        if (typeof map !== 'undefined' && map && map.invalidateSize) {
+                            map.invalidateSize();
+                        }
+                    }, 300);
+                });
+
+                // Initial state from localStorage
+                if (localStorage.getItem('sidebarCollapsed') === 'true') {
+                    sidebar.classList.add('collapsed');
+                    document.body.classList.add('sidebar-collapsed');
+                }
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initSidebar);
+        } else {
+            initSidebar();
+        }
+    })();
+</script>

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Godown Details</title>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            background-color: #f9fafb;
+        }
+
+        .sidebar {
+            width: 240px;
+            background: white;
+            border-right: 1px solid #e5e7eb;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .sidebar.collapsed {
+            width: 80px;
+            padding: 20px 10px;
+        }
+
+        .sidebar.collapsed button {
+            justify-content: center;
+            padding: 12px 0;
+            border-left: none;
+        }
+
+        .sidebar.collapsed button span {
+            display: none;
+        }
+
+        .sidebar.collapsed button i {
+            margin: 0;
+            font-size: 1.2rem;
+            width: 100%;
+        }
+
+        .sidebar a {
+            text-decoration: none;
+        }
+
+        .sidebar button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            background-color: white;
+            color: #374151;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            text-align: left;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+            border-left: 3px solid transparent;
+            box-sizing: border-box;
+            white-space: nowrap;
+        }
+
+        .sidebar button i {
+            width: 20px;
+            text-align: center;
+            color: #6b7280;
+            flex-shrink: 0;
+        }
+
+        .sidebar button:hover {
+            background-color: #f3f4f6;
+            color: #111827;
+        }
+
+        .sidebar button:hover i {
+            color: #2563eb;
+        }
+
+        .sidebar button.active {
+            background-color: #eff6ff;
+            color: #2563eb;
+            border-left-color: #2563eb;
+        }
+
+        .sidebar button.active i {
+            color: #2563eb;
+        }
+
+        .navbar {
+            background-color: white;
+            padding: 10px 20px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            width: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 100;
+            box-sizing: border-box;
+        }
+
+        .navbar img {
+            height: 40px;
+            /* Adjusted for better mobile view */
+            margin-right: 15px;
+            border-radius: 5px;
+        }
+
+        .navbar h2 {
+            margin: 0;
+            color: #111827;
+            font-size: 1.2rem;
+        }
+
+        .container {
+            display: flex;
+            flex-grow: 1;
+            padding-top: 80px;
+            /* Space for navbar */
+            width: 100%;
+            justify-content: center;
+        }
+
+        .main {
+            width: 100%;
+            max-width: 600px;
+            /* Limit width on large screens */
+            text-align: center;
+            padding: 20px;
+        }
+
+        .form-container {
+            background: #fff;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+
+        label {
+            display: block;
+            text-align: left;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #374151;
+        }
+
+        input,
+        textarea {
+            padding: 12px;
+            margin-bottom: 20px;
+            /* Better spacing */
+            width: 100%;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            gap: 15px;
+        }
+
+        .step {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: #e5e7eb;
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .step.active {
+            background: #3b82f6;
+            /* Blue for active */
+            color: white;
+        }
+
+        .step.done {
+            background: #10b981;
+            /* Green for done */
+            color: white;
+        }
+
+        .btn-submit {
+            padding: 12px 30px;
+            background: #10b981;
+            /* Green */
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            transition: background-color 0.2s;
+        }
+
+        .btn-submit:hover {
+            background: #059669;
+        }
+
+        h2 {
+            color: #1f2937;
+        }
+
+        p {
+            color: #6b7280;
+        }
+    </style>
+</head>
+
+<body>
+    {% include 'navbar.html' %}
+
+    <!-- Main Content -->
+    <div class="container">
+        {% include 'sidebar.html' %}
+        <div class="main">
+            <!-- Step Indicator -->
+            <div class="step-indicator">
+                <div class="step done">✓</div>
+                <div class="step active">2</div>
+            </div>
+
+            <!-- Header -->
+            <h2>Godown Management</h2>
+            <p>Adding details for user: <strong>{{ username }}</strong></p>
+
+            <!-- Form -->
+            <div class="form-container">
+                <form method="POST">
+                    <label for="name">Godown Name</label>
+                    <input type="text" id="name" name="name" placeholder="Enter Godown Name" required>
+
+                    <label for="address">Address</label>
+                    <input type="text" id="address" name="address" placeholder="Enter Full Address" required>
+
+                    <button type="submit" class="btn-submit">💾 SAVE & FINISH</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script>
+    </script>
+</body>
+
+</html>

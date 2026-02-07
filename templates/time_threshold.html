@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Time Threshold - Admin Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            background-color: #f3f4f6;
+            min-height: 100vh;
+        }
+
+        /* Main Content area shifted via sidebar.html standardized styling */
+        .main {
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        .page-header {
+            margin-bottom: 24px;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #111827;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Card List */
+        .vehicle-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .vehicle-info {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .device-id {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: #111827;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .rc-number {
+            font-size: 0.875rem;
+            color: #6b7280;
+            background: #f3f4f6;
+            padding: 2px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .controls-wrapper {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            align-items: flex-start;
+            flex: 3;
+        }
+
+        .offset-group {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 12px 16px;
+            border-radius: 8px;
+        }
+
+        .group-label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .inputs-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .input-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .input-wrapper label {
+            font-size: 0.7rem;
+            color: #64748b;
+        }
+
+        .input-wrapper input {
+            width: 60px;
+            padding: 6px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .input-wrapper input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+
+        .preview-section {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            padding: 12px 16px;
+            border-radius: 8px;
+            min-width: 220px;
+        }
+
+        .time-display {
+            font-family: 'Courier New', monospace;
+            font-weight: 700;
+            color: #15803d;
+            font-size: 0.95rem;
+            margin-top: 4px;
+            white-space: nowrap;
+        }
+
+        .actions {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+            min-width: 100px;
+        }
+
+        .btn-save {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .btn-save:hover {
+            background: #1d4ed8;
+        }
+
+        .status-text {
+            font-size: 0.75rem;
+            height: 1rem;
+        }
+
+        /* Responsive helper */
+        @media (max-width: 1000px) {
+            .vehicle-card {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .controls-wrapper {
+                flex-direction: column;
+            }
+
+            .actions {
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    {% include 'navbar.html' %}
+    {% include 'sidebar.html' %}
+
+    <div class="main">
+        <div class="page-header">
+            <h2 class="page-title"><i class="fas fa-clock" style="color: #2563eb;"></i> Time Threshold Settings</h2>
+            <p style="color: #6b7280; margin-top: 5px;">Configure date and time offsets for vehicles with incorrect
+                GPS timestamps.</p>
+        </div>
+
+        {% for v in vehicles %}
+        <div class="vehicle-card" data-device-id="{{ v.device_id }}">
+            <div class="vehicle-info">
+                <div class="device-id"><i class="fas fa-truck"></i> {{ v.device_id }}</div>
+                <div class="rc-number">{{ v.rc_number or 'No RC Number' }}</div>
+                <div style="margin-top: 10px; font-size: 0.8rem; color: #64748b;">
+                    <div>Raw Date: <span class="raw-date-val">{{ v.raw_date or 'N/A' }}</span></div>
+                    <div>Raw Time: <span class="raw-time-val">{{ v.raw_time or 'N/A' }}</span></div>
+                </div>
+            </div>
+
+            <div class="controls-wrapper">
+                <!-- Date Offsets -->
+                <div class="offset-group">
+                    <span class="group-label">Date Offset (Y/M/D)</span>
+                    <div class="inputs-row">
+                        <div class="input-wrapper">
+                            <label>Year</label>
+                            <input type="number" class="offset-y" value="{{ v.offsets.y }}"
+                                oninput="updatePreview('{{ v.device_id }}')">
+                        </div>
+                        <div class="input-wrapper">
+                            <label>Month</label>
+                            <input type="number" class="offset-m" value="{{ v.offsets.m }}"
+                                oninput="updatePreview('{{ v.device_id }}')">
+                        </div>
+                        <div class="input-wrapper">
+                            <label>Day</label>
+                            <input type="number" class="offset-d" value="{{ v.offsets.d }}"
+                                oninput="updatePreview('{{ v.device_id }}')">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Time Offsets -->
+                <div class="offset-group">
+                    <span class="group-label">Time Offset (H/M)</span>
+                    <div class="inputs-row">
+                        <div class="input-wrapper">
+                            <label>Hour</label>
+                            <input type="number" class="offset-h" value="{{ v.offsets.h }}"
+                                oninput="updatePreview('{{ v.device_id }}')">
+                        </div>
+                        <div class="input-wrapper">
+                            <label>Min</label>
+                            <input type="number" class="offset-min" value="{{ v.offsets.min }}"
+                                oninput="updatePreview('{{ v.device_id }}')">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preview -->
+                <div class="preview-section">
+                    <span class="group-label" style="color: #166534;">Preview</span>
+                    <div class="time-display preview-val" id="preview-{{ v.device_id }}">--</div>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button class="btn-save" onclick="saveOffsets('{{ v.device_id }}')">
+                    <i class="fas fa-save"></i> Save
+                </button>
+                <div class="status-text" id="status-{{ v.device_id }}"></div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Moment.js for easier date manipulation in JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+
+    <script>
+        function updatePreview(deviceId) {
+            const card = document.querySelector(`.vehicle-card[data-device-id="${deviceId}"]`);
+            const rawDateStr = card.querySelector('.raw-date-val').innerText.trim();
+            const rawTimeStr = card.querySelector('.raw-time-val').innerText.trim();
+            const previewEl = document.getElementById(`preview-${deviceId}`);
+
+            if (rawDateStr === 'N/A' || !rawDateStr) {
+                previewEl.innerText = "N/A";
+                return;
+            }
+
+            // Parse Raw Date/Time (Expected format: DD-MMM-YYYY and HH:MM:SS AM/PM)
+            // Example: 23-Dec-2025 10:30:00 AM
+            const dateTimeStr = `${rawDateStr} ${rawTimeStr}`;
+            const dt = moment(dateTimeStr, "DD-MMM-YYYY hh:mm:ss A");
+
+            if (!dt.isValid()) {
+                previewEl.innerText = "Invalid Date";
+                return;
+            }
+
+            // Get Offsets
+            const offY = parseInt(card.querySelector('.offset-y').value) || 0;
+            const offM = parseInt(card.querySelector('.offset-m').value) || 0;
+            const offD = parseInt(card.querySelector('.offset-d').value) || 0;
+            const offH = parseInt(card.querySelector('.offset-h').value) || 0;
+            const offMin = parseInt(card.querySelector('.offset-min').value) || 0;
+
+            // Apply Offsets
+            // Moment handles month overflow automatically (e.g. adding 1 month to Jan 31 -> Feb 28/29)
+            dt.add(offY, 'years');
+            dt.add(offM, 'months');
+            dt.add(offD, 'days');
+            dt.add(offH, 'hours');
+            dt.add(offMin, 'minutes');
+
+            previewEl.innerText = dt.format("DD-MMM-YYYY hh:mm:ss A");
+        }
+
+        async function saveOffsets(deviceId) {
+            const card = document.querySelector(`.vehicle-card[data-device-id="${deviceId}"]`);
+            const statusEl = document.getElementById(`status-${deviceId}`);
+
+            const offsets = {
+                y: parseInt(card.querySelector('.offset-y').value) || 0,
+                m: parseInt(card.querySelector('.offset-m').value) || 0,
+                d: parseInt(card.querySelector('.offset-d').value) || 0,
+                h: parseInt(card.querySelector('.offset-h').value) || 0,
+                min: parseInt(card.querySelector('.offset-min').value) || 0
+            };
+
+            statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            statusEl.style.color = '#3b82f6';
+
+            try {
+                const response = await fetch('/save_time_threshold', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ device_id: deviceId, offsets: offsets })
+                });
+
+                if (response.ok) {
+                    statusEl.innerHTML = '<i class="fas fa-check"></i> Saved!';
+                    statusEl.style.color = '#059669';
+                    setTimeout(() => statusEl.innerHTML = '', 2000);
+                } else {
+                    statusEl.innerHTML = '<i class="fas fa-times"></i> Error';
+                    statusEl.style.color = '#ef4444';
+                }
+            } catch (e) {
+                console.error(e);
+                statusEl.innerHTML = '<i class="fas fa-times"></i> Error';
+                statusEl.style.color = '#ef4444';
+            }
+        }
+
+        // Init previews
+        document.addEventListener('DOMContentLoaded', () => {
+            {% for v in vehicles %}
+            updatePreview('{{ v.device_id }}');
+            {% endfor %}
+        });
+    </script>
+</body>
+
+</html>

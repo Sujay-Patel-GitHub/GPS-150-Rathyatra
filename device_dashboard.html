@@ -1,0 +1,1441 @@
+<!-- ========================================== -->
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Ultimate View: {{ device_id }}</title>
+    <!-- HLS.js for video streaming -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SortableJS for Drag and Drop -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <!-- Fonts and Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        /* --- Base Styles --- */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- Navbar --- */
+        .navbar {
+            background: white;
+            padding: 0 20px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 60px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+            z-index: 100;
+        }
+
+        .nav-title {
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-badge {
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+        }
+
+        .nav-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .action-btn {
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.85rem;
+            padding: 8px 12px;
+            border-radius: 6px;
+            transition: 0.2s;
+            border: 1px solid #cbd5e1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-back {
+            color: #475569;
+            background: #f8fafc;
+        }
+
+        .btn-back:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+
+        .btn-restart {
+            color: #fff;
+            background: #ea580c;
+            border-color: #c2410c;
+        }
+
+        .btn-restart:hover {
+            background: #c2410c;
+        }
+
+        .btn-view {
+            color: #0f172a;
+            background: #e2e8f0;
+            border-color: #cbd5e1;
+        }
+
+        .btn-view:hover {
+            background: #cbd5e1;
+        }
+
+        .btn-map-full {
+            color: #fff;
+            background: #2563eb;
+            border-color: #1d4ed8;
+        }
+
+        .btn-map-full:hover {
+            background: #1d4ed8;
+        }
+
+        /* --- Main Container (Bento Grid) --- */
+        .main-container {
+            flex: 1;
+            padding: 15px;
+            display: grid;
+            gap: 15px;
+            grid-template-columns: 1fr 1fr 1.2fr;
+            grid-template-rows: 1fr 1fr;
+            height: calc(100vh - 60px);
+            transition: all 0.3s ease;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .main-container {
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: auto;
+                overflow-y: auto;
+                height: auto;
+            }
+
+            .map-wrapper {
+                grid-column: span 2;
+                height: 500px;
+            }
+        }
+
+        /* --- View Modes Classes --- */
+        body.full-cam-mode .map-wrapper {
+            display: none !important;
+        }
+
+        body.full-cam-mode .main-container {
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            padding: 0;
+            gap: 2px;
+            background: #000;
+        }
+
+        body.full-cam-mode .cam-card {
+            border: none;
+            border-radius: 0;
+        }
+
+        body.full-cam-mode .card-header {
+            display: none;
+        }
+
+        body.full-map-mode .cam-card {
+            display: none !important;
+        }
+
+        body.full-map-mode .main-container {
+            grid-template-columns: 1fr;
+            grid-template-rows: 1fr;
+            padding: 0;
+        }
+
+        body.full-map-mode .map-wrapper {
+            grid-column: 1 / -1;
+            grid-row: 1 / -1;
+            border-radius: 0;
+            border: none;
+        }
+
+        body.full-map-mode .gps-sidebar {
+            display: block !important;
+        }
+
+        /* --- Camera Cards --- */
+        .cam-card {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            position: relative;
+            /* Added for Drag UX */
+            cursor: grab;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        /* Style while dragging */
+        .cam-card.sortable-ghost {
+            opacity: 0.4;
+            background: #f1f5f9;
+            border: 2px dashed #94a3b8;
+        }
+
+        .cam-card.sortable-drag {
+            cursor: grabbing;
+            opacity: 1;
+            background: white;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            transform: scale(1.02);
+            z-index: 999;
+        }
+
+        .card-header {
+            padding: 10px 15px;
+            background: #fff;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            /* Header is the best place to grab */
+            cursor: grab;
+        }
+
+        .card-header:active {
+            cursor: grabbing;
+        }
+
+        /* --- Status Indicators --- */
+        @keyframes blink-red {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .status-indicator {
+            font-size: 0.7rem;
+            transition: color 0.3s;
+        }
+
+        .status-green {
+            color: #10b981;
+            /* Emerald 500 */
+        }
+
+        .status-red-blink {
+            color: #ef4444;
+            /* Red 500 */
+            animation: blink-red 1.5s infinite;
+        }
+
+        .status-orange {
+            color: #f97316;
+            /* Orange 500 */
+        }
+
+        .video-wrapper {
+            flex: 1;
+            background: #000;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* CRITICAL FIX: 'contain' ensures the WHOLE video is visible (date/time/edges included). 
+        Background is black to handle aspect ratio diffs. */
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain !important;
+            background: #000;
+            pointer-events: none;
+            /* Allows click-through for drag if needed, controls handle interaction */
+        }
+
+        /* --- Controls & Overlay (Camera) --- */
+        .controls-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+            padding: 20px 15px 15px 15px;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 20;
+        }
+
+        .video-wrapper:hover .controls-bar {
+            opacity: 1;
+        }
+
+        .cam-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: opacity 0.3s;
+        }
+
+        .cam-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* --- GPS Map Wrapper --- */
+        .map-wrapper {
+            grid-column: 3 / 4;
+            grid-row: 1 / 3;
+            display: flex;
+            flex-direction: row;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+        }
+
+        /* GPS Sidebar */
+        .gps-sidebar {
+            width: 320px;
+            background: #f8fafc;
+            border-right: 1px solid #e2e8f0;
+            overflow-y: auto;
+            padding: 15px;
+            display: none;
+            flex-shrink: 0;
+        }
+
+        .gps-map-container {
+            flex: 1;
+            position: relative;
+            z-index: 1;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* FIXED: Ensure message box items stack vertically */
+        .msg-center-box {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Professional Glassmorphism Overlay Card */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 24px;
+            padding: 32px 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            max-width: 280px;
+            width: 85%;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+        }
+
+        .glass-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .status-icon {
+            font-size: 3rem;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 8px;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+        }
+
+        .status-title {
+            color: #ffffff;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+            letter-spacing: -0.25px;
+        }
+
+        .status-desc {
+            color: rgba(255, 255, 255, 0.75);
+            font-size: 0.9rem;
+            font-weight: 400;
+            margin-bottom: 16px;
+            line-height: 1.3;
+        }
+
+        .start-btn {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+            text-decoration: none;
+        }
+
+        .start-btn:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .start-btn.retry {
+            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+            box-shadow: 0 4px 15px rgba(107, 114, 128, 0.3);
+        }
+
+        .start-btn.retry:hover {
+            background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+            box-shadow: 0 6px 20px rgba(107, 114, 128, 0.4);
+        }
+
+        /* For Not Configured State */
+        .status-icon.error {
+            color: rgba(239, 68, 68, 0.9);
+        }
+
+        .status-title.error {
+            color: #fee2e2;
+        }
+
+        .status-desc.error {
+            color: rgba(239, 68, 68, 0.75);
+        }
+
+        /* Common Inputs/Buttons for GPS */
+        .gps-input {
+            width: 100%;
+            font-size: 0.8rem;
+            padding: 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .gps-btn {
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            text-align: center;
+            border: none;
+            color: white;
+            transition: 0.2s;
+        }
+
+        .gps-btn.save {
+            background: #1e293b;
+        }
+
+        .gps-btn.save:hover {
+            background: #0f172a;
+        }
+
+        .gps-btn.record {
+            background: #059669;
+        }
+
+        .gps-btn.record:hover {
+            background: #047857;
+        }
+
+        .gps-btn.stop {
+            background: #dc2626;
+        }
+
+        .gps-btn.stop:hover {
+            background: #b91c1c;
+        }
+
+        .blink-red {
+            animation: blinker 1.5s linear infinite;
+        }
+
+        @keyframes blinker {
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* Seek Bar for Video */
+        input[type=range].video-seek {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+
+        input[type=range].video-seek:focus {
+            outline: none;
+        }
+
+        input[type=range].video-seek::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            margin-top: -4px;
+        }
+
+        input[type=range].video-seek::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 2px;
+        }
+
+        .ctrl-row {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .ctrl-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .ctrl-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ctrl-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .live-badge {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .live-badge.live {
+            background: #ef4444;
+            color: white;
+        }
+
+        .live-badge.dvr {
+            background: #64748b;
+            color: #f1f5f9;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- NAVBAR -->
+    <div class="navbar">
+        <div class="nav-title">
+            <img src="{{ logo_url }}" alt="Logo" style="height: 40px; border-radius: 8px;">
+            Device Monitor
+            <span class="nav-badge">{{ device_id }} - GD {{ gd_phone }} - TR {{ tr_phone }} - DR {{ dr_phone }}</span>
+        </div>
+
+        <div class="nav-actions">
+            <button class="action-btn btn-view" id="view-cam-btn" onclick="toggleCamMode()">
+                <i class="fas fa-border-all"></i> Full Cam View
+            </button>
+            <button class="action-btn btn-map-full" id="view-map-btn" onclick="toggleMapMode()">
+                <i class="fas fa-map-marked-alt"></i> Full Map View
+            </button>
+            <button class="action-btn btn-restart" onclick="restartAll()">
+                <i class="fas fa-sync-alt"></i> Restart Feeds
+            </button>
+            <a href="{% if session.user_type == 'admin' %}/admin_dashboard{% else %}/user_dashboard{% endif %}"
+                class="action-btn btn-back"><i class="fas fa-arrow-left"></i> Dashboard</a>
+        </div>
+    </div>
+
+    <!-- MAIN GRID -->
+    <!-- DRAG DROP ENABLED ID HERE -->
+    <div class="main-container" id="mainGrid">
+
+        <!-- CAMERA CARDS (1-4) -->
+        {% for key, stream in streams.items() %}
+        <div class="card cam-card" id="cam-card-{{ key }}" data-id="{{ key }}">
+            <div class="card-header">
+                <span><i class="fas fa-video"></i> {{ stream.name }} <small
+                        style="opacity:0.6; font-weight:400; margin-left:5px;">(Drag to move)</small></span>
+
+                <!-- STATUS INDICATOR LOGIC -->
+                <!-- Default State logic based on configuration presence -->
+                <i class="fas fa-circle status-indicator {% if not stream.url %}status-orange{% else %}status-red-blink{% endif %}"
+                    id="indicator-{{ key }}"></i>
+            </div>
+
+            <div class="video-wrapper" id="video-wrapper-{{ key }}">
+                <video id="video-{{ key }}" autoplay muted playsinline></video>
+
+                <!-- Controls -->
+                <div class="controls-bar" id="controls-{{ key }}" style="display:none;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:4px; padding:0 4px;">
+                        <span id="time-left-{{ key }}"
+                            style="color:#cbd5e1; font-size:0.75rem; font-family:monospace; font-weight:600;">-00:00</span>
+                        <span id="time-right-{{ key }}"
+                            style="color:#cbd5e1; font-size:0.75rem; font-family:monospace; font-weight:600;">LIVE</span>
+                    </div>
+                    <input type="range" class="video-seek" id="seek-bar-{{ key }}" min="0" max="100" step="1"
+                        value="100" oninput="userSeek('{{ key }}')">
+                    <div class="ctrl-row">
+                        <div class="ctrl-group">
+                            <button class="live-badge live" id="live-btn-{{ key }}" onclick="goLive('{{ key }}')"><i
+                                    class="fas fa-circle text-[8px]"></i> LIVE</button>
+                        </div>
+                        <div class="ctrl-group">
+                            <button class="ctrl-btn" onclick="rewind('{{ key }}')"><i
+                                    class="fas fa-rotate-left"></i></button>
+                            <button class="ctrl-btn" onclick="forward('{{ key }}')"><i
+                                    class="fas fa-rotate-right"></i></button>
+                            <button class="ctrl-btn" onclick="toggleAudio('{{ key }}')"><i class="fas fa-volume-mute"
+                                    id="icon-vol-{{ key }}"></i></button>
+                            <button class="ctrl-btn stop" onclick="manualStop('{{ key }}')"><i
+                                    class="fas fa-stop"></i></button>
+                            <button class="ctrl-btn" onclick="toggleFullScreen('{{ key }}')"><i
+                                    class="fas fa-expand"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Overlay -->
+                <div class="cam-overlay" id="overlay-{{ key }}">
+                    <div id="msg-box-{{ key }}" class="msg-center-box" data-url="{{ stream.url }}">
+                        {% if stream.url %}
+                        <div class="glass-card">
+                            <div class="status-icon"><i class="fas fa-video"></i></div>
+                            <div class="status-title">Ready</div>
+                            <button class="start-btn" onclick="startStream('{{ key }}', '{{ stream.url }}')"><i
+                                    class="fas fa-play"></i> Start Feed</button>
+                        </div>
+                        {% else %}
+                        <div class="glass-card">
+                            <div class="status-icon error"><i class="fas fa-link-slash"></i></div>
+                            <div class="status-title error">Not Configured</div>
+                            <div class="status-desc error">No RTMP link found.</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        <!-- ULTIMATE MAP WRAPPER (This stays fixed due to CSS Grid rules) -->
+        <div class="map-wrapper">
+            <!-- Advanced Sidebar (Visible only in Full Map Mode) -->
+            <div class="gps-sidebar">
+
+                <!-- 1. LIVE STATUS BLOCK -->
+                <div class="mb-4 bg-white p-3 rounded shadow-sm border border-slate-200">
+                    <h3 class="text-xs font-bold text-slate-500 uppercase mb-2">Status</h3>
+                    <div class="grid grid-cols-2 gap-2 text-center">
+                        <div class="bg-slate-50 p-2 rounded">
+                            <div class="text-[10px] text-slate-400 font-bold">SPEED</div>
+                            <div class="font-bold text-slate-800"><span id="val-speed">0</span> km/h</div>
+                        </div>
+                        <div class="bg-slate-50 p-2 rounded">
+                            <div class="text-[10px] text-slate-400 font-bold" id="lbl-sat">SATS</div>
+                            <div class="font-bold text-slate-800" id="val-sat">0</div>
+                        </div>
+                    </div>
+                    <div class="mt-2 bg-blue-50 p-2 rounded text-center border border-blue-100">
+                        <div class="text-[10px] text-blue-400 font-bold uppercase" id="lbl-uid">UID SCAN</div>
+                        <div class="text-blue-800 font-mono font-bold" id="val-uid">WAITING...</div>
+                    </div>
+                </div>
+
+                <!-- 2. LOCATION DATA (NEW) -->
+                <div class="mb-4 bg-white p-3 rounded shadow-sm border border-slate-200">
+                    <h3 class="text-xs font-bold text-slate-500 uppercase mb-2">Location Data</h3>
+                    <div class="grid grid-cols-2 gap-2 text-center">
+                        <div class="bg-slate-50 p-2 rounded">
+                            <div class="text-[10px] text-slate-400 font-bold">LATITUDE</div>
+                            <div class="font-bold text-slate-800 text-xs" id="val-lat">0.00000</div>
+                        </div>
+                        <div class="bg-slate-50 p-2 rounded">
+                            <div class="text-[10px] text-slate-400 font-bold">LONGITUDE</div>
+                            <div class="font-bold text-slate-800 text-xs" id="val-lng">0.00000</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. RECORDING CONTROL -->
+                <div
+                    class="mb-4 bg-white p-3 rounded shadow-sm border border-slate-200 border-l-4 border-l-emerald-500">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase mb-2 flex justify-between">Recording <i
+                            class="fas fa-circle text-red-500 hidden blink-red" id="rec-indicator"></i></h3>
+                    <div id="rec-status-msg" class="hidden text-xs text-center mb-2 font-bold p-1 rounded"></div>
+                    <div id="rec-controls-start">
+                        <button onclick="toggleRecording()" class="gps-btn record"><i class="fas fa-dot-circle"></i>
+                            Start Recording</button>
+                    </div>
+                    <div id="rec-controls-stop" class="hidden">
+                        <div class="text-center text-xs text-slate-500 mb-2">Points: <span id="rec-count"
+                                class="font-bold">0</span></div>
+                        <button onclick="stopRecording()" class="gps-btn stop"><i class="fas fa-stop"></i> Stop &
+                            Save</button>
+                    </div>
+                </div>
+
+                <!-- 4. REPLAY ROUTE -->
+                <div class="mb-4 bg-white p-3 rounded shadow-sm border border-slate-200">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase mb-2">Replay Route</h3>
+                    <input type="file" id="routeFile" accept=".txt"
+                        class="block w-full text-xs text-slate-500 file:mr-2 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                    <div id="player-controls" class="hidden mt-3 space-y-2 text-center">
+                        <div class="flex justify-center gap-2">
+                            <button onclick="startAnimation()" class="w-8 h-8 rounded-full bg-blue-600 text-white"><i
+                                    class="fas fa-play"></i></button>
+                            <button onclick="pauseAnimation()"
+                                class="w-8 h-8 rounded-full bg-slate-200 text-slate-700"><i
+                                    class="fas fa-pause"></i></button>
+                            <button onclick="resetAnimation()"
+                                class="w-8 h-8 rounded-full bg-slate-200 text-slate-700"><i
+                                    class="fas fa-undo"></i></button>
+                        </div>
+                        <input type="range" id="speedRange" min="10" max="500" value="100" class="w-full">
+                    </div>
+                </div>
+
+                <!-- 5. AUTOMATION SECTION REMOVED HERE -->
+
+            </div>
+
+            <!-- Map Container -->
+            <div class="gps-map-container">
+                <div id="map"></div>
+                <!-- Address display -->
+                <div
+                    class="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-[400] bg-white/90 backdrop-blur px-4 py-2 rounded-full shadow-lg text-sm font-bold text-slate-700 border border-slate-300 flex items-center gap-2 whitespace-nowrap">
+                    <i class="fas fa-map-marker-alt text-red-500"></i> <span id="val-address">Locating Vehicle...</span>
+                </div>
+
+                <!-- NEW: Open in Google Maps Button -->
+                <button onclick="openGoogleMaps()"
+                    class="absolute bottom-16 right-4 z-[400] bg-white text-slate-600 w-8 h-8 rounded shadow border border-slate-300 flex items-center justify-center hover:text-green-600 hover:border-green-600 transition-all"
+                    title="Open in Google Maps">
+                    <i class="fas fa-map-location-dot"></i>
+                </button>
+
+                <button onclick="recenterMap()"
+                    class="absolute bottom-6 right-4 z-[400] bg-white text-slate-500 w-8 h-8 rounded shadow border border-slate-300 flex items-center justify-center hover:text-blue-600"><i
+                        class="fas fa-crosshairs"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DRAG AND DROP LOGIC (NEW) ---
+        document.addEventListener("DOMContentLoaded", () => {
+            const grid = document.getElementById('mainGrid');
+
+            // Initialize SortableJS
+            Sortable.create(grid, {
+                animation: 150,           // Smooth animation on swap
+                draggable: ".cam-card",   // Only allow dragging of Camera Cards (Locks the Map)
+                ghostClass: 'sortable-ghost', // Class for the placeholder
+                dragClass: 'sortable-drag',   // Class for the dragged item
+
+                // Allow dragging by header OR body, but prefer header
+                // Filter out inputs so we don't break video controls
+                filter: "input, button, .video-seek",
+                preventOnFilter: false,
+
+                onEnd: function (evt) {
+                    console.log("Reordered:", evt.oldIndex, "->", evt.newIndex);
+                    // You can save the order to localStorage here if needed
+                }
+            });
+        });
+
+        // --- VARIABLES ---
+        const deviceId = "{{ device_id }}";
+        const configuredStreams = {{ streams | tojson }};
+        const activeStreams = new Map();
+        const players = {};
+        const dragging = {};
+        const userPaused = {};
+
+        // Map Vars
+        let map, liveMarker, routePolyline, replayMarker;
+        let initialCenterComplete = false;
+        let historyLayer = L.layerGroup();
+        let isRecording = false;
+        let recordedPoints = [];
+        let routeData = [], animationFrameId = null, currentIndex = 0, isPlaying = false, playbackDelay = 100;
+
+        // Viewing State
+        let viewingRoute = false; // True when previewing/replaying a file
+        let lastAddressUpdate = 0; // Throttle address lookups
+
+        // UPDATED: Custom Red Pin with Centered Truck
+        const carIcon = L.divIcon({
+            className: 'bg-transparent border-0', // Remove default Leaflet square style
+            html: `
+                <div class="relative w-14 h-14 flex justify-center" style="filter: drop-shadow(0 4px 3px rgba(0,0,0,0.4));">
+                    <!-- Red Pin Base -->
+                    <i class="fas fa-map-marker text-red-600 text-[3.5rem] absolute top-0"></i>
+                    
+                    <!-- White Circle Background - Perfectly centered in the pin head -->
+                    <div class="absolute top-[8px] w-8 h-8 bg-white rounded-full z-10 flex items-center justify-center shadow-inner">
+                        <!-- Truck Icon -->
+                        <i class="fas fa-truck text-black text-xs transform -translate-x-[1px]"></i> 
+                    </div>
+                </div>
+            `,
+            iconSize: [56, 64], // Slightly larger bounds to prevent clipping
+            iconAnchor: [28, 56], // Tip of the pin at bottom center
+            popupAnchor: [0, -56]
+        });
+
+        const replayIcon = L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/5717/5717330.png', iconSize: [32, 32], iconAnchor: [16, 16] });
+        const startIcon = L.divIcon({ className: 'text-green-600 font-bold', html: '<i class="fas fa-flag text-2xl"></i>', iconSize: [20, 20], iconAnchor: [2, 20] });
+        const endIcon = L.divIcon({ className: 'text-red-600 font-bold', html: '<i class="fas fa-flag-checkered text-2xl"></i>', iconSize: [20, 20], iconAnchor: [2, 20] });
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const initData = {{ initial_data | tojson
+        }};
+        initMap();
+        initStreams();
+        initGPS(initData);
+        });
+
+        // --- STREAM CONTROL FUNCTIONS ---
+        function stopAllStreams() {
+            Object.keys(configuredStreams).forEach(uiKey => {
+                if (activeStreams.has(uiKey)) {
+                    manualStop(uiKey);
+                }
+            });
+        }
+
+        function restartAllStreams() {
+            Object.keys(configuredStreams).forEach(uiKey => {
+                const stream = configuredStreams[uiKey];
+                if (stream.url) {
+                    startStream(uiKey, stream.url);
+                }
+            });
+        }
+
+        // --- STATUS HELPER ---
+        function updateIndicator(uiKey, status) {
+            const el = document.getElementById(`indicator-${uiKey}`);
+            if (!el) return;
+
+            // Reset classes
+            el.classList.remove('status-green', 'status-red-blink', 'status-orange');
+
+            if (status === 'online') {
+                el.classList.add('status-green');
+            } else if (status === 'offline') {
+                el.classList.add('status-red-blink');
+            } else if (status === 'not-configured') {
+                el.classList.add('status-orange');
+            }
+            // Remove inline style if any was set previously
+            el.style.color = '';
+        }
+
+        // --- VIEW MODE TOGGLERS ---
+        function toggleCamMode() {
+            const wasInMap = document.body.classList.contains('full-map-mode');
+            document.body.classList.remove('full-map-mode');
+            document.body.classList.toggle('full-cam-mode');
+
+            const btn = document.getElementById('view-cam-btn');
+            if (document.body.classList.contains('full-cam-mode')) {
+                btn.innerHTML = '<i class="fas fa-th-large"></i> Dashboard';
+                btn.classList.add('bg-blue-100');
+            } else {
+                btn.innerHTML = '<i class="fas fa-border-all"></i> Full Cam View';
+                btn.classList.remove('bg-blue-100');
+            }
+
+            // If we were in map mode and now exiting (to cam or dashboard), restart streams
+            if (wasInMap) {
+                restartAllStreams();
+            }
+
+            setTimeout(() => { map.invalidateSize(); }, 300);
+        }
+
+        function toggleMapMode() {
+            const wasInMap = document.body.classList.contains('full-map-mode');
+            document.body.classList.remove('full-cam-mode');
+            document.body.classList.toggle('full-map-mode');
+
+            const btn = document.getElementById('view-map-btn');
+            if (document.body.classList.contains('full-map-mode')) {
+                btn.innerHTML = '<i class="fas fa-th-large"></i> Dashboard';
+                btn.classList.remove('btn-map-full'); btn.classList.add('btn-back');
+            } else {
+                btn.innerHTML = '<i class="fas fa-map-marked-alt"></i> Full Map View';
+                btn.classList.add('btn-map-full'); btn.classList.remove('btn-back');
+            }
+
+            // Handle stream control based on transition
+            if (wasInMap) {
+                // Exiting map mode (to cam or dashboard) -> restart streams
+                restartAllStreams();
+            } else if (document.body.classList.contains('full-map-mode')) {
+                // Entering map mode (from dashboard or cam) -> stop streams
+                stopAllStreams();
+            }
+
+            setTimeout(() => { map.invalidateSize(); }, 300);
+        }
+
+        // --- MAP LOGIC ---
+        function initMap() {
+            // Simplified Layers
+            const googleHybrid = L.tileLayer('http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'] });
+            const googleStreets = L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'] });
+
+            map = L.map('map', { center: [20.5937, 78.9629], zoom: 5, layers: [googleHybrid], zoomControl: false });
+
+            const baseMaps = { "Satellite": googleHybrid, "Streets": googleStreets };
+            L.control.layers(baseMaps).addTo(map);
+            L.control.zoom({ position: 'topright' }).addTo(map);
+            historyLayer.addTo(map);
+
+            // Manual drag re-enables live follow if NOT in file mode
+            map.on('dragstart', () => {
+                if (!viewingRoute) {
+                    document.querySelector('button[onclick="recenterMap()"] i').classList.remove('text-blue-600');
+                }
+            });
+        }
+
+        function initGPS(initialData) {
+            const processGPSPayload = (d) => {
+                if (!d || (!d.has_gps && !d.lat)) return;
+
+                const lat = parseFloat(d.lat);
+                const lng = parseFloat(d.lng || d.lon);
+                if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) return;
+
+                const newLatLng = [lat, lng];
+
+                if (lastAddressUpdate === 0 || Date.now() - lastAddressUpdate > 10000) {
+                    updateAddress(lat, lng);
+                    lastAddressUpdate = Date.now();
+                }
+
+                // Update UI Stats
+                document.getElementById('val-speed').innerText = d.speed || 0;
+                document.getElementById('val-lat').innerText = lat.toFixed(5);
+                document.getElementById('val-lng').innerText = lng.toFixed(5);
+
+                // Map Movement
+                if (liveMarker) {
+                    liveMarker.setLatLng(newLatLng);
+                } else {
+                    liveMarker = L.marker(newLatLng, { icon: carIcon }).addTo(map);
+                }
+
+                // Auto Focus & Follow Logic
+                const recenterIcon = document.querySelector('button[onclick="recenterMap()"] i');
+
+                if (!initialCenterComplete) {
+                    map.setView(newLatLng, 16);
+                    initialCenterComplete = true;
+                    if (recenterIcon) recenterIcon.classList.add('text-blue-600');
+                } else if (recenterIcon && recenterIcon.classList.contains('text-blue-600') && !viewingRoute) {
+                    map.panTo(newLatLng);
+                }
+
+                // Recording Path
+                if (isRecording) {
+                    recordedPoints.push({
+                        lat: lat, lng: lng,
+                        speed: d.speed || 0,
+                        date: d.date || '--',
+                        time: d.time || '--',
+                        alt: d.alt || 0
+                    });
+                    document.getElementById('rec-count').innerText = recordedPoints.length;
+                }
+            };
+
+            // Process initial data immediately
+            if (initialData && initialData.location) {
+                processGPSPayload({ ...initialData.location, has_gps: true });
+            }
+
+            setInterval(() => {
+                fetch(`/get_vehicle_gps/${deviceId}?record=true`)
+                    .then(r => r.json())
+                    .then(d => processGPSPayload(d))
+                    .catch(e => console.error(e));
+            }, 2000);
+        }
+
+        // NEW: Fetch Address from Nominatim (OpenStreetMap)
+        function updateAddress(lat, lng) {
+            // Rate limit: Only fetch once every 10 seconds to avoid 429 errors from free APIs
+            const now = Date.now();
+            if (now - lastAddressUpdate < 10000) return;
+
+            lastAddressUpdate = now;
+
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data && data.display_name) {
+                        // Extract a shorter address (e.g. "Suburb, City")
+                        let parts = data.display_name.split(', ');
+                        // Usually first 2-3 parts are enough for a short display
+                        let shortAddr = parts.slice(0, 3).join(', ');
+                        document.getElementById('val-address').innerText = shortAddr;
+                    } else {
+                        document.getElementById('val-address').innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+                    }
+                })
+                .catch(() => {
+                    // Fallback to coordinates on error
+                    document.getElementById('val-address').innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+                });
+        }
+
+        function recenterMap() {
+            // Exiting Route View mode -> Back to Live
+            viewingRoute = false;
+            document.querySelector('button[onclick="recenterMap()"] i').classList.add('text-blue-600');
+
+            // Clean up replay artifacts
+            historyLayer.clearLayers();
+            if (routePolyline) map.removeLayer(routePolyline);
+            if (replayMarker) map.removeLayer(replayMarker);
+            document.getElementById('player-controls').classList.add('hidden');
+
+            // Reset Labels
+            document.getElementById('lbl-sat').innerText = "SATS";
+            document.getElementById('lbl-uid').innerText = "UID SCAN";
+
+            if (liveMarker) {
+                map.setView(liveMarker.getLatLng(), 16);
+            }
+        }
+
+        // NEW: Open Current Coordinates in Google Maps
+        function openGoogleMaps() {
+            // Check if we are replaying or live
+            let targetLat, targetLng;
+
+            if (viewingRoute && replayMarker) {
+                const ll = replayMarker.getLatLng();
+                targetLat = ll.lat;
+                targetLng = ll.lng;
+            } else if (liveMarker) {
+                const ll = liveMarker.getLatLng();
+                targetLat = ll.lat;
+                targetLng = ll.lng;
+            }
+
+            if (targetLat && targetLng) {
+                // Use standard Google Maps URL scheme
+                const url = `https://www.google.com/maps/search/?api=1&query=${targetLat},${targetLng}`;
+                window.open(url, '_blank');
+            } else {
+                alert("Location coordinates not available yet.");
+            }
+        }
+
+        // --- REPLAY LOGIC ---
+        document.getElementById('routeFile').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // LOCK MAP to Route View
+            viewingRoute = true;
+            document.querySelector('button[onclick="recenterMap()"] i').classList.remove('text-blue-600');
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                parseAndMapData(e.target.result);
+            };
+            reader.readAsText(file);
+        });
+
+        function parseAndMapData(text) {
+            const lines = text.split('\n');
+            routeData = [];
+            historyLayer.clearLayers();
+            if (routePolyline) map.removeLayer(routePolyline);
+            if (replayMarker) map.removeLayer(replayMarker);
+
+            let latLngs = [];
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line || line.startsWith("Route") || line.startsWith("Date")) continue;
+
+                const parts = line.split(',');
+                // CSV: Date, Time, Latitude, Longitude, Speed, Altitude
+                if (parts.length >= 6) {
+                    const lat = parseFloat(parts[2]);
+                    const lng = parseFloat(parts[3]);
+                    const speed = parseFloat(parts[4]);
+                    const alt = parts[5];
+                    const timeStr = parts[1];
+
+                    if (!isNaN(lat) && lat !== 0) {
+                        routeData.push({ lat, lng, speed, alt, time: timeStr });
+                        latLngs.push([lat, lng]);
+                    }
+                }
+            }
+
+            if (routeData.length > 0) {
+                // 1. Draw Route Immediately
+                routePolyline = L.polyline(latLngs, { color: '#2563eb', weight: 5, opacity: 0.8 }).addTo(map);
+
+                // 2. Add Start/End
+                L.marker(latLngs[0], { icon: startIcon }).addTo(historyLayer).bindPopup("Start");
+                L.marker(latLngs[latLngs.length - 1], { icon: endIcon }).addTo(historyLayer).bindPopup("End");
+
+                // 3. Zoom
+                map.fitBounds(routePolyline.getBounds(), { padding: [50, 50] });
+
+                // 4. Setup Controls
+                document.getElementById('player-controls').classList.remove('hidden');
+                currentIndex = 0;
+                replayMarker = L.marker([routeData[0].lat, routeData[0].lng], { icon: replayIcon }).addTo(map);
+
+                // Update Stats for Preview
+                updateReplayStats(routeData[0]);
+            }
+        }
+
+        function updateReplayStats(point) {
+            // Change labels to match file data
+            document.getElementById('lbl-sat').innerText = "ALT (m)";
+            document.getElementById('val-sat').innerText = point.alt;
+
+            document.getElementById('lbl-uid').innerText = "TIME";
+            document.getElementById('val-uid').innerText = point.time;
+
+            document.getElementById('val-speed').innerText = point.speed.toFixed(1);
+
+            document.getElementById('val-lat').innerText = point.lat.toFixed(5);
+            document.getElementById('val-lng').innerText = point.lng.toFixed(5);
+            // UPDATED: Address Update during replay
+            updateAddress(point.lat, point.lng);
+        }
+
+        function startAnimation() { if (!isPlaying && routeData.length > 0) { isPlaying = true; animateStep(); } }
+        function pauseAnimation() { isPlaying = false; clearTimeout(animationFrameId); }
+        function resetAnimation() {
+            pauseAnimation();
+            currentIndex = 0;
+            if (routeData.length > 0) {
+                replayMarker.setLatLng(routeData[0]);
+                updateReplayStats(routeData[0]);
+            }
+        }
+
+        function animateStep() {
+            if (!isPlaying) return;
+            if (currentIndex >= routeData.length) { isPlaying = false; return; }
+
+            const p = routeData[currentIndex];
+            replayMarker.setLatLng([p.lat, p.lng]);
+            map.panTo([p.lat, p.lng]);
+
+            updateReplayStats(p);
+
+            currentIndex++;
+            animationFrameId = setTimeout(animateStep, 510 - document.getElementById('speedRange').value);
+        }
+
+        // --- RECORDING / AUTOMATION REMOVED ---
+        // Removed checkAutomation, saveConfig functions
+
+        function showStatus(msg, bg, txt) {
+            const el = document.getElementById('rec-status-msg');
+            el.className = `text-xs text-center mb-2 font-bold p-1 rounded ${bg} ${txt}`;
+            el.innerText = msg;
+            el.classList.remove('hidden');
+        }
+
+        function toggleRecording() {
+            isRecording = true; recordedPoints = [];
+            document.getElementById('rec-controls-start').classList.add('hidden');
+            document.getElementById('rec-controls-stop').classList.remove('hidden');
+            document.getElementById('rec-indicator').classList.remove('hidden');
+        }
+
+        function stopRecording(isAuto = false) {
+            isRecording = false;
+            document.getElementById('rec-controls-start').classList.remove('hidden');
+            document.getElementById('rec-controls-stop').classList.add('hidden');
+            document.getElementById('rec-indicator').classList.add('hidden');
+
+            if (recordedPoints.length === 0) return;
+
+            let content = "Date, Time, Latitude, Longitude, Speed, Altitude\n";
+            recordedPoints.forEach(p => { content += `${p.date}, ${p.time}, ${p.lat}, ${p.lng}, ${p.speed}, ${p.alt}\n`; });
+
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Trip_${deviceId}_${Date.now()}.txt`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        }
+
+        // Removed saveConfig function
+
+        // --- STREAMING LOGIC ---
+        function initStreams() {
+            Object.keys(configuredStreams).forEach(uiKey => {
+                const stream = configuredStreams[uiKey];
+                if (stream.url) {
+                    startStream(uiKey, stream.url);
+                }
+            });
+            setInterval(sendHeartbeat, 3000);
+            setInterval(watchDog, 2000);
+        }
+
+        function restartAll() {
+            if (!confirm("Restart all streams?")) return;
+            stopAllStreams();
+            setTimeout(() => {
+                restartAllStreams();
+            }, 1000);
+        }
+
+        function startStream(uiKey, rtmpUrl) {
+            const msgBox = document.getElementById(`msg-box-${uiKey}`);
+            msgBox.innerHTML = `<div class="glass-card"><div class="status-icon"><i class="fas fa-spinner fa-spin"></i></div><div class="status-title">Connecting...</div></div>`;
+            userPaused[uiKey] = false;
+            fetch(`/play_rtmp?src=${encodeURIComponent(rtmpUrl)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) throw new Error(data.error);
+                    activeStreams.set(uiKey, data.stream_id);
+                    loadHls(uiKey, data.hls_url + '?t=' + Date.now());
+                })
+                .catch(err => {
+                    updateIndicator(uiKey, 'offline');
+                    const msgBox = document.getElementById(`msg-box-${uiKey}`);
+                    msgBox.innerHTML = `<div class="glass-card"><div class="status-icon error"><i class="fas fa-video-slash"></i></div><div class="status-title error">Offline</div><button class="start-btn retry" onclick="startStream('${uiKey}', '${rtmpUrl}')"><i class="fas fa-redo"></i> Retry</button></div>`;
+                });
+        }
+
+        function loadHls(uiKey, src) {
+            const video = document.getElementById(`video-${uiKey}`);
+            if (Hls.isSupported()) {
+                const hls = new Hls({
+                    startPosition: -1,
+                    liveSyncDurationCount: 3,
+                    backBufferLength: 300 // Keep 5 mins in buffer for smooth scrubbing
+                });
+                hls.loadSource(src); hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    video.play();
+                    updateIndicator(uiKey, 'online');
+                });
+                players[uiKey] = hls;
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = src; video.play();
+                updateIndicator(uiKey, 'online');
+            }
+            video.addEventListener('timeupdate', () => updateTimeline(uiKey));
+            document.getElementById(`overlay-${uiKey}`).classList.add('hidden');
+            document.getElementById(`controls-${uiKey}`).style.display = 'flex';
+
+            // Set indicator to GREEN
+            updateIndicator(uiKey, 'online');
+        }
+
+        function manualStop(uiKey) {
+            userPaused[uiKey] = true;
+            if (players[uiKey]) { players[uiKey].destroy(); delete players[uiKey]; }
+            const video = document.getElementById(`video-${uiKey}`);
+            video.pause(); video.src = "";
+            if (activeStreams.has(uiKey)) {
+                fetch('/stop_stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stream_id: activeStreams.get(uiKey) }) });
+                activeStreams.delete(uiKey);
+            }
+            manualStopUI(uiKey);
+
+            // Set indicator to BLINKING RED (Offline/Stopped)
+            updateIndicator(uiKey, 'offline');
+        }
+
+        function manualStopUI(uiKey) {
+            document.getElementById(`overlay-${uiKey}`).classList.remove('hidden');
+            document.getElementById(`controls-${uiKey}`).style.display = 'none';
+            // document.getElementById(`indicator-${uiKey}`).style.color = '#cbd5e1'; // Removed in favor of class helper
+            const msgBox = document.getElementById(`msg-box-${uiKey}`);
+            const rtmpUrl = msgBox.dataset.url;
+            if (rtmpUrl) msgBox.innerHTML = `<div class="glass-card"><div class="status-icon"><i class="fas fa-video"></i></div><div class="status-title">Ready</div><button class="start-btn" onclick="startStream('${uiKey}', '${rtmpUrl}')"><i class="fas fa-play"></i> Start Feed</button></div>`;
+
+            // FIX: Ensure flex column direction is enforced via JS
+            msgBox.style.flexDirection = 'column';
+            msgBox.style.alignItems = 'center';
+            msgBox.style.justifyContent = 'center';
+        }
+
+        // --- VIDEO CONTROLS ---
+        function updateTimeline(uiKey) {
+            if (dragging[uiKey]) return;
+            const video = document.getElementById(`video-${uiKey}`);
+            const slider = document.getElementById(`seek-bar-${uiKey}`);
+            const timeLeft = document.getElementById(`time-left-${uiKey}`);
+            const timeRight = document.getElementById(`time-right-${uiKey}`);
+            const liveBtn = document.getElementById(`live-btn-${uiKey}`);
+
+            let start = 0, end = video.duration || 0;
+            if (video.seekable.length > 0) { start = video.seekable.start(0); end = video.seekable.end(0); }
+
+            slider.min = start; slider.max = end; slider.value = video.currentTime;
+
+            const secondsBehind = Math.floor(end - video.currentTime);
+            const isLive = secondsBehind < 5;
+            if (isLive) { liveBtn.classList.add('live'); liveBtn.classList.remove('dvr'); }
+            else { liveBtn.classList.add('dvr'); liveBtn.classList.remove('live'); }
+
+            const mins = Math.floor(secondsBehind / 60).toString().padStart(2, '0');
+            const secs = (secondsBehind % 60).toString().padStart(2, '0');
+
+            if (timeLeft) timeLeft.innerText = `-${mins}:${secs}`;
+            if (timeRight) timeRight.innerText = "LIVE";
+        }
+
+        function userSeek(uiKey) {
+            dragging[uiKey] = true;
+            const video = document.getElementById(`video-${uiKey}`);
+            video.currentTime = document.getElementById(`seek-bar-${uiKey}`).value;
+            setTimeout(() => dragging[uiKey] = false, 1000);
+        }
+        function goLive(uiKey) { document.getElementById(`video-${uiKey}`).currentTime = document.getElementById(`video-${uiKey}`).seekable.end(0) - 1; }
+        function rewind(uiKey) { document.getElementById(`video-${uiKey}`).currentTime -= 10; }
+        function forward(uiKey) { document.getElementById(`video-${uiKey}`).currentTime += 10; }
+        function toggleFullScreen(uiKey) {
+            const el = document.getElementById(`video-wrapper-${uiKey}`);
+            document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen();
+        }
+        function toggleAudio(uiKey) {
+            const v = document.getElementById(`video-${uiKey}`);
+            v.muted = !v.muted;
+            document.getElementById(`icon-vol-${uiKey}`).className = v.muted ? "fas fa-volume-mute" : "fas fa-volume-up";
+        }
+
+        function watchDog() {
+            // Functionality removed to allow history playback without auto-forwarding to live.
+            // activeStreams.forEach((sid, uiKey) => {
+            //     if (userPaused[uiKey]) return;
+            //     const v = document.getElementById(`video-${uiKey}`);
+            //     if (v.duration && !dragging[uiKey] && (v.duration - v.currentTime > 15)) v.currentTime = v.duration - 1;
+            // });
+        }
+
+        function sendHeartbeat() {
+            if (activeStreams.size > 0) fetch('/keep_alive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stream_ids: Array.from(activeStreams.values()) }) }).catch(() => { });
+        }
+        window.addEventListener("beforeunload", () => {
+            if (activeStreams.size > 0) activeStreams.forEach(sid => fetch('/stop_stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stream_id: sid }), keepalive: true }));
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Recordings | Fleet Manager</title>
+    <!-- Google Fonts: Inter & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-light: #eff6ff;
+            --primary-dark: #1d4ed8;
+            --secondary: #64748b;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --border-color: #e2e8f0;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+        h1,
+        h2,
+        h3 {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .main {
+            padding: 1rem 2rem;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* --- Header Section --- */
+        .page-header {
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .header-title h1 {
+            font-size: 1.875rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 0.5rem;
+        }
+
+        .header-title p {
+            color: var(--text-muted);
+            font-size: 0.9375rem;
+        }
+
+        /* --- Global Filter Bar --- */
+        .filter-container {
+            background: var(--bg-card);
+            padding: 1.5rem;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-md);
+            margin-bottom: 1rem;
+        }
+
+        .retention-text {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+
+        .filter-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .filter-label {
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+
+        .filter-label i {
+            font-size: 1rem;
+            color: var(--primary);
+            opacity: 0.8;
+        }
+
+        /* --- Custom Inputs --- */
+        .input-styled {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            color: var(--text-main);
+            font-weight: 500;
+            outline: none;
+            transition: all 0.2s;
+            min-width: 160px;
+        }
+
+        .input-styled:focus {
+            background: white;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        select.input-styled {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1rem;
+            padding-right: 2.5rem;
+        }
+
+        /* --- Buttons --- */
+        .btn-apply {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.625rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+        }
+
+        .btn-apply:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-reset {
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #cbd5e1;
+            padding: 0.625rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-reset:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+
+        /* --- Content Container --- */
+        .results-container {
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.5);
+            border: 2px dashed #e2e8f0;
+            border-radius: var(--radius-lg);
+            color: var(--text-muted);
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .empty-icon {
+            font-size: 3rem;
+            opacity: 0.2;
+        }
+
+        /* --- Server Storage Styles --- */
+        .browser-card {
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 1.5rem;
+        }
+
+        .browser-header {
+            background: #f8fafc;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: grid;
+            grid-template-columns: 2fr 150px 180px 100px;
+            gap: 1rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        .browser-content {
+            min-height: 300px;
+        }
+
+        .file-item {
+            padding: 0.75rem 1.5rem;
+            display: grid;
+            grid-template-columns: 2fr 150px 180px 100px;
+            gap: 1rem;
+            align-items: center;
+            border-bottom: 1px solid #f1f5f9;
+            transition: all 0.15s;
+            font-size: 0.9375rem;
+            cursor: pointer;
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-item:hover {
+            background-color: #f1f5f9;
+        }
+
+        .file-name {
+            display: flex;
+            align-items: center;
+            gap: 0.875rem;
+            font-weight: 500;
+            color: #1e293b;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-name i {
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .fa-folder {
+            color: #eb9e2b;
+        }
+
+        .fa-file-video {
+            color: #f43f5e;
+        }
+
+        .fa-file {
+            color: #94a3b8;
+        }
+
+        .file-size,
+        .file-date {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+
+        .btn-icon {
+            padding: 0.5rem;
+            border-radius: 6px;
+            border: none;
+            background: transparent;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-icon:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+
+        /* --- Breadcrumb --- */
+        .breadcrumb-container {
+            background: white;
+            padding: 0.75rem 1.25rem;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .breadcrumb-item {
+            cursor: pointer;
+            transition: color 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .breadcrumb-item:hover {
+            color: var(--primary);
+        }
+
+        .breadcrumb-item.active {
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        .breadcrumb-sep {
+            color: #cbd5e1;
+        }
+
+        .loading-state,
+        .empty-state {
+            padding: 4rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            color: var(--text-muted);
+        }
+
+        .loading-state i {
+            font-size: 2.5rem;
+            color: var(--primary);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            opacity: 0.2;
+        }
+
+        .mode-btn {
+            background: transparent;
+            color: #64748b;
+        }
+
+        .mode-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        @media (max-width: 992px) {
+
+            .browser-header,
+            .file-item {
+                grid-template-columns: 1fr 100px 80px;
+            }
+
+            .file-date {
+                display: none;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .filter-bar {
+                gap: 1rem;
+            }
+
+            .filter-group {
+                flex: 1 1 200px;
+            }
+        }
+
+        /* --- Password Modal Styles --- */
+        .password-modal-overlay {
+            position: fixed;
+            top: 70px;
+            left: 240px;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 850;
+            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        body.sidebar-collapsed .password-modal-overlay {
+            left: 75px;
+        }
+
+        .password-modal {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+            padding: 50px 40px;
+            max-width: 450px;
+            width: 90%;
+            text-align: center;
+            animation: slideUp 0.4s ease-out;
+        }
+
+        .modal-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+
+        .modal-icon i {
+            font-size: 2.5rem;
+            color: white;
+        }
+
+        .password-modal h2 {
+            font-size: 1.8rem;
+            color: #1e293b;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .password-modal p {
+            color: #64748b;
+            font-size: 0.95rem;
+            margin-bottom: 35px;
+            line-height: 1.5;
+        }
+
+        .modal-form-group {
+            margin-bottom: 25px;
+            text-align: left;
+        }
+
+        .modal-form-group label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 8px;
+        }
+
+        .modal-password-wrapper {
+            position: relative;
+        }
+
+        .modal-password-wrapper input {
+            width: 100%;
+            padding: 14px 45px 14px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s;
+            outline: none;
+        }
+
+        .modal-password-wrapper input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        .modal-toggle-password {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: color 0.2s;
+        }
+
+        .modal-toggle-password:hover {
+            color: #667eea;
+        }
+
+        .modal-btn-submit {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .modal-btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .modal-btn-submit:active {
+            transform: translateY(0);
+        }
+
+        .modal-error {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            border-left: 4px solid #dc2626;
+        }
+
+        .modal-error.show {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    {% include 'navbar.html' %}
+
+    <!-- Password Modal -->
+    {% if not is_authenticated %}
+    <div class="password-modal-overlay" id="passwordModal">
+        <div class="password-modal">
+            <div class="modal-icon">
+                <i class="fas fa-lock"></i>
+            </div>
+
+            <h2>Recordings Access</h2>
+            <p>This section is password protected. Please enter the password to continue.</p>
+
+            <div class="modal-error" id="modalError">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="errorMessage">Incorrect password. Please try again.</span>
+            </div>
+
+            <form id="passwordForm" onsubmit="return false;">
+                <div class="modal-form-group">
+                    <label for="modalPassword">
+                        <i class="fas fa-key"></i> Password
+                    </label>
+                    <div class="modal-password-wrapper">
+                        <input type="password" id="modalPassword" placeholder="Enter password" required autofocus>
+                        <button type="button" class="modal-toggle-password" onclick="toggleModalPassword()">
+                            <i class="fas fa-eye" id="modalToggleIcon"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="modal-btn-submit" onclick="verifyPassword()">
+                    <i class="fas fa-unlock"></i> Unlock Recordings
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="app-layout" id="mainContent">
+        {% include 'sidebar.html' %}
+
+        <div class="main">
+
+            <!-- Header -->
+            <div class="page-header">
+                <div class="header-title">
+                    <h1>Video Recordings Archive</h1>
+                    <p>Search and browse recorded footage from your fleet of vehicles.</p>
+                </div>
+            </div>
+
+            <!-- Professional Filter Bar -->
+            <div class="filter-container">
+                <div class="retention-text">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Retention Policy: Historical footage is available for 30 days.</span>
+                </div>
+
+                <div class="filter-bar">
+                    <!-- Vehicle Select -->
+                    <div class="filter-group">
+                        <label class="filter-label"><i class="fas fa-truck"></i> Vehicle:</label>
+                        <select class="input-styled" id="vehicleSelect">
+                            <option value="">Select Vehicle</option>
+                            {% for device in devices %}
+                            <option value="{{ device.device_name }}">{{ device.device_name }} {% if device.rc_number
+                                %}({{ device.rc_number }}){% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Camera Select -->
+                    <div class="filter-group">
+                        <label class="filter-label"><i class="fas fa-camera"></i> Camera:</label>
+                        <select class="input-styled" id="cameraSelect" onchange="searchRecordings()">
+                            <option value="all">All Cameras</option>
+                            <option value="1">Front View (Cam 1)</option>
+                            <option value="2">Rear View (Cam 2)</option>
+                            <option value="3">Cargo Interior (Cam 3)</option>
+                            <option value="4">Driver Cabin (Cam 4)</option>
+                        </select>
+                    </div>
+
+                    <!-- Date Select -->
+                    <div class="filter-group">
+                        <label class="filter-label"><i class="fas fa-calendar-alt"></i> Date:</label>
+                        <input type="date" class="input-styled" id="dateInput">
+                    </div>
+
+                    <!-- Time Range -->
+                    <div class="filter-group">
+                        <label class="filter-label"><i class="fas fa-clock"></i> Start:</label>
+                        <input type="time" class="input-styled" id="startTime">
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label"><i class="fas fa-clock"></i> End:</label>
+                        <input type="time" class="input-styled" id="endTime">
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="filter-group" style="margin-left: auto;">
+                        <button class="btn-apply" onclick="searchRecordings()">
+                            <i class="fas fa-check"></i> Apply
+                        </button>
+                        <button class="btn-reset" onclick="resetFilters()">Reset</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Placeholder for Content -->
+            <div class="results-container" id="recordingsGrid" style="display: none;">
+            </div>
+
+            <!-- Server Storage Explorer Section -->
+            <div style="display: flex; justify-content: flex-start; align-items: center; margin-bottom: 0.5rem;">
+                <div class="header-actions" style="display: flex; gap: 1rem; align-items: center;">
+                    <!-- Storage Toggle -->
+                    <div style="display: flex; gap: 4px;">
+                        <button id="btnLocal" class="mode-btn active" onclick="setStorageMode('local')"
+                            style="padding: 6px 12px; border-radius: 6px; border: none; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: 0.2s;">
+                            <i class="fas fa-bolt" style="color: #f59e0b; margin-right: 4px;"></i> Premium Cloud Storage
+                        </button>
+                        <button id="btnRemote" class="mode-btn" onclick="setStorageMode('remote')"
+                            style="padding: 6px 12px; border-radius: 6px; border: none; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: 0.2s;">
+                            <i class="fas fa-archive" style="color: #94a3b8; margin-right: 4px;"></i> Standard Server
+                            Archive
+                        </button>
+                    </div>
+
+                    <button class="action-btn" onclick="loadFiles(currentPath)"
+                        style="padding: 10px 15px; border-radius: 8px; border: none; background: transparent; color: var(--text-muted); font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+
+                    <button id="btnBack" class="action-btn" onclick="goBack()" disabled
+                        style="padding: 10px 15px; border-radius: 8px; border: none; background: transparent; color: var(--text-muted); font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; opacity: 0.5;">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+
+                    <div style="width: 1px; height: 24px; background: #e2e8f0; margin: 0 5px;"></div>
+
+                    <button class="action-btn" onclick="showAllFolders()"
+                        style="padding: 10px 15px; border-radius: 8px; border: 1px solid var(--border-color); background: white; color: var(--text-main); font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-folder-tree"></i> Show All Folders
+                    </button>
+                </div>
+            </div>
+
+
+
+            <!-- Browser Area -->
+            <div class="browser-card" id="browserCard" style="display: none;">
+                <div class="browser-header">
+                    <span>Name</span>
+                    <span>Size</span>
+                    <span>Modified</span>
+                    <span style="text-align: right;">Actions</span>
+                </div>
+                <div class="browser-content" id="browserContent">
+                    <div class="loading-state">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Connecting to remote server...</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const vehicleSelect = document.getElementById('vehicleSelect');
+        const cameraSelect = document.getElementById('cameraSelect');
+        const dateInput = document.getElementById('dateInput');
+        const startTime = document.getElementById('startTime');
+        const endTime = document.getElementById('endTime');
+        const recordingsGrid = document.getElementById('recordingsGrid');
+
+        // Initial setup
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date().toISOString().split('T')[0];
+            dateInput.value = today;
+
+            // Add listener for vehicle change
+            vehicleSelect.addEventListener('change', handleVehicleChange);
+        });
+
+        async function handleVehicleChange() {
+            const vehicleId = vehicleSelect.value;
+
+            // Clear current cameras (except 'All')
+            cameraSelect.innerHTML = '<option value="all">All Cameras</option>';
+
+            // Reset active cameras filter
+            activeCameraNames = [];
+
+            if (!vehicleId) {
+                // Hide browser if no vehicle selected
+                document.getElementById('browserCard').style.display = 'none';
+                return;
+            }
+
+            // Auto trigger search when vehicle is selected
+            searchRecordings();
+
+            // Show loading state in dropdown for cameras
+            const loadingOpt = document.createElement('option');
+            loadingOpt.text = "Loading cameras...";
+            loadingOpt.disabled = true;
+            cameraSelect.add(loadingOpt);
+
+            try {
+                const response = await fetch(`/get_vehicle_cameras/${vehicleId}`);
+                const data = await response.json();
+
+                // Remove loading option
+                cameraSelect.remove(cameraSelect.length - 1);
+
+                if (data.success && data.cameras.length > 0) {
+                    data.cameras.forEach(cam => {
+                        const opt = document.createElement('option');
+                        opt.value = cam.id;
+                        opt.text = cam.name;
+                        cameraSelect.add(opt);
+                        if (cam.name) activeCameraNames.push(cam.name);
+                    });
+                } else if (data.success) {
+                    const opt = document.createElement('option');
+                    opt.text = "No cameras configured";
+                    opt.disabled = true;
+                    cameraSelect.add(opt);
+                }
+            } catch (error) {
+                console.error("Fetch error:", error);
+                cameraSelect.remove(cameraSelect.length - 1);
+            }
+        }
+
+        function searchRecordings() {
+            const vehicle = vehicleSelect.value;
+            const date = dateInput.value;
+            const camera = cameraSelect.value;
+
+            if (!vehicle || !date) {
+                // Be silent if auto-triggered without data, or just return
+                return;
+            }
+
+            // Show the browser
+            document.getElementById('browserCard').style.display = 'flex';
+
+            // Set active camera for filtering/opening
+            targetCameraId = camera !== 'all' ? camera : null;
+
+            // Start search: Load root and let the filter handle showing only relevant camera folders
+            loadFiles('');
+        }
+
+        function resetFilters() {
+            vehicleSelect.value = "";
+            cameraSelect.innerHTML = '<option value="all">All Cameras</option>';
+            cameraSelect.innerHTML += `
+                <option value="1">Front View (Cam 1)</option>
+                <option value="2">Rear View (Cam 2)</option>
+                <option value="3">Cargo Interior (Cam 3)</option>
+                <option value="4">Driver Cabin (Cam 4)</option>
+            `;
+            dateInput.value = new Date().toISOString().split('T')[0];
+            startTime.value = "";
+            endTime.value = "";
+
+            recordingsGrid.style.display = 'none';
+
+            activeCameraNames = [];
+            loadFiles('');
+        }
+
+        // --- Server Storage Explorer Scripts ---
+        let currentPath = "";
+        let storageMode = "local"; // default
+        let activeCameraNames = []; // To store camera names for filtering
+        let targetCameraId = null; // To auto-open camera folder
+
+        function setStorageMode(mode) {
+            storageMode = mode;
+            document.getElementById('btnRemote').classList.toggle('active', mode === 'remote');
+            document.getElementById('btnLocal').classList.toggle('active', mode === 'local');
+            loadFiles(''); // Reset to root when switching mode
+        }
+
+        async function loadFiles(path, ignoreFilter = false) {
+            currentPath = path;
+
+            // Manage Back Button State
+            const btnBack = document.getElementById('btnBack');
+            if (btnBack) {
+                if (path === "") {
+                    btnBack.disabled = true;
+                    btnBack.style.opacity = "0.5";
+                    btnBack.style.cursor = "default";
+                    btnBack.onclick = null;
+                } else {
+                    btnBack.disabled = false;
+                    btnBack.style.opacity = "1";
+                    btnBack.style.cursor = "pointer";
+                    btnBack.onclick = goBack;
+                }
+            }
+
+            const container = document.getElementById('browserContent');
+
+            container.innerHTML = `
+                <div class="loading-state">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Connecting to ${storageMode === 'remote' ? 'Standard Archive' : 'Premium Cloud Storage'}...</p>
+                </div>
+            `;
+
+            updateBreadcrumb(path);
+
+            try {
+                const response = await fetch(`/api/server/list?path=${encodeURIComponent(path)}&mode=${storageMode}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    // Filter items BEFORE rendering to prevent flash
+                    let itemsToRender = data.items;
+
+                    if (currentPath === "" && activeCameraNames.length > 0 && !ignoreFilter) {
+                        itemsToRender = data.items.filter(item => activeCameraNames.includes(item.name));
+
+                        // AUTO-OPEN logic: if a specific camera is selected, find its folder and enter it.
+                        // We only do this at the root level (currentPath === "") to avoid weird loops.
+                        if (targetCameraId) {
+                            // Find folder that matches targetCameraId OR looks like "Cam {id}" 
+                            // IMPORTANT: In your case, 'activeCameraNames' holds the full stream names.
+                            // We need to find which of the filtered items corresponds to the selected camera ID.
+
+                            // Since we don't easily map "1" -> "stream_name_xyz", we rely on the fact that
+                            // handleVehicleChange populated cameraSelect with IDs matching their stream names usually?
+                            // Actually, handleVehicleChange adds options with value=cam.id (which is 1,2,3,4).
+                            // BUT we need to match the actual folder name.
+
+                            // Let's look at the itemsToRender. If we have a targetCameraId (e.g. "1"),
+                            // we need to know which folder corresponds to it.
+                            // Since we can't easily map "1" back to the stream name here without looking at the select options again...
+                            // Wait! The select options have value=cam.id and text=cam.name.
+                            // Let's trust that if the user selected a camera, 'targetCameraId' is the ID (1,2,3,4).
+
+                            // Improved Strategy:
+                            // We need to find the folder whose name contains "Cam {id}" OR matches the option text?
+                            // No, simpler: In `handleVehicleChange`, we populated activeCameraNames.
+                            // Let's iterate `itemsToRender`. If `targetCameraId` is "1", we look for a folder 
+                            // that might be the 1st one in the list? No, that's risky.
+
+                            // Let's assume the folder name ITSELF is what we want. 
+                            // The `handleVehicleChange` uses `fetch(/get_vehicle_cameras)`.
+                            // That returns { id: "1", name: "stream_name" }.
+                            // So we need to map targetCameraId ("1") -> "stream_name".
+
+                            // We can find this mapping by looking at the cameraSelect options!
+                            const select = document.getElementById('cameraSelect');
+                            const selectedOption = select.options[select.selectedIndex];
+                            // The option text is the stream name (based on previous code `opt.text = cam.name`).
+                            // Wait, previous code was: `opt.value = cam.id; opt.text = cam.name;`
+
+                            if (selectedOption && selectedOption.value !== 'all') {
+                                const targetName = selectedOption.text; // This is the stream name!
+                                const targetItem = itemsToRender.find(item => item.name === targetName);
+                                if (targetItem) {
+                                    // Found it! Open it.
+                                    targetCameraId = null; // Clear so we don't loop
+                                    loadFiles(targetItem.name); // Enter folder
+                                    return; // Stop rendering current level
+                                }
+                            }
+                        }
+                    }
+
+                    renderBrowser(itemsToRender);
+                } else {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-exclamation-triangle" style="opacity: 1; color: #ef4444;"></i>
+                            <p>Error: ${data.error}</p>
+                            <button onclick="loadFiles('')" style="margin-top: 1rem; padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border-color); background: white; cursor: pointer;">Back to Root</button>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-wifi" style="opacity: 1; color: #ef4444;"></i>
+                        <p>Connection failed. Check ${storageMode} status.</p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderBrowser(items) {
+            const container = document.getElementById('browserContent');
+
+            // No filtering here anymore - it is done in loadFiles to prevent flash
+            let displayItems = items;
+
+            if (displayItems.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-folder-open"></i>
+                        <p>This directory is empty ${activeCameraNames.length > 0 && currentPath === "" ? '(No matching camera folders found)' : ''}.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = "";
+
+            // Add Back Button if not at root
+            if (currentPath !== "") {
+                const backDiv = document.createElement('div');
+                backDiv.className = 'file-item';
+                backDiv.style.backgroundColor = '#f8fafc'; // Subtle difference
+                backDiv.onclick = () => {
+                    const parts = currentPath.split('/');
+                    parts.pop(); // Remove last segment
+                    loadFiles(parts.join('/'));
+                };
+                backDiv.innerHTML = `
+                    <div class="file-name" style="color: var(--primary);">
+                        <i class="fas fa-level-up-alt"></i>
+                        <span>.. (Parent Directory)</span>
+                    </div>
+                    <div class="file-size">--</div>
+                    <div class="file-date">--</div>
+                    <div class="file-actions"></div>
+                `;
+                container.appendChild(backDiv);
+            }
+
+            displayItems.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'file-item';
+                div.onclick = () => {
+                    if (item.is_dir) {
+                        // Ensure clean path joining
+                        const newPath = currentPath ? `${currentPath}/${item.name}` : item.name;
+                        loadFiles(newPath);
+                    }
+                };
+
+                const iconClass = item.is_dir ? 'fa-folder' : (item.name.match(/\.(mp4|mkv|avi|mov|ts)$/i) ? 'fa-file-video' : 'fa-file');
+                const sizeStr = item.is_dir ? '--' : formatBytes(item.size);
+                const dateStr = new Date(item.mtime * 1000).toLocaleString();
+
+                div.innerHTML = `
+                    <div class="file-name">
+                        <i class="fas ${iconClass}"></i>
+                        <span>${item.name}</span>
+                    </div>
+                    <div class="file-size">${sizeStr}</div>
+                    <div class="file-date">${dateStr}</div>
+                    <div class="file-actions">
+                        ${!item.is_dir ? `
+                        <button class="btn-icon" onclick="downloadFile(event, '${item.name}')" title="Download">
+                            <i class="fas fa-download"></i>
+                        </button>` : ''}
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function updateBreadcrumb(path) {
+            const bc = document.getElementById('breadcrumb');
+            if (!bc) return;
+
+            bc.innerHTML = `
+                <div class="breadcrumb-item" onclick="loadFiles('')">
+                    <i class="fas fa-home"></i> Root
+                </div>
+            `;
+
+            if (!path) return;
+
+            const parts = path.split('/');
+            let accumulatedPath = "";
+
+            parts.forEach((part, index) => {
+                accumulatedPath += (accumulatedPath ? '/' : '') + part;
+                const isLast = index === parts.length - 1;
+
+                bc.innerHTML += `<div class="breadcrumb-sep"><i class="fas fa-chevron-right" style="font-size: 0.75rem;"></i></div>`;
+
+                const item = document.createElement('div');
+                item.className = `breadcrumb-item ${isLast ? 'active' : ''}`;
+                item.textContent = part;
+                const currentAccumulated = accumulatedPath; // Closure
+                item.onclick = () => loadFiles(currentAccumulated);
+                bc.appendChild(item);
+            });
+        }
+
+
+        function showAllFolders() {
+            resetFilters(); // Reset dropdowns and clear active filters
+            loadFiles('', true); // Load all files ignoring any previous filters
+        }
+
+        function goBack() {
+            if (currentPath) {
+                const parts = currentPath.split('/');
+                parts.pop();
+                loadFiles(parts.join('/'));
+            }
+        }
+
+        function downloadFile(event, name) {
+            event.stopPropagation();
+            const url = `/api/server/download?path=${encodeURIComponent(currentPath)}&name=${encodeURIComponent(name)}&mode=${storageMode}`;
+            window.location.href = url;
+        }
+
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+        // Initialize server storage explorer on load
+        // document.addEventListener('DOMContentLoaded', () => loadFiles('')); // Don't load on start anymore
+
+        // --- Password Modal Functions ---
+        function toggleModalPassword() {
+            const passwordInput = document.getElementById('modalPassword');
+            const toggleIcon = document.getElementById('modalToggleIcon');
+
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+            }
+        }
+
+        async function verifyPassword() {
+            const passwordInput = document.getElementById('modalPassword');
+            const errorDiv = document.getElementById('modalError');
+            const password = passwordInput.value;
+
+            if (!password) {
+                errorDiv.querySelector('#errorMessage').textContent = 'Please enter a password';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            try {
+                const response = await fetch('/verify_recordings_password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ password: password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Password correct - reload page to show content
+                    window.location.reload();
+                } else {
+                    // Show error
+                    errorDiv.querySelector('#errorMessage').textContent = data.error || 'Incorrect password';
+                    errorDiv.classList.add('show');
+                    passwordInput.value = '';
+                    passwordInput.focus();
+                }
+            } catch (error) {
+                errorDiv.querySelector('#errorMessage').textContent = 'Connection error. Please try again.';
+                errorDiv.classList.add('show');
+            }
+        }
+
+        // Allow Enter key to submit password
+        const modalPasswordInput = document.getElementById('modalPassword');
+        if (modalPasswordInput) {
+            modalPasswordInput.addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    verifyPassword();
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>

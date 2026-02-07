@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            background-color: #f3f4f6;
+        }
+
+        .navbar {
+            background-color: white;
+            padding: 10px 20px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            width: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 100;
+            box-sizing: border-box;
+        }
+
+        .navbar img {
+            height: 50px;
+            margin-right: 15px;
+            border-radius: 8px;
+        }
+
+        .navbar h2 {
+            margin: 0;
+            color: #111827;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .navbar-user {
+            margin-left: auto;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: #4b5563;
+        }
+
+        .navbar-user a {
+            color: #dc2626;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid #fecaca;
+            padding: 5px 12px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .navbar-user a:hover {
+            background: #fee2e2;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            padding-top: 75px;
+            width: 100%;
+        }
+
+        .sidebar {
+            width: 240px;
+            background: white;
+            border-right: 1px solid #e5e7eb;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .sidebar a {
+            text-decoration: none;
+        }
+
+        .sidebar button {
+            width: 100%;
+            padding: 12px 16px;
+            border: none;
+            background-color: white;
+            color: #374151;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            text-align: left;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+            border-left: 3px solid transparent;
+            box-sizing: border-box;
+        }
+
+        .sidebar button i {
+            width: 20px;
+            text-align: center;
+            color: #6b7280;
+        }
+
+        .sidebar button:hover {
+            background-color: #f3f4f6;
+            color: #111827;
+        }
+
+        .sidebar button:hover i {
+            color: #2563eb;
+        }
+
+        .sidebar button.active,
+        .sidebar button[style*="background:#eff6ff"] {
+            background: #eff6ff !important;
+            color: #2563eb !important;
+            border-left-color: #2563eb !important;
+        }
+
+        .sidebar button.active i,
+        .sidebar button[style*="background:#eff6ff"] i {
+            color: #2563eb !important;
+        }
+
+        .main {
+            flex-grow: 1;
+            padding: 30px;
+            overflow-y: auto;
+            background-color: #f9fafb;
+        }
+
+        .main h2 {
+            color: #111827;
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 10px;
+            display: inline-block;
+        }
+
+        .flash {
+            padding: 15px;
+            background: #d1fae5;
+            color: #065f46;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            border: 1px solid #a7f3d0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* DEVICE CARD - HORIZONTAL LAYOUT */
+        .device-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .device-card {
+            background: white;
+            border-radius: 16px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: row;
+            overflow: hidden;
+            min-height: 120px;
+        }
+
+        .device-card:hover {
+            transform: translateX(4px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
+            border-color: #3b82f6;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-width: 180px;
+            border-right: 3px solid #2563eb;
+        }
+
+        .device-name-link {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: white;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            word-break: break-word;
+        }
+
+        .device-name-link:hover {
+            color: #fde68a;
+            transform: scale(1.05);
+        }
+
+        .device-name-link i {
+            display: block;
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        .status-dot.active {
+            background-color: #10b981;
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.3);
+        }
+
+        .status-dot.inactive {
+            background-color: #ef4444;
+            box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.3);
+        }
+
+        .card-body {
+            padding: 20px;
+            flex-grow: 1;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            align-items: start;
+        }
+
+        .info-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #4b5563;
+        }
+
+        .info-row i {
+            color: #9ca3af;
+            width: 16px;
+        }
+
+        .highlight-text {
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .status-pill {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .pill-green {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .pill-red {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .card-footer {
+            padding: 20px;
+            background: #f9fafb;
+            border-left: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            min-width: 140px;
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 15px 10px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.2s;
+            font-size: 0.85rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .action-btn i {
+            font-size: 1.2rem;
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #e5e7eb;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        .btn-danger {
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+
+        .btn-danger:hover {
+            background: #fecaca;
+            color: #b91c1c;
+        }
+
+        /* MODAL */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 200;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(2px);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 25px;
+            border-radius: 16px;
+            width: 400px;
+            position: relative;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #9ca3af;
+        }
+
+        .close:hover {
+            color: #1f2937;
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            color: #111827;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 5px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 0.95rem;
+            transition: border 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #2563eb;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .separator {
+            margin: 20px 0;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        /* Professional Expanding Search Bar */
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .search-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-container input {
+            width: 200px;
+            padding: 10px 40px 10px 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background-color: #f9fafb;
+            color: #374151;
+        }
+
+        .search-container input:hover {
+            width: 320px;
+            background-color: white;
+            border-color: #d1d5db;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .search-container input:focus {
+            width: 400px;
+            border-color: #2563eb;
+            outline: none;
+            background-color: white;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+        }
+
+        .search-container i {
+            position: absolute;
+            right: 15px;
+            color: #9ca3af;
+            pointer-events: none;
+            transition: color 0.3s;
+        }
+
+        .search-container input:focus+i {
+            color: #2563eb;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 60px 20px;
+            color: #9ca3af;
+            font-size: 1.1rem;
+            grid-column: 1 / -1;
+        }
+
+        .no-results i {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        /* Professional Info Sections */
+        .info-section {
+            background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 0;
+            border-left: 3px solid #e5e7eb;
+            transition: all 0.2s;
+            height: fit-content;
+        }
+
+        .info-section:hover {
+            border-left-color: #3b82f6;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .last-section {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            border-left-color: #2563eb;
+            grid-column: 1 / -1;
+            text-align: center;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .section-header i {
+            font-size: 1rem;
+        }
+
+        .section-title {
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: #1f2937;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-field {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 0.875rem;
+        }
+
+        .field-label {
+            color: #6b7280;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+
+        .field-value {
+            color: #111827;
+            font-weight: 600;
+            text-align: right;
+        }
+
+        .highlight-rc {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 700;
+            color: #92400e;
+            border: 1px solid #fcd34d;
+        }
+
+        .gps-coords {
+            font-family: 'Courier New', monospace;
+            background: #f0f9ff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            color: #0369a1;
+        }
+
+        .timestamp {
+            font-size: 0.8rem !important;
+            color: #2563eb !important;
+            font-weight: 600 !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="navbar">
+        <img src="{{ logo_url }}" alt="Logo">
+        <h2>Admin Dashboard</h2>
+        <div class="navbar-user">
+            <span><i class="fas fa-user-shield"></i> Welcome, <strong>Admin</strong></span>
+            <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
+    </div>
+    <div class="container">
+        <div class="sidebar">
+            <a href="/add_user"><button><i class="fas fa-user-plus"></i> Add New User</button></a>
+            <a href="/admin_dashboard"><button class="active"><i class="fas fa-list-ul"></i> Show Devices</button></a>
+            <a href="/gps_monitoring"><button><i class="fas fa-map-marked-alt"></i> GPS Monitoring</button></a>
+            <a href="/list_roles"><button><i class="fas fa-users"></i> List Roles</button></a>
+            <a href="/format_add_user"><button><i class="fas fa-cogs"></i> Configure Forms</button></a>
+            <a href="/manage_rfid"><button><i class="fas fa-id-card"></i> Manage RFID</button></a>
+        </div>
+        <div class="main">
+            <!-- Header Section with Title and Search -->
+            <div class="header-section">
+                <h2><i class="fas fa-server"></i> Registered Devices</h2>
+                <div class="search-container">
+                    <input type="text" id="searchInput" placeholder="Search vehicles..." onkeyup="filterDevices()">
+                    <i class="fas fa-search"></i>
+                </div>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="flash"><i class="fas fa-info-circle"></i> {{ message }}</div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            <div class="device-container" id="deviceContainer">
+                {% for device in devices %}
+                <div class="device-card" data-device-name="{{ device.device_name|lower }}"
+                    data-rc="{{ device.rc_number|lower }}" data-driver="{{ device.driver_name|lower }}"
+                    data-transporter="{{ device.transporter|lower }}" data-godown="{{ device.godown_manager|lower }}">
+                    <div class="card-header">
+                        <a href="/device_info/{{ device.device_name }}" class="device-name-link">
+                            <i class="fas fa-video"></i>
+                            <span class="device-name">{{ device.device_name }}</span>
+                        </a>
+                        <span
+                            class="status-badge-inline {% if device.is_registered %}badge-green{% else %}badge-red{% endif %}">
+                            {% if device.is_registered %}✓ Registered{% else %}⚠ Unregistered{% endif %}
+                        </span>
+                    </div>
+
+                    <div class="card-body">
+                        {% if device.is_registered %}
+                        <div class="status-pill pill-green"><i class="fas fa-check-circle"></i> Registered</div>
+
+                        <!-- Driver Section -->
+                        <div class="info-section">
+                            <div class="section-header">
+                                <i class="fas fa-user-tie" style="color: #3b82f6;"></i>
+                                <span class="section-title">Driver Information</span>
+                            </div>
+                            <div class="info-field">
+                                <span class="field-label">Name:</span>
+                                <span class="field-value">{{ device.driver_name }}</span>
+                            </div>
+                            <div class="info-field">
+                                <span class="field-label">Phone:</span>
+                                <span class="field-value">
+                                    <i class="fas fa-phone-alt"
+                                        style="color: #10b981; font-size: 0.75rem; margin-right: 4px;"></i>
+                                    {{ device.driver_phone }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Transporter Section -->
+                        <div class="info-section">
+                            <div class="section-header">
+                                <i class="fas fa-truck" style="color: #f59e0b;"></i>
+                                <span class="section-title">Transporter</span>
+                            </div>
+                            <div class="info-field">
+                                <span class="field-label">Company:</span>
+                                <span class="field-value">{{ device.transporter }}</span>
+                            </div>
+                            <div class="info-field">
+                                <span class="field-label">Phone:</span>
+                                <span class="field-value">
+                                    <i class="fas fa-phone-alt"
+                                        style="color: #10b981; font-size: 0.75rem; margin-right: 4px;"></i>
+                                    {{ device.transporter_phone }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Godown Section -->
+                        <div class="info-section">
+                            <div class="section-header">
+                                <i class="fas fa-warehouse" style="color: #8b5cf6;"></i>
+                                <span class="section-title">Godown Manager</span>
+                            </div>
+                            <div class="info-field">
+                                <span class="field-label">Manager:</span>
+                                <span class="field-value">{{ device.godown_manager }}</span>
+                            </div>
+                            <div class="info-field">
+                                <span class="field-label">Phone:</span>
+                                <span class="field-value">
+                                    <i class="fas fa-phone-alt"
+                                        style="color: #10b981; font-size: 0.75rem; margin-right: 4px;"></i>
+                                    {{ device.godown_phone }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Vehicle Details Section -->
+                        <div class="info-section">
+                            <div class="section-header">
+                                <i class="fas fa-car" style="color: #ef4444;"></i>
+                                <span class="section-title">Vehicle Details</span>
+                            </div>
+                            <div class="info-field">
+                                <span class="field-label">RC Number:</span>
+                                <span class="field-value highlight-rc">{{ device.rc_number }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Location Section -->
+                        <div class="info-section">
+                            <div class="section-header">
+                                <i class="fas fa-map-marker-alt" style="color: #06b6d4;"></i>
+                                <span class="section-title">GPS Location</span>
+                            </div>
+                            {% if device.gps_lat and device.gps_lng %}
+                            <div class="info-field">
+                                <span class="field-label">Coordinates:</span>
+                                <span class="field-value gps-coords">
+                                    {{ "%.5f"|format(device.gps_lat) }}, {{ "%.5f"|format(device.gps_lng) }}
+                                </span>
+                            </div>
+                            {% else %}
+                            <div class="info-field">
+                                <span class="field-value" style="color:#9ca3af; font-style:italic;">No GPS Data
+                                    Available</span>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Timestamp Section -->
+                        <div class="info-section last-section">
+                            <div class="info-field">
+                                <i class="fas fa-clock" style="color: #2563eb; margin-right: 6px;"></i>
+                                <span class="field-value timestamp">{{ device.last_updated }}</span>
+                            </div>
+                        </div>
+
+                        {% else %}
+                        <div class="status-pill pill-red"><i class="fas fa-exclamation-circle"></i> Unregistered</div>
+                        <div class="info-row" style="color:#9ca3af; font-style:italic;">No driver assigned yet.</div>
+                        {% if device.gps_lat and device.gps_lng %}
+                        <div class="info-row"><i class="fas fa-map-marker-alt"></i> <span>{{
+                                "%.5f"|format(device.gps_lat) }}, {{ "%.5f"|format(device.gps_lng) }}</span>
+                        </div>
+                        {% else %}
+                        <div class="info-row" style="color:#9ca3af; font-style:italic;"><i
+                                class="fas fa-map-marker-alt"></i> No GPS Data</div>
+                        {% endif %}
+                        <div class="info-row" style="border-top: 1px solid #f3f4f6; margin-top: 8px; padding-top: 8px;">
+                            <i class="fas fa-clock" style="color: #2563eb;"></i>
+                            <span style="font-size: 0.85rem;">{{ device.last_updated }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="card-footer">
+                        {% if device.is_registered %}
+                        <button class="action-btn btn-secondary"
+                            onclick="openModal('{{ device.device_name }}', '{{ device.rc_number }}', '{{ device.transporter }}', '{{ device.godown_manager }}', '{{ device.driver_name }}')">
+                            <i class="fas fa-edit"></i> Edit Details
+                        </button>
+                        {% else %}
+                        <button class="action-btn btn-primary"
+                            onclick="openModal('{{ device.device_name }}', '', '', '', '')">
+                            <i class="fas fa-plus-circle"></i> Assign Vehicle
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div id="assignModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">×</span>
+            <h3><i class="fas fa-tasks"></i> Assign Vehicle Details</h3>
+            <p id="modalDeviceName"
+                style="font-weight:bold; color:#2563eb; margin-bottom:20px; background:#eff6ff; padding:10px; border-radius:6px; border:1px solid #dbeafe;">
+            </p>
+
+            <form action="/save_vehicle_details" method="POST">
+                <input type="hidden" id="formDeviceId" name="device_id">
+
+                <div class="form-group">
+                    <label>Assign Godown Manager</label>
+                    <select id="formGodown" name="godown_manager" required>
+                        <option value="" disabled selected>-- Select Godown Manager --</option>
+                        {% for g in godown_managers %}
+                        <option value="{{ g.name }}">{{ g.name }} ({{ g.username }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Assign Transporter</label>
+                    <select id="formTransporter" name="transporter_name" required>
+                        <option value="" disabled selected>-- Select Transporter --</option>
+                        {% for t in transporters %}
+                        <option value="{{ t.name }}">{{ t.name }} ({{ t.username }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <button type="submit" class="action-btn btn-primary" style="margin-top:20px;">
+                    <i class="fas fa-save"></i> Save & Assign
+                </button>
+            </form>
+
+            <!-- DEREGISTER FORM (Initially Hidden) -->
+            <div id="deregisterSection" style="display:none;">
+                <div class="separator"></div>
+                <form action="/deregister_vehicle" method="POST"
+                    onsubmit="return confirm('Are you sure you want to deregister this device? This will remove the RC number and Transporter assignment.');">
+                    <input type="hidden" id="deregisterDeviceId" name="device_id">
+                    <button type="submit" class="action-btn btn-danger">
+                        <i class="fas fa-trash-alt"></i> Deregister Device
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openModal(deviceId, rc, transporter, godown, driver) {
+            document.getElementById('assignModal').style.display = "block";
+            document.getElementById('modalDeviceName').innerText = "Target Device: " + deviceId;
+            document.getElementById('formDeviceId').value = deviceId;
+            document.getElementById('deregisterDeviceId').value = deviceId;
+
+            // Set Transporter Select
+            const tSelect = document.getElementById('formTransporter');
+            tSelect.value = transporter || "";
+
+            // Set Godown Select
+            const gSelect = document.getElementById('formGodown');
+            gSelect.value = godown || "";
+
+            // Show/Hide Deregister Button
+            // If we have a transporter, it implies the device is already registered.
+            // We should show the Deregister button in this case.
+            const deregisterDiv = document.getElementById('deregisterSection');
+            if (transporter) {
+                deregisterDiv.style.display = 'block';
+            } else {
+                deregisterDiv.style.display = 'none';
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('assignModal').style.display = "none";
+        }
+
+        window.onclick = function (event) {
+            if (event.target == document.getElementById('assignModal')) {
+                closeModal();
+            }
+        }
+
+        // Search/Filter Function
+        function filterDevices() {
+            const searchInput = document.getElementById('searchInput').value.toLowerCase();
+            const deviceCards = document.querySelectorAll('.device-card');
+            let visibleCount = 0;
+
+            deviceCards.forEach(card => {
+                const deviceName = card.getAttribute('data-device-name') || '';
+                const rc = card.getAttribute('data-rc') || '';
+                const driver = card.getAttribute('data-driver') || '';
+                const transporter = card.getAttribute('data-transporter') || '';
+                const godown = card.getAttribute('data-godown') || '';
+
+                // Check if search term matches any field
+                const matches = deviceName.includes(searchInput) ||
+                    rc.includes(searchInput) ||
+                    driver.includes(searchInput) ||
+                    transporter.includes(searchInput) ||
+                    godown.includes(searchInput);
+
+                if (matches) {
+                    card.style.display = '';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            // Show "no results" message if nothing matches
+            const container = document.getElementById('deviceContainer');
+            let noResultsDiv = document.getElementById('noResultsMessage');
+
+            if (visibleCount === 0 && searchInput !== '') {
+                if (!noResultsDiv) {
+                    noResultsDiv = document.createElement('div');
+                    noResultsDiv.id = 'noResultsMessage';
+                    noResultsDiv.className = 'no-results';
+                    noResultsDiv.innerHTML = '<i class="fas fa-search"></i><p>No vehicles found matching your search.</p>';
+                    container.appendChild(noResultsDiv);
+                } else {
+                    noResultsDiv.style.display = 'block';
+                }
+            } else if (noResultsDiv) {
+                noResultsDiv.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+
+</html>

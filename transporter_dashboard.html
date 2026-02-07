@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transporter Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f8f9fa;
+            min-height: 100vh;
+            color: #1f2937;
+        }
+
+        /* Navbar */
+        .navbar {
+            background: white;
+            padding: 12px 30px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .navbar-brand img {
+            height: 45px;
+            border-radius: 8px;
+        }
+
+        .navbar-brand h1 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #111827;
+            letter-spacing: -0.3px;
+        }
+
+        .navbar-user {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 14px;
+            background: #f3f4f6;
+            border-radius: 10px;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 13px;
+            color: #111827;
+        }
+
+        .user-role {
+            font-size: 11px;
+            color: #6b7280;
+        }
+
+        .logout-btn {
+            background: #ef4444;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .logout-btn:hover {
+            background: #dc2626;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        /* Header Section */
+        .page-header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #111827;
+        }
+
+        .page-header h2 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #111827;
+        }
+
+        .page-header p {
+            font-size: 0.95rem;
+            color: #6b7280;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 18px 20px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: all 0.2s;
+            border: 1px solid #e5e7eb;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .stat-icon.total {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .stat-icon.registered {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .stat-icon.pending {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        .stat-content h3 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 2px;
+        }
+
+        .stat-content p {
+            font-size: 0.8rem;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        /* Flash Messages */
+        .flash-message {
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+            animation: slideDown 0.3s ease;
+        }
+
+        .flash-message.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .flash-message.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Search Bar */
+        .search-section {
+            margin-bottom: 25px;
+        }
+
+        .search-container {
+            position: relative;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .search-container input {
+            width: 100%;
+            padding: 12px 45px 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            background-color: white;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .search-container input:focus {
+            border-color: #667eea;
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-container i {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            pointer-events: none;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 60px 20px;
+            color: #9ca3af;
+            font-size: 1.1rem;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .no-results i {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        /* Vehicle Grid */
+        .vehicles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .vehicle-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s;
+            border: 1px solid #e5e7eb;
+        }
+
+        .vehicle-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .vehicle-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            padding: 18px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .vehicle-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+        }
+
+        .vehicle-icon {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            opacity: 0.95;
+        }
+
+        .vehicle-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .vehicle-name:hover {
+            opacity: 0.9;
+        }
+
+        .camera-icon {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .status-badge.registered {
+            background: rgba(16, 185, 129, 0.2);
+            color: #ecfdf5;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .status-badge.pending {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fffbeb;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .vehicle-body {
+            padding: 16px;
+        }
+
+        .info-row {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: #f3f4f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6b7280;
+            margin-right: 12px;
+            flex-shrink: 0;
+            font-size: 14px;
+        }
+
+        .info-content {
+            flex: 1;
+        }
+
+        .info-label {
+            font-size: 0.7rem;
+            color: #9ca3af;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 3px;
+        }
+
+        .info-value {
+            font-size: 0.9rem;
+            color: #111827;
+            font-weight: 600;
+        }
+
+        .driver-assigned {
+            color: #10b981;
+        }
+
+        .driver-unassigned {
+            color: #ef4444;
+        }
+
+        .not-registered-text {
+            color: #f59e0b;
+            font-weight: 700;
+        }
+
+        /* Action Buttons */
+        .vehicle-actions {
+            padding: 14px 16px;
+            background: #f9fafb;
+            border-top: 1px solid #f3f4f6;
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 11px 16px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-register {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-register:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 12px rgba(102, 126, 234, 0.25);
+        }
+
+        .btn-edit {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .btn-edit:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 12px rgba(16, 185, 129, 0.25);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .modal-content {
+            background: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            animation: slideUp 0.3s ease;
+            overflow: hidden;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 28px 32px;
+            position: relative;
+        }
+
+        .modal-header h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .close {
+            position: absolute;
+            top: 20px;
+            right: 24px;
+            font-size: 28px;
+            font-weight: 300;
+            cursor: pointer;
+            color: white;
+            opacity: 0.8;
+            transition: all 0.2s;
+        }
+
+        .close:hover {
+            opacity: 1;
+            transform: rotate(90deg);
+        }
+
+        .modal-body {
+            padding: 32px;
+        }
+
+        .device-name-display {
+            background: #eff6ff;
+            color: #1e40af;
+            padding: 14px 18px;
+            border-radius: 10px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            border: 1px solid #dbeafe;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .current-driver-info {
+            padding: 14px 18px;
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #667eea;
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        .modal-btn {
+            width: 100%;
+            padding: 16px 24px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .modal-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(102, 126, 234, 0.3);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 80px 40px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .empty-icon {
+            font-size: 5rem;
+            color: #d1d5db;
+            margin-bottom: 20px;
+        }
+
+        .empty-state h3 {
+            font-size: 1.5rem;
+            color: #374151;
+            margin-bottom: 12px;
+        }
+
+        .empty-state p {
+            color: #6b7280;
+            font-size: 1.1rem;
+        }
+
+        /* Standard Layout Classes */
+        .app-layout {
+            display: flex;
+            height: calc(100vh - 70px);
+            margin-top: 70px;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            padding: 40px;
+            overflow-y: auto;
+            background-color: #f9fafb;
+        }
+
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 12px 20px;
+            }
+
+            .page-header h2 {
+                font-size: 2rem;
+            }
+
+            .vehicles-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    {% include 'navbar.html' %}
+    <div class="app-layout">
+        {% include 'sidebar.html' %}
+        <div class="main-content">
+
+            <!-- Main Container -->
+            <div class="container">
+                <!-- Page Header -->
+                <div class="page-header">
+                    <h2><i class="fas fa-truck-moving"></i> Your Fleet Management</h2>
+                    <p>Manage your assigned vehicles, register new ones, and assign drivers</p>
+                </div>
+
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                {% for category, message in messages %}
+                <div class="flash-message {{ category }}">
+                    <i
+                        class="fas fa-{% if category == 'error' %}exclamation-circle{% else %}check-circle{% endif %}"></i>
+                    {{ message }}
+                </div>
+                {% endfor %}
+                {% endif %}
+                {% endwith %}
+
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon total">
+                            <i class="fas fa-truck"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>{{ devices|length }}</h3>
+                            <p>Total Vehicles</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon registered">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>{{ devices|selectattr('rc_number')|list|length }}</h3>
+                            <p>Registered</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon pending">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>{{ devices|rejectattr('rc_number')|list|length }}</h3>
+                            <p>Pending Registration</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search Bar -->
+                <div class="search-section">
+                    <div class="search-container">
+                        <input type="text" id="searchInput"
+                            placeholder="Search by vehicle name, RC number, or driver..." onkeyup="filterVehicles()">
+                        <i class="fas fa-search"></i>
+                    </div>
+                </div>
+
+                <!-- Vehicles Grid -->
+                {% if devices %}
+                <div class="vehicles-grid" id="vehiclesGrid">
+                    {% for device in devices %}
+                    <div class="vehicle-card" data-vehicle-name="{{ device.device_name|lower }}"
+                        data-rc="{{ device.rc_number|lower if device.rc_number else '' }}"
+                        data-driver="{{ device.driver_name|lower if device.driver_name else '' }}">
+                        <div class="vehicle-header">
+                            <div class="vehicle-icon">
+                                <i class="fas fa-truck"></i>
+                            </div>
+                            <div class="vehicle-name"
+                                onclick="window.location.href='/device_info/{{ device.device_name }}'">
+                                <span>{{ device.device_name }}</span>
+                                <i class="fas fa-video camera-icon"></i>
+                            </div>
+                            {% if device.rc_number %}
+                            <span class="status-badge registered">
+                                <i class="fas fa-check-circle"></i> Registered
+                            </span>
+                            {% else %}
+                            <span class="status-badge pending">
+                                <i class="fas fa-exclamation-triangle"></i> Not Registered
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        <div class="vehicle-body">
+                            {% if device.rc_number %}
+                            <div class="info-row">
+                                <div class="info-icon">
+                                    <i class="fas fa-id-card"></i>
+                                </div>
+                                <div class="info-content">
+                                    <div class="info-label">RC Number</div>
+                                    <div class="info-value">{{ device.rc_number }}</div>
+                                </div>
+                            </div>
+                            <div class="info-row">
+                                <div class="info-icon">
+                                    <i class="fas fa-user-tie"></i>
+                                </div>
+                                <div class="info-content">
+                                    <div class="info-label">Assigned Driver</div>
+                                    <div
+                                        class="info-value {% if device.driver_name == 'Unassigned' %}driver-unassigned{% else %}driver-assigned{% endif %}">
+                                        {{ device.driver_name }}
+                                    </div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="info-row">
+                                <div class="info-icon">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                                <div class="info-content">
+                                    <div class="info-label">Status</div>
+                                    <div class="info-value not-registered-text">
+                                        Registration Required
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="vehicle-actions">
+                            {% if device.rc_number %}
+                            <button class="action-btn btn-edit"
+                                onclick="openDriverModal('{{ device.device_name }}', '{{ device.driver_name }}', '{{ device.rc_number }}')">
+                                <i class="fas fa-user-edit"></i> Edit Driver Assignment
+                            </button>
+                            {% else %}
+                            <button class="action-btn btn-register"
+                                onclick="openRegisterModal('{{ device.device_name }}')">
+                                <i class="fas fa-clipboard-check"></i> Register Vehicle Now
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <i class="fas fa-truck-loading"></i>
+                    </div>
+                    <h3>No Vehicles Assigned Yet</h3>
+                    <p>Contact your administrator to get vehicles assigned to your fleet</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Register Vehicle Modal -->
+            <div id="registerModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-clipboard-check"></i> Register Vehicle</h3>
+                        <span class="close" onclick="closeRegisterModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <div class="device-name-display" id="registerDeviceName">
+                            <i class="fas fa-truck"></i>
+                            <span></span>
+                        </div>
+
+                        <form action="/transporter_register_vehicle" method="POST">
+                            <input type="hidden" id="registerFormDeviceId" name="device_id">
+
+                            <div class="form-group">
+                                <label>Vehicle RC Number</label>
+                                <input type="text" name="rc_number" placeholder="e.g., GJ-01-AB-1234" required
+                                    oninput="this.value = this.value.toUpperCase()">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Assign Driver</label>
+                                <select name="driver_name" required>
+                                    <option value="" disabled selected>-- Select a Driver --</option>
+                                    {% for driver in drivers %}
+                                    <option value="{{ driver.name }}">{{ driver.name }} ({{ driver.username }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <button type="submit" class="modal-btn">
+                                <i class="fas fa-save"></i> Register & Assign
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Driver Modal -->
+            <div id="driverModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-user-edit"></i> Edit Vehicle Details</h3>
+                        <span class="close" onclick="closeDriverModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <div class="device-name-display" id="modalDeviceName">
+                            <i class="fas fa-truck"></i>
+                            <span></span>
+                        </div>
+
+                        <div id="modalCurrentDriver"></div>
+
+                        <form action="/transporter_update_vehicle" method="POST">
+                            <input type="hidden" id="formDeviceId" name="device_id">
+
+                            <div class="form-group">
+                                <label>Vehicle RC Number</label>
+                                <input type="text" id="formRcNumber" name="rc_number" placeholder="e.g., GJ-01-AB-1234"
+                                    required oninput="this.value = this.value.toUpperCase()">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Assign Driver</label>
+                                <select name="driver_name" required>
+                                    <option value="" disabled selected>-- Select a Driver --</option>
+                                    {% for driver in drivers %}
+                                    <option value="{{ driver.name }}">{{ driver.name }} ({{ driver.username }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <button type="submit" class="modal-btn">
+                                <i class="fas fa-save"></i> Update Vehicle
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                function openRegisterModal(deviceId) {
+                    document.getElementById('registerModal').style.display = "block";
+                    document.getElementById('registerDeviceName').querySelector('span').innerText = deviceId;
+                    document.getElementById('registerFormDeviceId').value = deviceId;
+                }
+
+                function closeRegisterModal() {
+                    document.getElementById('registerModal').style.display = "none";
+                }
+
+                function openDriverModal(deviceId, currentDriver, rcNumber) {
+                    document.getElementById('driverModal').style.display = "block";
+                    document.getElementById('modalDeviceName').querySelector('span').innerText = deviceId;
+                    document.getElementById('formDeviceId').value = deviceId;
+                    document.getElementById('formRcNumber').value = rcNumber;
+
+                    const currentDriverEl = document.getElementById('modalCurrentDriver');
+                    if (currentDriver && currentDriver !== 'Unassigned') {
+                        currentDriverEl.innerHTML = `<div class="current-driver-info"><i class="fas fa-info-circle"></i> Currently assigned to: <strong>${currentDriver}</strong></div>`;
+                    } else {
+                        currentDriverEl.innerHTML = `<div style="margin-bottom:20px; color:#6b7280; font-size:0.9rem; font-style:italic;"><i class="fas fa-exclamation-circle"></i> Currently Unassigned</div>`;
+                    }
+                }
+
+                function closeDriverModal() {
+                    document.getElementById('driverModal').style.display = "none";
+                }
+
+                window.onclick = function (event) {
+                    if (event.target == document.getElementById('driverModal')) {
+                        closeDriverModal();
+                    }
+                    if (event.target == document.getElementById('registerModal')) {
+                        closeRegisterModal();
+                    }
+                }
+
+                // Search/Filter Function
+                function filterVehicles() {
+                    const searchInput = document.getElementById('searchInput').value.toLowerCase();
+                    const vehicleCards = document.querySelectorAll('.vehicle-card');
+                    const vehiclesGrid = document.getElementById('vehiclesGrid');
+                    let visibleCount = 0;
+
+                    vehicleCards.forEach(card => {
+                        const vehicleName = card.getAttribute('data-vehicle-name') || '';
+                        const rc = card.getAttribute('data-rc') || '';
+                        const driver = card.getAttribute('data-driver') || '';
+
+                        // Check if search term matches any field
+                        const matches = vehicleName.includes(searchInput) ||
+                            rc.includes(searchInput) ||
+                            driver.includes(searchInput);
+
+                        if (matches) {
+                            card.style.display = '';
+                            visibleCount++;
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    });
+
+                    // Show "no results" message if nothing matches
+                    let noResultsDiv = document.getElementById('noResultsMessage');
+
+                    if (visibleCount === 0 && searchInput !== '') {
+                        if (!noResultsDiv) {
+                            noResultsDiv = document.createElement('div');
+                            noResultsDiv.id = 'noResultsMessage';
+                            noResultsDiv.className = 'no-results';
+                            noResultsDiv.innerHTML = '<i class="fas fa-search"></i><p>No vehicles found matching your search.</p>';
+                            vehiclesGrid.appendChild(noResultsDiv);
+                        } else {
+                            noResultsDiv.style.display = 'block';
+                        }
+                    } else if (noResultsDiv) {
+                        noResultsDiv.style.display = 'none';
+                    }
+                }
+            </script>
+        </div><!-- end main content -->
+    </div><!-- end app-layout -->
+</body>
+
+</html>

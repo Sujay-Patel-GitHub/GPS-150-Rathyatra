@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e9f0 100%);
+            color: #333;
+            background-attachment: fixed;
+        }
+
+        /* Main Content area shifted via sidebar.html standardized styling */
+        .main {
+            padding: 30px;
+            width: 100%;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .main h2 {
+            color: transparent;
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            font-size: 1.8rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .main h2 i {
+            background: linear-gradient(135deg, #3b82f6, #60a5fa);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-size: 1.6rem;
+        }
+
+        .search-container {
+            position: relative;
+        }
+
+        .search-container::before {
+            content: '🔍';
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1rem;
+            pointer-events: none;
+        }
+
+        .search-container input {
+            width: 320px;
+            padding: 10px 16px 10px 40px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            background: white;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+
+        .search-container input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1), 0 4px 12px rgba(59, 130, 246, 0.15);
+            transform: translateY(-1px);
+        }
+
+        /* Device Cards */
+        .device-container {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            animation: slideInCards 0.5s ease-out;
+        }
+
+        @keyframes slideInCards {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .device-card {
+            background: white;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+            display: flex;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .device-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .device-card:hover {
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.12);
+            transform: translateY(-2px);
+            border-color: #cbd5e1;
+        }
+
+        .device-card:hover::before {
+            opacity: 1;
+        }
+
+        /* Card Header */
+        .card-header {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            padding: 14px 18px;
+            min-width: 200px;
+            max-width: 200px;
+            border-right: 1px solid #e5e7eb;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            transition: background 0.3s;
+        }
+
+        .device-card:hover .card-header {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        }
+
+        .device-name-link {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #111;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+
+        .device-name-link i {
+            color: #3b82f6;
+            transition: all 0.3s;
+            font-size: 1.1rem;
+            padding: 8px;
+            background: #dbeafe;
+            border-radius: 8px;
+        }
+
+        .device-name-link:hover {
+            color: #2563eb;
+        }
+
+        .device-name-link:hover i {
+            transform: scale(1.2) rotate(-5deg);
+            background: #bfdbfe;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        }
+
+        .status-badge-inline {
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 12px;
+            width: fit-content;
+            transition: all 0.2s;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .badge-green {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            color: #065f46;
+        }
+
+        .badge-green:hover {
+            box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+        }
+
+        .badge-red {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            color: #991b1b;
+        }
+
+        .badge-red:hover {
+            box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+        }
+
+        /* Card Body */
+        .card-body {
+            flex: 1;
+            padding: 12px 18px;
+            display: flex;
+            align-items: center;
+            background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
+        }
+
+        .recording-inactive {
+            width: 8px;
+            height: 8px;
+            background: #94a3b8;
+            border-radius: 50%;
+            opacity: 0.5;
+            display: inline-block;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+            gap: 10px 10px;
+            width: 100%;
+        }
+
+        .info-item {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            padding: 6px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .info-item:hover {
+            background: rgba(59, 130, 246, 0.05);
+            transform: translateX(3px);
+        }
+
+        .info-item i {
+            font-size: 1rem;
+            margin-top: 1px;
+            transition: all 0.3s;
+            padding: 6px;
+            border-radius: 6px;
+        }
+
+        /* Colorful Icons */
+        .info-item:nth-child(1) i {
+            color: #8b5cf6;
+            background: #f3e8ff;
+        }
+
+        .info-item:nth-child(2) i {
+            color: #f59e0b;
+            background: #fef3c7;
+        }
+
+        .info-item:nth-child(3) i {
+            color: #06b6d4;
+            background: #cffafe;
+        }
+
+        .info-item:nth-child(4) i {
+            color: #ef4444;
+            background: #fee2e2;
+        }
+
+        .info-item:nth-child(5) i {
+            color: #10b981;
+            background: #d1fae5;
+        }
+
+        .info-item:nth-child(6) i {
+            color: #3b82f6;
+            background: #dbeafe;
+        }
+
+        .info-item:nth-child(7) i {
+            color: #ec4899;
+            background: #fdf2f8;
+        }
+
+        .camera-status {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .camera-on {
+            color: #059669;
+            background: #ecfdf5;
+            border: 1px solid #10b981;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
+        }
+
+        .camera-off {
+            color: #dc2626;
+            background: #fef2f2;
+            border: 1px solid #ef4444;
+        }
+
+        .camera-none {
+            color: #6b7280;
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+        }
+
+        .toggle-camera-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+        }
+
+        .toggle-camera-btn:hover {
+            background: rgba(0, 0, 0, 0.05);
+            transform: scale(1.1);
+        }
+
+        .toggle-camera-btn.on {
+            color: #dc2626;
+        }
+
+        /* Show Power Off icon */
+        .toggle-camera-btn.off {
+            color: #059669;
+        }
+
+        /* Show Power On icon */
+
+        .pulse-on {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #10b981;
+            border-radius: 50%;
+            animation: pulse-green 2s infinite;
+        }
+
+        @keyframes pulse-green {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            }
+
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+            }
+
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+            }
+        }
+
+        .pulse-red {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #ef4444;
+            border-radius: 50%;
+            animation: pulse-red-anim 1.5s infinite;
+            margin-right: 5px;
+        }
+
+        @keyframes pulse-red-anim {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            }
+
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+            }
+
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+            }
+        }
+
+        .info-item:hover i {
+            transform: scale(1.15) rotate(5deg);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-content {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            min-width: 0;
+        }
+
+        .info-label {
+            font-size: 0.65rem;
+            color: #9ca3af;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
+        .info-value {
+            font-size: 0.85rem;
+            color: #111;
+            font-weight: 650;
+            white-space: normal;
+            min-width: 0;
+        }
+
+        .info-phone {
+            font-size: 0.7rem;
+            color: #6b7280;
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            width: fit-content;
+        }
+
+        .rc-highlight {
+            color: #ea580c;
+            text-shadow: 0 1px 2px rgba(234, 88, 12, 0.2);
+            background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+        }
+
+        .gps {
+            font-family: 'Courier New', monospace;
+            font-size: 0.7rem;
+            color: #0369a1;
+            background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+            padding: 3px 8px;
+            border-radius: 6px;
+            border: 1px solid #7dd3fc;
+        }
+
+        .time-value {
+            font-size: 0.7rem !important;
+            color: #3b82f6 !important;
+        }
+
+        /* Card Footer */
+        .card-footer {
+            padding: 12px;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-left: 1px solid #e5e7eb;
+            min-width: 90px;
+            max-width: 90px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s;
+        }
+
+        .device-card:hover .card-footer {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 10px 6px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.7rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .action-btn i {
+            font-size: 1rem;
+            transition: transform 0.3s;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .action-btn:hover i {
+            transform: scale(1.2);
+        }
+
+        .action-btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-edit {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            color: #1e40af;
+        }
+
+        .btn-edit:hover {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        }
+
+        .btn-assign {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            color: #065f46;
+        }
+
+        .btn-assign:hover {
+            background: linear-gradient(135deg, #a7f3d0 0%, #6ee7b7 100%);
+        }
+
+        .unregistered-msg {
+            color: #9ca3af;
+            font-size: 0.85rem;
+            font-style: italic;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 200;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background: white;
+            margin: 8% auto;
+            padding: 24px;
+            border-radius: 12px;
+            width: 400px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+        }
+
+        .close {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #9ca3af;
+        }
+
+        .close:hover {
+            color: #111;
+        }
+
+        .modal-content h3 {
+            margin-bottom: 20px;
+            color: #111;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 12px;
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .modal .action-btn {
+            width: 100%;
+            padding: 10px;
+            font-size: 0.9rem;
+            flex-direction: row;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-danger {
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+
+        .btn-danger:hover {
+            background: #fecaca;
+        }
+
+        .separator {
+            margin: 16px 0;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .flash {
+            padding: 12px 16px;
+            background: #d1fae5;
+            color: #065f46;
+            margin-bottom: 16px;
+            border-radius: 6px;
+            border: 1px solid #a7f3d0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    {% include 'navbar.html' %}
+
+    <div class="container">
+        {% include 'sidebar.html' %}
+
+        <div class="main">
+            <div class="header-section">
+                <h2><i class="fas fa-server"></i> Devices</h2>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            {% if category == 'warning_confirm' %}
+            <div class="flash"
+                style="background: #fef3c7; color: #92400e; border: 1px solid #fbbf24; position: relative; padding-right: 50px;">
+                <i class="fas fa-exclamation-triangle"></i> {{ message }}
+                <form id="confirmForm" action="/save_vehicle_details" method="POST"
+                    style="display: inline; margin-left: 15px;">
+                    <input type="hidden" name="device_id"
+                        value="{{ session.get('pending_assignment', {}).get('device_id', '') }}">
+                    <input type="hidden" name="transporter_name"
+                        value="{{ session.get('pending_assignment', {}).get('transporter_name', '') }}">
+                    <input type="hidden" name="godown_manager"
+                        value="{{ session.get('pending_assignment', {}).get('godown_manager', '') }}">
+                    <input type="hidden" name="force_assign" value="true">
+                    <button type="submit"
+                        style="background: #f59e0b; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; margin-left: 10px;">
+                        <i class="fas fa-check"></i> Continue
+                    </button>
+                </form>
+                <button onclick="this.parentElement.style.display='none'"
+                    style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: #92400e; font-size: 18px; cursor: pointer; padding: 5px 10px; font-weight: bold;">
+                    ×
+                </button>
+            </div>
+            {% else %}
+            <div class="flash" style="position: relative; padding-right: 50px;">
+                <i class="fas fa-info-circle"></i> {{ message }}
+                <button onclick="this.parentElement.style.display='none'"
+                    style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: inherit; font-size: 18px; cursor: pointer; padding: 5px 10px; font-weight: bold;">
+                    ×
+                </button>
+            </div>
+            {% endif %}
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            <!-- Filter Tabs -->
+            <div class="filter-tabs" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <button class="filter-tab" onclick="filterByRegistration('all')"
+                    style="padding: 10px 20px; border: 1px solid #e5e7eb; background: white; border-radius: 8px; cursor: pointer; font-weight: 600; color: #4b5563; transition: all 0.2s;">
+                    All
+                </button>
+                <button class="filter-tab active" onclick="filterByRegistration('registered')"
+                    style="padding: 10px 20px; border: 1px solid #2563eb; background: #2563eb; border-radius: 8px; cursor: pointer; font-weight: 600; color: white; transition: all 0.2s;">
+                    Registered
+                </button>
+                <button class="filter-tab" onclick="filterByRegistration('unregistered')"
+                    style="padding: 10px 20px; border: 1px solid #e5e7eb; background: white; border-radius: 8px; cursor: pointer; font-weight: 600; color: #4b5563; transition: all 0.2s;">
+                    Unregistered
+                </button>
+            </div>
+
+            <!-- Search Bar -->
+            <div
+                style="margin-bottom: 20px; background: white; padding: 16px 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.08);">
+                <div style="position: relative;">
+                    <i class="fas fa-search"
+                        style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #9ca3af; font-size: 14px;"></i>
+                    <input type="text" id="globalSearchInput"
+                        placeholder="Search by Vehicle Number, Godown, Transporter, Driver, or RC Number..."
+                        onkeyup="filterAllDevices()"
+                        style="width: 100%; padding: 10px 16px 10px 42px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; outline: none; transition: all 0.2s;">
+                </div>
+            </div>
+
+            <div class="device-container" id="deviceContainer">
+                {% for device in devices %}
+                <div class="device-card" data-device-name="{{ device.device_name }}"
+                    data-rc="{{ device.rc_number|lower }}" data-driver="{{ device.driver_name|lower }}"
+                    data-transporter="{{ device.transporter|lower }}" data-godown="{{ device.godown_manager|lower }}"
+                    data-registered="{{ 'true' if device.is_registered else 'false' }}">
+
+                    <div class="card-header">
+                        <a href="/device_info/{{ device.device_name }}" class="device-name-link"
+                            style="display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-video"></i>
+                            <span>{{ device.device_name }}</span>
+                            <span id="header-recording-{{ device.device_name|upper }}"
+                                class="{% if device.is_recording %}pulse-red{% else %}recording-inactive{% endif %}"
+                                title="{% if device.is_recording %}Recording Active{% else %}Recording Inactive{% endif %}"></span>
+                        </a>
+                        <span
+                            class="status-badge-inline {% if device.is_registered %}badge-green{% else %}badge-red{% endif %}">
+                            {% if device.is_registered %}✓ Registered{% else %}⚠ Unregistered{% endif %}
+                        </span>
+                    </div>
+
+                    <div class="card-body">
+                        {% if device.is_registered %}
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <i class="fas fa-warehouse"></i>
+                                <div class="info-content">
+                                    <span class="info-label">Godown</span>
+                                    <span class="info-value">{{ device.godown_manager }}</span>
+                                    <span class="info-phone">📞 {{ device.godown_phone }}</span>
+                                </div>
+                            </div>
+
+                            <div class="info-item">
+                                <i class="fas fa-truck"></i>
+                                <div class="info-content">
+                                    <span class="info-label">Transporter</span>
+                                    <span class="info-value">{{ device.transporter }}</span>
+                                    <span class="info-phone">📞 {{ device.transporter_phone }}</span>
+                                </div>
+                            </div>
+
+                            <div class="info-item">
+                                <i class="fas fa-user-tie"></i>
+                                <div class="info-content">
+                                    <span class="info-label">Driver</span>
+                                    <span class="info-value">{{ device.driver_name }}</span>
+                                    <span class="info-phone">📞 {{ device.driver_phone }}</span>
+                                </div>
+                            </div>
+
+                            <div class="info-item">
+                                <i class="fas fa-id-card"></i>
+                                <div class="info-content">
+                                    <span class="info-label">RC Number</span>
+                                    <span class="info-value rc-highlight">{{ device.rc_number }}</span>
+                                </div>
+                            </div>
+
+                            <div class="info-item">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <div class="info-content">
+                                    <span class="info-label">GPS</span>
+                                    <div class="info-value gps"
+                                        style="display: flex; flex-direction: column; line-height: 1.2;">
+                                        {% if device.gps_lat and device.gps_lng %}
+                                        <span>Lat: {{ "%.5f"|format(device.gps_lat) }}</span>
+                                        <span>Lng: {{ "%.5f"|format(device.gps_lng) }}</span>
+                                        {% else %}
+                                        &nbsp;
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="info-item">
+                                <i class="fas fa-clock"></i>
+                                <div class="info-content">
+                                    <span class="info-label">Last Updated</span>
+                                    <div id="time-container-{{ device.device_name|upper }}"
+                                        class="info-value time-value"
+                                        style="display: flex; flex-direction: column; line-height: 1.2;">
+                                        <span class="date-text" style="font-weight: 600; color: #3b82f6;">{{
+                                            device.last_updated_date }}</span>
+                                        <span class="time-text"
+                                            style="font-size: 0.85em; color: #6b7280; font-weight: 500;">{{
+                                            device.last_updated_time }}</span>
+                                        {% if device.is_power_off %}
+                                        <span class="power-off-label"
+                                            style="color: #ef4444; font-weight: 800; text-transform: uppercase; font-size: 0.85rem; margin-top: 2px;">Power
+                                            Off</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="info-item">
+                                <i class="fas fa-camera"
+                                    style="color: #6366f1; background: #e0e7ff; padding: 6px; border-radius: 6px; font-size: 0.9rem;"></i>
+                                <div class="info-content">
+                                    <span class="info-label" style="font-size: 0.6rem;">Camera</span>
+                                    <div style="display: flex; align-items: center; gap: 4px;">
+                                        {% if device.camera_status == 'No Data' %}
+                                        <span class="camera-status camera-none"
+                                            style="font-size: 0.55rem; padding: 1px 4px;">No Data</span>
+                                        <button onclick="toggleCamera('{{ device.device_name }}', '1')"
+                                            style="padding: 0 4px; border-radius: 3px; border: 1px solid #10b981; background: #d1fae5; color: #065f46; font-size: 0.5rem; font-weight: bold; cursor: pointer;">ON</button>
+                                        <button onclick="toggleCamera('{{ device.device_name }}', '0')"
+                                            style="padding: 0 4px; border-radius: 3px; border: 1px solid #ef4444; background: #fee2e2; color: #991b1b; font-size: 0.5rem; font-weight: bold; cursor: pointer;">OFF</button>
+                                        {% else %}
+                                        <span
+                                            class="camera-status {% if device.camera_status == 'On' %}camera-on{% elif device.camera_status == 'Off' %}camera-off{% else %}camera-none{% endif %}"
+                                            style="font-size: 0.55rem; padding: 1px 4px;">
+                                            {% if device.camera_status == 'On' %}<span class="pulse-on"></span>{% endif
+                                            %}
+                                            {{ device.camera_status }}
+                                        </span>
+                                        {% set toggle_action = '0' if device.camera_status == 'On' else '1' %}
+                                        <button
+                                            class="toggle-camera-btn {{ 'on' if device.camera_status == 'On' else 'off' }}"
+                                            onclick="toggleCamera('{{ device.device_name }}', '{{ toggle_action }}')"
+                                            style="background: none; border: none; cursor: pointer; padding: 2px;">
+                                            <i class="fas fa-power-off" style="font-size: 0.75rem;"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="info-item" id="trip-block-{{ device.device_name|upper }}">
+                                <i class="fas fa-route"
+                                    style="color: #6366f1; background: #e0e7ff; padding: 6px; border-radius: 6px; font-size: 0.9rem;"></i>
+                                <div class="info-content">
+                                    <span class="info-label trip-num-label" style="font-size: 0.6rem;">Trip #{{
+                                        device.trip_number }}</span>
+                                    <span
+                                        class="camera-status trip-status-badge {% if device.trip_status == 'Ongoing' %}camera-on{% else %}camera-none{% endif %}"
+                                        style="font-size: 0.55rem; padding: 1px 4px;">
+                                        {% if device.trip_status == 'Ongoing' %}<span class="pulse-on"></span>{% endif
+                                        %}
+                                        <span class="status-text">{{ device.trip_status }}</span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="unregistered-msg">
+                            <i class="fas fa-info-circle"></i>
+                            <span>No driver assigned</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer">
+                        {% if device.is_registered %}
+                        <button class="action-btn btn-edit"
+                            onclick="openModal('{{ device.device_name }}', '{{ device.rc_number }}', '{{ device.transporter }}', '{{ device.godown_manager }}', '{{ device.driver_name }}')">
+                            <i class="fas fa-edit"></i>
+                            <span>Edit</span>
+                        </button>
+                        {% else %}
+                        <button class="action-btn btn-assign"
+                            onclick="openModal('{{ device.device_name }}', '', '', '', '')">
+                            <i class="fas fa-plus-circle"></i>
+                            <span>Assign</span>
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="assignModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">×</span>
+            <h3><i class="fas fa-tasks"></i> Assign Vehicle</h3>
+            <p id="modalDeviceName"
+                style="font-weight:bold; color:#2563eb; margin-bottom:16px; background:#eff6ff; padding:8px 12px; border-radius:6px;">
+            </p>
+
+            <form action="/save_vehicle_details" method="POST">
+                <input type="hidden" id="formDeviceId" name="device_id">
+
+                <div class="form-group">
+                    <label>Godown Manager</label>
+                    <select id="formGodown" name="godown_manager" required>
+                        <option value="" disabled selected>-- Select --</option>
+                        {% for g in godown_managers %}
+                        <option value="{{ g.name }}">{{ g.name }} ({{ g.username }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Transporter</label>
+                    <select id="formTransporter" name="transporter_name" required>
+                        <option value="" disabled selected>-- Select --</option>
+                        {% for t in transporters %}
+                        <option value="{{ t.name }}">{{ t.name }} ({{ t.username }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <button type="submit" class="action-btn btn-primary">
+                    <i class="fas fa-save"></i> Save & Assign
+                </button>
+            </form>
+
+            <div id="deregisterSection" style="display:none;">
+                <div class="separator"></div>
+                <form action="/deregister_vehicle" method="POST"
+                    onsubmit="return confirm('Are you sure you want to deregister this device?');">
+                    <input type="hidden" id="deregisterDeviceId" name="device_id">
+                    <button type="submit" class="action-btn btn-danger">
+                        <i class="fas fa-trash-alt"></i> Deregister
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openModal(deviceId, rc, transporter, godown, driver) {
+            document.getElementById('assignModal').style.display = "block";
+            document.getElementById('modalDeviceName').innerText = "Device: " + deviceId;
+            document.getElementById('formDeviceId').value = deviceId;
+            document.getElementById('deregisterDeviceId').value = deviceId;
+            document.getElementById('formTransporter').value = transporter || "";
+            document.getElementById('formGodown').value = godown || "";
+            document.getElementById('deregisterSection').style.display = transporter ? 'block' : 'none';
+        }
+
+        function closeModal() {
+            document.getElementById('assignModal').style.display = "none";
+        }
+
+        window.onclick = function (event) {
+            if (event.target == document.getElementById('assignModal')) {
+                closeModal();
+            }
+        }
+
+        function filterDevices() {
+            const searchInput = document.getElementById('searchInput').value.toLowerCase();
+            const deviceCards = document.querySelectorAll('.device-card');
+
+            deviceCards.forEach(card => {
+                const deviceName = card.getAttribute('data-device-name') || '';
+                const rc = card.getAttribute('data-rc') || '';
+                const driver = card.getAttribute('data-driver') || '';
+                const transporter = card.getAttribute('data-transporter') || '';
+
+                const matches = deviceName.includes(searchInput) ||
+                    rc.includes(searchInput) ||
+                    driver.includes(searchInput) ||
+                    transporter.includes(searchInput);
+
+                card.style.display = matches ? '' : 'none';
+            });
+        }
+
+        function filterAllDevices() {
+            const searchInput = document.getElementById('globalSearchInput').value.toLowerCase();
+            const deviceCards = document.querySelectorAll('.device-card');
+
+            deviceCards.forEach(card => {
+                const deviceName = card.getAttribute('data-device-name') || '';
+                const rc = card.getAttribute('data-rc') || '';
+                const driver = card.getAttribute('data-driver') || '';
+                const transporter = card.getAttribute('data-transporter') || '';
+                const godown = card.getAttribute('data-godown') || '';
+
+                const matches = deviceName.includes(searchInput) ||
+                    rc.includes(searchInput) ||
+                    driver.includes(searchInput) ||
+                    transporter.includes(searchInput) ||
+                    godown.includes(searchInput);
+
+                card.style.display = matches ? '' : 'none';
+            });
+        }
+
+        function toggleCamera(deviceId, action) {
+            fetch('/toggle_camera', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    device_id: deviceId,
+                    action: action
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Removed alert for better UX
+                        location.reload(); // Reload to reflect changes
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while toggling the camera.');
+                });
+        }
+
+        // Live Dashboard Polling (Recording & Trip)
+        function updateDashboardLive() {
+            const cards = document.querySelectorAll('.device-card');
+            cards.forEach(card => {
+                const deviceId = card.getAttribute('data-device-name');
+                if (!deviceId) return;
+
+                fetch(`/get_vehicle_gps/${deviceId}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        const upperId = deviceId.toUpperCase();
+                        const recIndicator = document.getElementById(`header-recording-${upperId}`);
+                        if (recIndicator) {
+                            if (data.is_recording) {
+                                recIndicator.className = 'pulse-red';
+                                recIndicator.title = 'Recording Active';
+                            } else {
+                                recIndicator.className = 'recording-inactive';
+                                recIndicator.title = 'Recording Inactive';
+                            }
+                        }
+
+                        const tripBlock = document.getElementById(`trip-block-${upperId}`);
+                        if (tripBlock) {
+                            const tripNumLabel = tripBlock.querySelector('.trip-num-label');
+                            const statusBadge = tripBlock.querySelector('.trip-status-badge');
+                            const statusText = tripBlock.querySelector('.status-text');
+
+                            if (tripNumLabel) tripNumLabel.textContent = `Trip #${data.trip_number}`;
+                            if (statusText) statusText.textContent = data.trip_status;
+
+                            if (data.trip_status === 'Ongoing') {
+                                statusBadge.className = 'camera-status trip-status-badge camera-on';
+                                if (!statusBadge.querySelector('.pulse-on')) {
+                                    const pulse = document.createElement('span');
+                                    pulse.className = 'pulse-on';
+                                    statusBadge.prepend(pulse);
+                                }
+                            } else {
+                                statusBadge.className = 'camera-status trip-status-badge camera-none';
+                                const pulse = statusBadge.querySelector('.pulse-on');
+                                if (pulse) pulse.remove();
+                            }
+                        }
+
+                        // Update Time / Power Off status
+                        const timeContainer = document.getElementById(`time-container-${upperId}`);
+                        if (timeContainer) {
+                            let html = `<span class="date-text" style="font-weight: 600; color: #3b82f6;">${data.last_updated_date || 'N/A'}</span>`;
+                            html += `<span class="time-text" style="font-size: 0.85em; color: #6b7280; font-weight: 500;">${data.last_updated_time || ''}</span>`;
+
+                            if (data.is_power_off) {
+                                html += `<span class="power-off-label" style="color: #ef4444; font-weight: 800; text-transform: uppercase; font-size: 0.85rem; margin-top: 2px;">Power Off</span>`;
+                            }
+                            timeContainer.innerHTML = html;
+                        }
+                    })
+                    .catch(e => console.error(`Error polling data for ${deviceId}:`, e));
+            });
+        }
+
+        setInterval(updateDashboardLive, 10000);
+        updateDashboardLive();
+
+        // Sidebar Toggle Logic
+        const sidebar = document.querySelector('.sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+
+        if (localStorage.getItem('sidebarCollapsed') === 'true') {
+            sidebar.classList.add('collapsed');
+        }
+
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('collapsed');
+            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+        });
+
+        // Registration Filter Logic
+        let currentFilterType = 'registered';
+
+        function filterByRegistration(type) {
+            currentFilterType = type;
+
+            // Update active button state
+            document.querySelectorAll('.filter-tab').forEach(btn => {
+                btn.style.background = 'white';
+                btn.style.color = '#4b5563';
+                btn.style.borderColor = '#e5e7eb';
+                btn.classList.remove('active');
+            });
+
+            // Highlight clicked button (handled by event target would be better but simple logic here)
+            // We'll find the specific button based on its onclick attribute
+            const buttons = document.querySelectorAll('.filter-tab');
+            if (type === 'all') highlightBtn(buttons[0]);
+            if (type === 'registered') highlightBtn(buttons[1]);
+            if (type === 'unregistered') highlightBtn(buttons[2]);
+
+            // Re-run the main filter function which now needs to respect this filter too
+            filterAllDevices();
+        }
+
+        function highlightBtn(btn) {
+            btn.style.background = '#2563eb';
+            btn.style.color = 'white';
+            btn.style.borderColor = '#2563eb';
+            btn.classList.add('active');
+        }
+
+        // Updated Main Filter Function to include Registration Check
+        function filterAllDevices() {
+            const searchInput = document.getElementById('globalSearchInput').value.toLowerCase();
+            const deviceCards = document.querySelectorAll('.device-card');
+
+            deviceCards.forEach(card => {
+                const deviceName = card.getAttribute('data-device-name') || '';
+                const rc = card.getAttribute('data-rc') || '';
+                const driver = card.getAttribute('data-driver') || '';
+                const transporter = card.getAttribute('data-transporter') || '';
+                const godown = card.getAttribute('data-godown') || '';
+                const isRegistered = card.getAttribute('data-registered') === 'true';
+
+                // 1. Check Search Match
+                const searchMatch = deviceName.includes(searchInput) ||
+                    rc.includes(searchInput) ||
+                    driver.includes(searchInput) ||
+                    transporter.includes(searchInput) ||
+                    godown.includes(searchInput);
+
+                // 2. Check Type Match
+                let typeMatch = true;
+                if (currentFilterType === 'registered') {
+                    typeMatch = isRegistered;
+                } else if (currentFilterType === 'unregistered') {
+                    typeMatch = !isRegistered;
+                }
+
+                // Show only if BOTH match
+                card.style.display = (searchMatch && typeMatch) ? '' : 'none';
+            });
+        }
+
+        // Apply default filter on load
+        filterAllDevices();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ vehicle_name }} - Recordings</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f3f4f6;
+            min-height: 100vh;
+        }
+
+        .btn-back {
+            background: #f3f4f6;
+            color: #4b5563;
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            border: 1px solid #e5e7eb;
+            width: fit-content;
+            margin-bottom: 20px;
+        }
+
+        .btn-back:hover {
+            background: #e5e7eb;
+            color: #111827;
+        }
+
+        .main {
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .vehicle-header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .vehicle-header h1 {
+            font-size: 2.2rem;
+            color: #111827;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .vehicle-header h1 i {
+            color: #2563eb;
+        }
+
+        .session-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e5e7eb;
+        }
+
+        .session-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .session-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .session-title i {
+            color: #2563eb;
+        }
+
+        .recording-badge {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.6;
+            }
+        }
+
+        .session-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .stat-box {
+            background: #f8fafc;
+            padding: 18px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+
+        .stat-box:hover {
+            border-color: #2563eb;
+            background: white;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #2563eb;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #64748b;
+            font-weight: 600;
+            margin-top: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .videos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+        }
+
+        .video-card {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid #edf2f7;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .video-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 20px rgba(0, 0, 0, 0.08);
+            border-color: #2563eb;
+        }
+
+        .video-header {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .video-header i {
+            color: #2563eb;
+        }
+
+        .video-info {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .video-info div {
+            font-size: 0.85rem;
+            color: #475569;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+        }
+
+        .action-groups {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .action-pair {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+            text-transform: uppercase;
+        }
+
+        .btn-play {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-play:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-video {
+            background: white;
+            color: #d97706;
+            border: 1px solid #fbbf24;
+        }
+
+        .btn-video:hover {
+            background: #fffbeb;
+        }
+
+        .btn-view {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-view:hover {
+            background: #059669;
+        }
+
+        .btn-download {
+            background: white;
+            color: #2563eb;
+            border: 1px solid #3b82f6;
+        }
+
+        .btn-download:hover {
+            background: #eff6ff;
+        }
+
+        .empty-session {
+            text-align: center;
+            padding: 40px;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+
+<body>
+    {% include 'navbar.html' %}
+
+    <div class="app-layout">
+        {% include 'sidebar.html' %}
+
+        <div class="main">
+            <a href="/recordings" class="btn-back">
+                <i class="fas fa-arrow-left"></i> Back to Recordings
+            </a>
+
+            <div class="vehicle-header">
+                <h1><i class="fas fa-truck"></i> {{ vehicle_name }}</h1>
+                <p style="color: #64748b; font-size: 1rem;">Comprehensive history of all recording sessions</p>
+            </div>
+
+            {% if sessions %}
+            {% for session in sessions %}
+            <div class="session-card">
+                <div class="session-header">
+                    <div class="session-title">
+                        <i class="fas fa-route"></i> Trip #{{ session.session_number }}
+                        <span style="font-size: 1rem; color: #64748b; font-weight: 500;">- {{ session.date }}</span>
+                    </div>
+                    {% if session.is_recording %}
+                    <div class="recording-badge">
+                        <i class="fas fa-circle" style="font-size: 0.6rem;"></i> Live Recording
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="session-stats">
+                    <div class="stat-box">
+                        <div class="stat-value">{{ session.video_count }}</div>
+                        <div class="stat-label"><i class="fas fa-video"></i> Videos</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">{{ session.gps_count }}</div>
+                        <div class="stat-label"><i class="fas fa-map-marker-alt"></i> GPS Points</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">{{ session.size_mb }}</div>
+                        <div class="stat-label"><i class="fas fa-hdd"></i> MB Size</div>
+                    </div>
+                </div>
+
+                {% if session.videos %}
+                <div class="videos-grid">
+                    {% for video in session.videos %}
+                    <div class="video-card">
+                        <div class="video-header">
+                            <i class="fas fa-camera"></i> {{ video.camera }}
+                        </div>
+                        <div class="video-info">
+                            <div><i class="fas fa-clock"></i> {{ video.time }}</div>
+                            <div><i class="fas fa-database"></i> {{ video.size_mb }} MB</div>
+                        </div>
+                        <div class="action-groups">
+                            <div class="action-pair">
+                                <a href="/play_with_gps/{{ vehicle_name }}/{{ session.date }}/{{ session.session_number }}/{{ video.camera }}/{{ video.filename }}"
+                                    class="btn btn-play" title="Play Video with GPS Sync">
+                                    <i class="fas fa-play"></i> Watch
+                                </a>
+                                <a href="{{ video.download_path }}?download=1" class="btn btn-video"
+                                    title="Download MP4 Video">
+                                    <i class="fas fa-video"></i> MP4
+                                </a>
+                            </div>
+                            <div class="action-pair">
+                                <a href="/view_gps_details/{{ vehicle_name }}/{{ session.date }}/{{ session.session_number }}"
+                                    class="btn btn-view" title="View Trip Map & Stops">
+                                    <i class="fas fa-map-marked-alt"></i> Map
+                                </a>
+                                <a href="/download_gps/{{ vehicle_name }}/{{ session.date }}/{{ session.session_number }}"
+                                    class="btn btn-download" title="Download GPS Data (.txt)">
+                                    <i class="fas fa-file-alt"></i> GPS
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-session">
+                    <i class="fas fa-video-slash" style="font-size: 2.5rem; margin-bottom: 10px;"></i>
+                    <p>No video files found for this session</p>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="session-card">
+                <div class="empty-session">
+                    <i class="fas fa-exclamation-circle"
+                        style="font-size: 3.5rem; margin-bottom: 20px; color: #cbd5e0;"></i>
+                    <h3 style="margin-bottom: 10px; color: #475569;">No Recording Sessions Found</h3>
+                    <p>This vehicle has no available video data yet.</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+
+</html>

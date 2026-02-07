@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Storage Management | Fleet Manager</title>
+    <!-- Google Fonts: Inter & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-light: #eff6ff;
+            --primary-dark: #1d4ed8;
+            --secondary: #64748b;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --border-color: #e2e8f0;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+        h1,
+        h2,
+        h3 {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .main {
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* --- Header Section --- */
+        .page-header {
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .header-title h1 {
+            font-size: 1.875rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 0.5rem;
+        }
+
+        .header-title p {
+            color: var(--text-muted);
+            font-size: 0.9375rem;
+        }
+
+        /* --- Breadcrumb --- */
+        .breadcrumb-container {
+            background: white;
+            padding: 0.75rem 1.25rem;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .breadcrumb-item {
+            cursor: pointer;
+            transition: color 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .breadcrumb-item:hover {
+            color: var(--primary);
+        }
+
+        .breadcrumb-item.active {
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        .breadcrumb-sep {
+            color: #cbd5e1;
+        }
+
+        /* --- File Browser --- */
+        .browser-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .browser-header {
+            background: #f8fafc;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: grid;
+            grid-template-columns: 2fr 150px 180px 100px;
+            gap: 1rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        .browser-content {
+            min-height: 500px;
+        }
+
+        .file-item {
+            padding: 0.75rem 1.5rem;
+            display: grid;
+            grid-template-columns: 2fr 150px 180px 100px;
+            gap: 1rem;
+            align-items: center;
+            border-bottom: 1px solid #f1f5f9;
+            transition: all 0.15s;
+            font-size: 0.9375rem;
+            cursor: pointer;
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-item:hover {
+            background-color: #f1f5f9;
+        }
+
+        .file-name {
+            display: flex;
+            align-items: center;
+            gap: 0.875rem;
+            font-weight: 500;
+            color: #1e293b;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-name i {
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .fa-folder {
+            color: #eb9e2b;
+        }
+
+        .fa-file-video {
+            color: #f43f5e;
+        }
+
+        .fa-file {
+            color: #94a3b8;
+        }
+
+        .file-size,
+        .file-date {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+
+        .btn-icon {
+            padding: 0.5rem;
+            border-radius: 6px;
+            border: none;
+            background: transparent;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-icon:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+
+        .btn-delete:hover {
+            background: #fee2e2;
+            color: #ef4444;
+        }
+
+        /* --- States --- */
+        .loading-state,
+        .empty-state {
+            padding: 4rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            color: var(--text-muted);
+        }
+
+        .loading-state i {
+            font-size: 2.5rem;
+            color: var(--primary);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            opacity: 0.2;
+        }
+
+        /* --- Stats Row --- */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.25rem;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .icon-blue {
+            background: #eff6ff;
+            color: #2563eb;
+        }
+
+        .icon-orange {
+            background: #fff7ed;
+            color: #f97316;
+        }
+
+        .stat-info h4 {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+        }
+
+        .stat-info p {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .mode-btn {
+            background: transparent;
+            color: #64748b;
+        }
+
+        .mode-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        @media (max-width: 992px) {
+
+            .browser-header,
+            .file-item {
+                grid-template-columns: 1fr 100px 80px;
+            }
+
+            .file-date {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    {% include 'navbar.html' %}
+
+    <div class="app-layout">
+        {% include 'sidebar.html' %}
+
+        <div class="main">
+            <!-- Header -->
+            <div class="page-header">
+                <div class="header-title">
+                    <h1>Server Storage Explorer</h1>
+                    <p>Manage recordings directly on the remote recording server.</p>
+                </div>
+                <div class="header-actions" style="display: flex; gap: 1rem; align-items: center;">
+                    <!-- Storage Toggle -->
+                    <div
+                        style="background: white; padding: 4px; border-radius: 10px; border: 1px solid #e2e8f0; display: flex; gap: 4px;">
+                        <button id="btnRemote" class="mode-btn active" onclick="setStorageMode('remote')"
+                            style="padding: 6px 12px; border-radius: 6px; border: none; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: 0.2s;">Remote
+                            Server</button>
+                        <button id="btnLocal" class="mode-btn" onclick="setStorageMode('local')"
+                            style="padding: 6px 12px; border-radius: 6px; border: none; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: 0.2s;">Local
+                            Storage</button>
+                    </div>
+
+                    <button class="action-btn" onclick="loadFiles(currentPath)"
+                        style="padding: 10px 20px; border-radius: 8px; border: 1px solid #e2e8f0; background: white; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-icon icon-blue"><i class="fas fa-server"></i></div>
+                    <div class="stat-info">
+                        <h4>Host</h4>
+                        <p>103.250.160.75</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-orange"><i class="fas fa-folder-open"></i></div>
+                    <div class="stat-info">
+                        <h4>Base Path</h4>
+                        <p>.../motionrtmp/live</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Breadcrumb -->
+            <div class="breadcrumb-container" id="breadcrumb">
+                <div class="breadcrumb-item active" onclick="loadFiles('')">
+                    <i class="fas fa-home"></i> Root
+                </div>
+            </div>
+
+            <!-- Browser Area -->
+            <div class="browser-card">
+                <div class="browser-header">
+                    <span>Name</span>
+                    <span>Size</span>
+                    <span>Modified</span>
+                    <span style="text-align: right;">Actions</span>
+                </div>
+                <div class="browser-content" id="browserContent">
+                    <!-- Loaded dynamically -->
+                    <div class="loading-state">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Connecting to remote server...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPath = "";
+        let storageMode = "remote"; // default
+
+        function setStorageMode(mode) {
+            storageMode = mode;
+            document.getElementById('btnRemote').classList.toggle('active', mode === 'remote');
+            document.getElementById('btnLocal').classList.toggle('active', mode === 'local');
+            loadFiles(''); // Reset to root when switching mode
+        }
+
+        async function loadFiles(path) {
+            currentPath = path;
+            const container = document.getElementById('browserContent');
+
+            container.innerHTML = `
+                <div class="loading-state">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Connecting to ${storageMode === 'remote' ? 'remote server' : 'local storage'}...</p>
+                </div>
+            `;
+
+            updateBreadcrumb(path);
+
+            try {
+                const response = await fetch(`/api/server/list?path=${encodeURIComponent(path)}&mode=${storageMode}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    renderBrowser(data.items);
+                } else {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-exclamation-triangle" style="opacity: 1; color: #ef4444;"></i>
+                            <p>Error: ${data.error}</p>
+                            <button onclick="loadFiles('')" style="margin-top: 1rem; padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border-color); background: white; cursor: pointer;">Back to Root</button>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-wifi" style="opacity: 1; color: #ef4444;"></i>
+                        <p>Connection failed. Check ${storageMode} status.</p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderBrowser(items) {
+            const container = document.getElementById('browserContent');
+
+            if (items.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-folder-open"></i>
+                        <p>This directory is empty.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = "";
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'file-item';
+                div.onclick = () => {
+                    if (item.is_dir) {
+                        const newPath = currentPath ? `${currentPath}/${item.name}` : item.name;
+                        loadFiles(newPath);
+                    }
+                };
+
+                const iconClass = item.is_dir ? 'fa-folder' : (item.name.match(/\.(mp4|mkv|avi|mov|ts)$/i) ? 'fa-file-video' : 'fa-file');
+                const sizeStr = item.is_dir ? '--' : formatBytes(item.size);
+                const dateStr = new Date(item.mtime * 1000).toLocaleString();
+
+                div.innerHTML = `
+                    <div class="file-name">
+                        <i class="fas ${iconClass}"></i>
+                        <span>${item.name}</span>
+                    </div>
+                    <div class="file-size">${sizeStr}</div>
+                    <div class="file-date">${dateStr}</div>
+                    <div class="file-actions">
+                        ${!item.is_dir ? `
+                        <button class="btn-icon" onclick="downloadFile(event, '${item.name}')" title="Download">
+                            <i class="fas fa-download"></i>
+                        </button>` : ''}
+                        <button class="btn-icon btn-delete" onclick="deleteItem(event, '${item.name}', ${item.is_dir})" title="Delete">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function updateBreadcrumb(path) {
+            const bc = document.getElementById('breadcrumb');
+            bc.innerHTML = `
+                <div class="breadcrumb-item" onclick="loadFiles('')">
+                    <i class="fas fa-home"></i> Root
+                </div>
+            `;
+
+            if (!path) return;
+
+            const parts = path.split('/');
+            let accumulatedPath = "";
+
+            parts.forEach((part, index) => {
+                accumulatedPath += (accumulatedPath ? '/' : '') + part;
+                const isLast = index === parts.length - 1;
+
+                bc.innerHTML += `<div class="breadcrumb-sep"><i class="fas fa-chevron-right" style="font-size: 0.75rem;"></i></div>`;
+
+                const item = document.createElement('div');
+                item.className = `breadcrumb-item ${isLast ? 'active' : ''}`;
+                item.textContent = part;
+                const currentAccumulated = accumulatedPath; // Closure
+                item.onclick = () => loadFiles(currentAccumulated);
+                bc.appendChild(item);
+            });
+        }
+
+        async function deleteItem(event, name, isDir) {
+            event.stopPropagation();
+            if (!confirm(`Are you sure you want to delete this ${isDir ? 'folder' : 'file'}?`)) return;
+
+            try {
+                const response = await fetch('/api/server/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: currentPath, name: name, is_dir: isDir, mode: storageMode })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    loadFiles(currentPath);
+                } else {
+                    alert("Error: " + data.error);
+                }
+            } catch (error) {
+                alert("Failed to delete item.");
+            }
+        }
+
+        function downloadFile(event, name) {
+            event.stopPropagation();
+            const url = `/api/server/download?path=${encodeURIComponent(currentPath)}&name=${encodeURIComponent(name)}&mode=${storageMode}`;
+            window.location.href = url;
+        }
+
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+        // Initial Load
+        document.addEventListener('DOMContentLoaded', () => loadFiles(''));
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RTMP Link Management - Admin Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-light: #eff6ff;
+            --secondary: #64748b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --background: #f8fafc;
+            --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background);
+            font-family: 'Inter', sans-serif;
+            color: #1e293b;
+            line-height: 1.4;
+        }
+
+        /* Prevent content from going under the fixed navbar/sidebar */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+            width: 100%;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 24px;
+            margin-top: 70px;
+            /* Navbar height */
+            margin-left: 240px;
+            /* Sidebar width */
+            transition: all 0.3s ease;
+            min-height: calc(100vh - 70px);
+            box-sizing: border-box;
+        }
+
+        /* Adjust margin when sidebar is collapsed */
+        body.sidebar-collapsed .main-content {
+            margin-left: 75px;
+        }
+
+        /* Responsive fixes for mobile to prevent cropping */
+        @media (max-width: 900px) {
+            .main-content {
+                margin-left: 0 !important;
+                padding: 15px;
+            }
+
+            body.sidebar-collapsed .main-content {
+                margin-left: 0 !important;
+            }
+        }
+
+        /* Stats Section - More Compact */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 12px 16px;
+            border-radius: 10px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .stat-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .icon-blue {
+            background: #dbeafe;
+            color: #2563eb;
+        }
+
+        .icon-green {
+            background: #d1fae5;
+            color: #10b981;
+        }
+
+        .icon-orange {
+            background: #ffedd5;
+            color: #f59e0b;
+        }
+
+        .icon-red {
+            background: #fee2e2;
+            color: #ef4444;
+        }
+
+        .stat-info h3 {
+            font-size: 0.65rem;
+            color: #64748b;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 0;
+        }
+
+        .stat-info p {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin: 0;
+        }
+
+        /* Search & Filter Row - Improved Alignment & Wrapping */
+        .search-section {
+            background: white;
+            padding: 10px 16px;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            position: relative;
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 0.8rem;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 6px 10px 6px 30px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .custom-tabs {
+            display: flex;
+            background: #f1f5f9;
+            padding: 2px;
+            border-radius: 8px;
+            align-items: center;
+            gap: 2px;
+            flex-shrink: 0;
+        }
+
+        .tabs-label {
+            font-size: 0.55rem;
+            font-weight: 800;
+            color: #475569;
+            margin-right: 8px;
+            padding-left: 8px;
+            white-space: nowrap;
+        }
+
+        .filter-tab {
+            padding: 5px 10px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            display: inline-block;
+        }
+
+        .filter-tab.active {
+            background: white;
+            color: var(--primary);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Device Mini-Cards Grid */
+        .devices-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            align-items: start;
+        }
+
+        .device-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid #f1f5f9;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            height: auto;
+            position: relative;
+        }
+
+        .device-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #f8fafc;
+        }
+
+        .device-title {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .device-title i {
+            color: var(--primary);
+            font-size: 0.8rem;
+            background: var(--primary-light);
+            padding: 5px;
+            border-radius: 6px;
+        }
+
+        .device-title h4 {
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin: 0;
+            color: #0f172a;
+        }
+
+        .status-badge {
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 0.55rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .status-configured {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-pending {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .activity-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            margin-bottom: 6px;
+            background: #fdfdfd;
+            border: 1px dashed #e2e8f0;
+        }
+
+        .activity-time {
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .power-off-tag {
+            color: #ef4444;
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 0.55rem;
+            background: #fee2e2;
+            padding: 1px 4px;
+            border-radius: 3px;
+        }
+
+        .rtmp-row {
+            display: grid;
+            grid-template-columns: 40px 1fr;
+            align-items: center;
+            gap: 8px;
+            background: #f8fafc;
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid #f1f5f9;
+            min-height: 32px;
+        }
+
+        .rtmp-label {
+            font-size: 0.55rem;
+            font-weight: 800;
+            color: #94a3b8;
+        }
+
+        .rtmp-val {
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.72rem;
+            line-height: 1.4;
+            color: #1e293b;
+            word-break: break-all;
+            overflow-x: auto;
+            max-width: 100%;
+        }
+
+        .rtmp-val.empty {
+            color: #cbd5e1;
+            font-style: italic;
+        }
+
+        .card-footer {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #f1f5f9;
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 5px;
+            border: none;
+            border-radius: 6px;
+            background: var(--primary);
+            color: white;
+            font-weight: 700;
+            font-size: 0.7rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        /* Modal - Professional & Compact */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(2px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            width: 95%;
+            max-width: 400px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            font-size: 0.95rem;
+            font-weight: 800;
+            margin: 0;
+        }
+
+        .modal-body {
+            padding: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 10px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.65rem;
+            font-weight: 800;
+            color: #64748b;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input,
+        .modal-body select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.85rem;
+            box-sizing: border-box;
+            /* Critical for alignment */
+            transition: all 0.2s ease;
+            outline: none;
+            color: #1e293b;
+        }
+
+        .form-group input:focus,
+        .modal-body select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .save-btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            background: var(--success);
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);
+        }
+
+        .save-btn:hover {
+            opacity: 0.95;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 10px -1px rgba(16, 185, 129, 0.3);
+        }
+
+        #alertContainer {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            z-index: 3000;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .alert {
+            padding: 8px 12px;
+            border-radius: 6px;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .alert-success {
+            background: #10b981;
+        }
+
+        .alert-error {
+            background: #ef4444;
+        }
+
+        .no-results {
+            grid-column: 1 / -1;
+            padding: 40px;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+
+<body>
+    {% include 'navbar.html' %}
+
+    <div class="app-container">
+        {% include 'sidebar.html' %}
+
+        <main class="main-content">
+            <div id="alertContainer"></div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon icon-blue"><i class="fas fa-microchip"></i></div>
+                    <div class="stat-info">
+                        <h3>TOTAL DEVICES</h3>
+                        <p id="totalCount">{{ vehicles|length }}</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-green"><i class="fas fa-link"></i></div>
+                    <div class="stat-info">
+                        <h3>CONFIGURED</h3>
+                        <p id="configuredCount">0</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-orange"><i class="fas fa-unlink"></i></div>
+                    <div class="stat-info">
+                        <h3>MISSING</h3>
+                        <p id="pendingCount">0</p>
+                    </div>
+                </div>
+                <div class="stat-card" style="cursor: pointer; border-color: #fee2e2;" onclick="openPowerModal()">
+                    <div class="stat-icon icon-red"><i class="fas fa-power-off"></i></div>
+                    <div class="stat-info">
+                        <h3>POWER OFF CONFIG</h3>
+                        <p id="powerThresholdText">{{ power_off_threshold }} MINS</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="search-section">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="vehicleSearch" placeholder="Filter device..." oninput="filterVehicles()">
+                </div>
+
+
+                <div class="custom-tabs">
+                    <span class="tabs-label">STATUS:</span>
+                    <button class="filter-tab active" onclick="filterByStatus('all', this)">ALL</button>
+                    <button class="filter-tab" onclick="filterByStatus('configured', this)">CONFIG</button>
+                    <button class="filter-tab" onclick="filterByStatus('pending', this)">MISSING</button>
+                </div>
+            </div>
+
+            <div class="devices-grid" id="vehiclesGrid">
+                {% for vehicle in vehicles %}
+                {% set has_rtmp = (vehicle.rtmp1 or vehicle.rtmp2 or vehicle.rtmp3 or vehicle.rtmp4) %}
+                <div class="device-card" data-vehicle-id="{{ vehicle.device_name }}"
+                    data-status="{% if has_rtmp %}configured{% else %}pending{% endif %}"
+                    data-rtmp-source="{{ vehicle.rtmp_source }}" data-rtmp1="{{ vehicle.rtmp1 }}"
+                    data-rtmp2="{{ vehicle.rtmp2 }}" data-rtmp3="{{ vehicle.rtmp3 }}" data-rtmp4="{{ vehicle.rtmp4 }}"
+                    data-fb1="{{ vehicle.fb_rtmp.rtmp1 }}" data-fb2="{{ vehicle.fb_rtmp.rtmp2 }}"
+                    data-fb3="{{ vehicle.fb_rtmp.rtmp3 }}" data-fb4="{{ vehicle.fb_rtmp.rtmp4 }}"
+                    data-mg1="{{ vehicle.mg_rtmp.rtmp1 }}" data-mg2="{{ vehicle.mg_rtmp.rtmp2 }}"
+                    data-mg3="{{ vehicle.mg_rtmp.rtmp3 }}" data-mg4="{{ vehicle.mg_rtmp.rtmp4 }}">
+
+                    <div class="card-header">
+                        <div class="device-title">
+                            <i class="fas fa-video"></i>
+                            <h4>{{ vehicle.device_name }}</h4>
+                        </div>
+                        <div style="display: flex; gap: 4px; align-items: center;">
+                            <span class="status-badge" style="background: #f1f5f9; color: #64748b; font-size: 0.5rem;"
+                                title="Source: {{ vehicle.rtmp_source|upper }}">
+                                {{ 'F' if vehicle.rtmp_source == 'firebase' else 'M' }}
+                            </span>
+                            <span
+                                class="status-badge {% if has_rtmp %}status-configured{% else %}status-pending{% endif %}">
+                                {{ 'ACTIVE' if has_rtmp else 'PENDING' }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="activity-row">
+                        <span class="activity-time"><i class="fas fa-clock"
+                                style="font-size: 0.55rem; margin-right: 3px;"></i> {{ vehicle.last_updated }}</span>
+                        {% if vehicle.is_power_off %}
+                        <span class="power-off-tag">Power Off</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="rtmp-row">
+                        <span class="rtmp-label">CH 1</span>
+                        <span class="rtmp-val {% if not vehicle.rtmp1 %}empty{% endif %}">{{ vehicle.rtmp1 or 'Unset'
+                            }}</span>
+                    </div>
+                    <div class="rtmp-row">
+                        <span class="rtmp-label">CH 2</span>
+                        <span class="rtmp-val {% if not vehicle.rtmp2 %}empty{% endif %}">{{ vehicle.rtmp2 or 'Unset'
+                            }}</span>
+                    </div>
+                    <div class="rtmp-row">
+                        <span class="rtmp-label">CH 3</span>
+                        <span class="rtmp-val {% if not vehicle.rtmp3 %}empty{% endif %}">{{ vehicle.rtmp3 or 'Unset'
+                            }}</span>
+                    </div>
+                    <div class="rtmp-row">
+                        <span class="rtmp-label">CH 4</span>
+                        <span class="rtmp-val {% if not vehicle.rtmp4 %}empty{% endif %}">{{ vehicle.rtmp4 or 'Unset'
+                            }}</span>
+                    </div>
+
+                    <div class="card-footer">
+                        <button class="action-btn" onclick="openModalFromCard(this)">
+                            <i class="fas fa-edit"></i> UPDATE
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </main>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="modal" id="rtmpModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-link"></i> <span id="modalTitle">Device ID</span></h3>
+                <button onclick="closeModal()" style="background:none; border:none; cursor:pointer; color:#94a3b8;"><i
+                        class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="rtmpForm" onsubmit="saveRTMP(event)">
+                    <input type="hidden" id="modalDeviceId" name="device_id">
+
+                    <div
+                        style="background:var(--primary-light); padding:8px; border-radius:8px; margin-bottom:12px; display:flex; flex-direction:column; gap:8px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <i class="fas fa-info-circle" style="color:var(--primary); font-size:0.8rem;"></i>
+                            <span
+                                style="font-size:0.65rem; font-weight:800; color:var(--primary); text-transform:uppercase;">Configure
+                                RTMP Source</span>
+                        </div>
+                        <select name="source" id="modalSource" onchange="handleSourceChange()">
+                            <option value="firebase">OPT 1 (FIREBASE)</option>
+                            <option value="mongo">OPT 2 (MONGODB)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group"><label>Channel 1</label><input type="text" id="input_rtmp1" name="rtmp1">
+                    </div>
+                    <div class="form-group"><label>Channel 2</label><input type="text" id="input_rtmp2" name="rtmp2">
+                    </div>
+                    <div class="form-group"><label>Channel 3</label><input type="text" id="input_rtmp3" name="rtmp3">
+                    </div>
+                    <div class="form-group"><label>Channel 4</label><input type="text" id="input_rtmp4" name="rtmp4">
+                    </div>
+
+                    <button type="submit" class="save-btn">SAVE CHANGES</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Power Off Modal -->
+    <div class="modal" id="powerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-power-off"></i> Power Off Management</h3>
+                <button onclick="closePowerModal()"
+                    style="background:none; border:none; cursor:pointer; color:#94a3b8;"><i
+                        class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="powerForm" onsubmit="savePowerConfig(event)">
+                    <div class="form-group">
+                        <label>Threshold (Minutes)</label>
+                        <p
+                            style="font-size: 0.65rem; color: #64748b; margin-bottom: 8px; text-transform: none; font-weight: 500;">
+                            Vehicle will show "POWER OFF" if not updated within this period.</p>
+                        <input type="number" name="minutes" id="powerMinutes" value="{{ power_off_threshold }}"
+                            required>
+                    </div>
+                    <button type="submit" class="save-btn">SAVE THRESHOLD</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openPowerModal() {
+            document.getElementById('powerModal').classList.add('active');
+        }
+
+        function closePowerModal() {
+            document.getElementById('powerModal').classList.remove('active');
+        }
+
+        function savePowerConfig(e) {
+            e.preventDefault();
+            const form = e.target;
+            const btn = form.querySelector('.save-btn');
+            const mins = document.getElementById('powerMinutes').value;
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Saving...';
+
+            fetch('/save_power_off_config', {
+                method: 'POST',
+                body: new FormData(form)
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('powerThresholdText').textContent = mins + ' MINS';
+                        showAlert('success', data.message);
+                        setTimeout(closePowerModal, 1000);
+                    } else {
+                        showAlert('error', data.message);
+                    }
+                })
+                .catch(() => showAlert('error', 'Connection error'))
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = 'SAVE THRESHOLD';
+                });
+        }
+
+        let currentFilter = 'all';
+
+        function updateStats() {
+            const cards = document.querySelectorAll('.device-card');
+            let configured = 0, pending = 0;
+            cards.forEach(card => {
+                if (card.dataset.status === 'configured') configured++;
+                else pending++;
+            });
+            document.getElementById('configuredCount').textContent = configured;
+            document.getElementById('pendingCount').textContent = pending;
+        }
+
+        function filterVehicles() {
+            const query = document.getElementById('vehicleSearch').value.toUpperCase();
+            const cards = document.querySelectorAll('.device-card');
+            let visibleCount = 0;
+
+            cards.forEach(card => {
+                const id = card.dataset.vehicleId.toUpperCase();
+                const status = card.dataset.status;
+                const matchesSearch = id.includes(query);
+                const matchesFilter = currentFilter === 'all' || status === currentFilter;
+
+                if (matchesSearch && matchesFilter) {
+                    card.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            const grid = document.getElementById('vehiclesGrid');
+            const noResults = document.getElementById('noResultsMsg');
+            if (visibleCount === 0) {
+                if (!noResults) {
+                    const msg = document.createElement('div');
+                    msg.id = 'noResultsMsg';
+                    msg.className = 'no-results';
+                    msg.innerHTML = '<i class="fas fa-search"></i><p>No devices matching your criteria</p>';
+                    grid.appendChild(msg);
+                }
+            } else if (noResults) {
+                noResults.remove();
+            }
+        }
+
+        function filterByStatus(status, btn) {
+            currentFilter = status;
+            // Only affect tabs within the same parent
+            const parent = btn.parentElement;
+            parent.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+            btn.classList.add('active');
+            filterVehicles();
+        }
+
+        let activeCard = null;
+
+        function openModalFromCard(btn) {
+            activeCard = btn.closest('.device-card');
+            const card = activeCard;
+            const id = card.dataset.vehicleId;
+            const source = card.dataset.rtmpSource;
+
+            document.getElementById('modalTitle').textContent = id;
+            document.getElementById('modalDeviceId').value = id;
+            document.getElementById('modalSource').value = source;
+            document.getElementById('input_rtmp1').value = card.dataset.rtmp1 || '';
+            document.getElementById('input_rtmp2').value = card.dataset.rtmp2 || '';
+            document.getElementById('input_rtmp3').value = card.dataset.rtmp3 || '';
+            document.getElementById('input_rtmp4').value = card.dataset.rtmp4 || '';
+
+            document.getElementById('rtmpModal').classList.add('active');
+        }
+
+        function handleSourceChange() {
+            if (!activeCard) return;
+            const source = document.getElementById('modalSource').value;
+            const prefix = (source === 'firebase') ? 'fb' : 'mg';
+
+            // Auto-populate links from the selected source as requested
+            document.getElementById('input_rtmp1').value = activeCard.dataset[prefix + '1'] || '';
+            document.getElementById('input_rtmp2').value = activeCard.dataset[prefix + '2'] || '';
+            document.getElementById('input_rtmp3').value = activeCard.dataset[prefix + '3'] || '';
+            document.getElementById('input_rtmp4').value = activeCard.dataset[prefix + '4'] || '';
+        }
+
+        function closeModal() {
+            document.getElementById('rtmpModal').classList.remove('active');
+        }
+
+        function saveRTMP(e) {
+            e.preventDefault();
+            const form = e.target;
+            const btn = form.querySelector('.save-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Saving...';
+
+            fetch('/save_rtmp', {
+                method: 'POST',
+                body: new FormData(form)
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showAlert('success', 'RTMP links updated successfully!');
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        showAlert('error', data.message || 'Error saving links');
+                    }
+                })
+                .catch(() => showAlert('error', 'Connection error'))
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = 'SAVE CHANGES';
+                });
+        }
+
+        function showAlert(type, msg) {
+            const container = document.getElementById('alertContainer');
+            const div = document.createElement('div');
+            div.className = `alert alert-${type}`;
+            div.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${msg}`;
+            container.appendChild(div);
+            setTimeout(() => div.remove(), 4000);
+        }
+
+        window.onclick = function (e) {
+            if (e.target.id === 'rtmpModal') closeModal();
+            if (e.target.id === 'powerModal') closePowerModal();
+        };
+
+        document.addEventListener('DOMContentLoaded', updateStats);
+    </script>
+</body>
+
+</html>

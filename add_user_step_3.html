@@ -1,0 +1,150 @@
+<!-- ========================================== -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Driver Details</title>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            background-color: #f9fafb;
+        }
+
+        .navbar {
+            background-color: white;
+            padding: 10px 20px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            width: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 100;
+            box-sizing: border-box;
+        }
+
+        .navbar img {
+            height: 60px;
+            margin-right: 15px;
+            border-radius: 10px;
+        }
+
+        .navbar h2 {
+            margin: 0;
+            color: #111827;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            padding-top: 80px;
+            width: 100%;
+        }
+
+        .main {
+            flex-grow: 1;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .form-container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        input,
+        textarea {
+            padding: 12px;
+            margin: 10px 0;
+            width: 100%;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+
+        .step {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #ddd;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .step.active {
+            background: #007bff;
+        }
+
+        .step.done {
+            background: #28a745;
+        }
+
+        .btn-submit {
+            padding: 12px 30px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn-submit:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+
+<body>
+    {% include 'navbar.html' %}
+    <div class="container">
+        {% include 'sidebar.html' %}
+        <div class="main">
+            <div class="step-indicator">
+                <div class="step done">✓</div>
+                <div class="step active">2</div>
+            </div>
+
+            <h2>Driver Information</h2>
+            <p>Adding details for user: <strong>{{ username }}</strong></p>
+
+            <div class="form-container">
+                <form method="POST">
+                    <label style="display:block; text-align:left; font-weight:bold;">Address</label>
+                    <textarea name="address" rows="3" placeholder="Enter full address"
+                        style="width:100%; padding:10px; border-radius:8px; border:1px solid #ccc;" required></textarea>
+
+                    <label style="display:block; text-align:left; font-weight:bold;">License Number</label>
+                    <input type="text" name="license_number" placeholder="License Number" required>
+
+                    <button type="submit" class="btn-submit">💾 SAVE & FINISH</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    </div><!-- end container -->
+</body>
+
+</html>
+<!-- ========================================== -->

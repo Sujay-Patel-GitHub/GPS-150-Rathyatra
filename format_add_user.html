@@ -1,0 +1,467 @@
+<!-- ========================================== -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Format Add User Page</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            background-color: #f3f4f6;
+        }
+
+        .sidebar {
+            width: 240px;
+            background: white;
+            border-right: 1px solid #e5e7eb;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .sidebar.collapsed {
+            width: 80px;
+            padding: 20px 10px;
+        }
+
+        .sidebar.collapsed button {
+            justify-content: center;
+            padding: 12px 0;
+            border-left: none;
+        }
+
+        .sidebar.collapsed button span {
+            display: none;
+        }
+
+        .sidebar.collapsed button i {
+            margin: 0;
+            font-size: 1.2rem;
+            width: 100%;
+        }
+
+        .sidebar a {
+            text-decoration: none;
+        }
+
+        .sidebar button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            background-color: white;
+            color: #374151;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            text-align: left;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+            border-left: 3px solid transparent;
+            box-sizing: border-box;
+            white-space: nowrap;
+        }
+
+        .sidebar button i {
+            width: 20px;
+            text-align: center;
+            color: #6b7280;
+            flex-shrink: 0;
+        }
+
+        .sidebar button:hover {
+            background-color: #f3f4f6;
+            color: #111827;
+        }
+
+        .sidebar button:hover i {
+            color: #2563eb;
+        }
+
+        .sidebar button.active {
+            background-color: #eff6ff;
+            color: #2563eb;
+            border-left-color: #2563eb;
+        }
+
+        .sidebar button.active i {
+            color: #2563eb;
+        }
+
+        .navbar {
+            background-color: white;
+            padding: 10px 20px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            width: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 100;
+            box-sizing: border-box;
+        }
+
+        .navbar img {
+            height: 50px;
+            margin-right: 15px;
+            border-radius: 8px;
+        }
+
+        .navbar h2 {
+            margin: 0;
+            color: #111827;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .navbar-user {
+            margin-left: auto;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: #4b5563;
+        }
+
+        .navbar-user a {
+            color: #dc2626;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid #fecaca;
+            padding: 5px 12px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .navbar-user a:hover {
+            background: #fee2e2;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            padding-top: 75px;
+            width: 100%;
+        }
+
+        .sidebar {
+            width: 240px;
+            background: white;
+            border-right: 1px solid #e5e7eb;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .sidebar a {
+            text-decoration: none;
+        }
+
+        .sidebar button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            background-color: white;
+            color: #374151;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            text-align: left;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+            border-left: 3px solid transparent;
+            box-sizing: border-box;
+        }
+
+        .sidebar button i {
+            width: 20px;
+            text-align: center;
+            color: #6b7280;
+        }
+
+        .sidebar button:hover {
+            background-color: #f3f4f6;
+            color: #111827;
+        }
+
+        .sidebar button:hover i {
+            color: #2563eb;
+        }
+
+        .sidebar button.active {
+            background: #eff6ff;
+            color: #2563eb;
+            border-left-color: #2563eb;
+        }
+
+        .sidebar button.active i {
+            color: #2563eb;
+        }
+
+        .main {
+            flex-grow: 1;
+            text-align: center;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: #f9fafb;
+        }
+
+        .form-container {
+            max-width: 650px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            text-align: left;
+            position: relative;
+            border: 2px dashed #2563eb;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0 10px 0;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 0.9rem;
+        }
+
+        .editable-input {
+            border: 1px solid #d1d5db;
+            background: #fff;
+            color: #374151;
+        }
+
+        .editable-input:focus {
+            border-color: #2563eb;
+            outline: none;
+            background: #f0f7ff;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .section-title-input {
+            border: none;
+            border-bottom: 2px solid #e5e7eb;
+            font-weight: 700;
+            color: #1f2937;
+            width: 100%;
+            padding: 5px;
+            font-size: 1em;
+            background: transparent;
+        }
+
+        .section-title-input:focus {
+            border-bottom: 2px solid #2563eb;
+            outline: none;
+        }
+
+        label {
+            display: block;
+            font-size: 0.75em;
+            color: #2563eb;
+            font-weight: 600;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .edit-badge {
+            position: absolute;
+            top: -12px;
+            left: 20px;
+            background: #2563eb;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);
+        }
+
+        .flash {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+            text-align: center;
+        }
+
+        fieldset {
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #f9fafb;
+        }
+
+        legend {
+            padding: 0 10px;
+            color: #4b5563;
+            font-weight: 500;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="navbar">
+        <div style="display: flex; align-items: center;">
+            <button id="sidebarToggle"
+                style="background: #f3f4f6; border: none; width: 40px; height: 40px; border-radius: 10px; cursor: pointer; margin-right: 15px; display: flex; align-items: center; justify-content: center; color: #4b5563; transition: all 0.2s;">
+                <i class="fas fa-bars"></i>
+            </button>
+            <img src="{{ logo_url }}" alt="Logo">
+            <h2>Admin Dashboard</h2>
+        </div>
+        <div class="navbar-user">
+            <span><i class="fas fa-user-shield"></i> Welcome, <strong>Admin</strong></span>
+            <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
+    </div>
+    <div class="container">
+        <div class="sidebar">
+            <a href="/add_user"><button><i class="fas fa-user-plus"></i> <span>Add New User</span></button></a>
+            <a href="/admin_dashboard"><button><i class="fas fa-list-ul"></i> <span>Show Devices</span></button></a>
+            <a href="/gps_monitoring"><button><i class="fas fa-map-marked-alt"></i> <span>GPS
+                        Monitoring</span></button></a>
+            <a href="/list_roles"><button><i class="fas fa-users"></i> <span>List Roles</span></button></a>
+            <a href="/manage_rfid"><button><i class="fas fa-id-card"></i> <span>Manage RFID</span></button></a>
+            <a href="/recordings"><button><i class="fas fa-video"></i> <span>Recordings</span></button></a>
+            <a href="/external_recordings"><button><i class="fas fa-external-link-alt"></i> <span>Open
+                        Recordings</span></button></a>
+            <a href="/browse_recordings"><button><i class="fas fa-film"></i> <span>Browse Recordings</span></button></a>
+        </div>
+        <div class="main">
+            <h2 style="color: #111827; margin-bottom: 15px; font-size: 1.5rem;"><i class="fas fa-edit"></i> Visual
+                Editor: Add User Page</h2>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            <div class="form-container">
+                <div class="edit-badge"><i class="fas fa-pen"></i> EDIT MODE</div>
+
+                <form method="POST">
+                    <div style="text-align:center; margin-bottom: 20px;">
+                        <label>Page Title</label>
+                        <input type="text" name="page_title" value="{{ fmt.page_title }}"
+                            style="font-size:1.5em; font-weight:bold; text-align:center; border:none; border-bottom:2px dashed #d1d5db; width:100%; color: #111827; background: transparent;">
+                    </div>
+
+                    <fieldset>
+                        <legend>
+                            <input type="text" class="section-title-input" name="section_1_title"
+                                value="{{ fmt.section_1_title }}">
+                        </legend>
+                        <div style="display:flex; gap:20px; flex-wrap:wrap;">
+                            <div style="flex:1;">
+                                <label>Name Placeholder</label>
+                                <input type="text" class="editable-input" name="name_label"
+                                    value="{{ fmt.name_label }}">
+                            </div>
+                            <div style="flex:1;">
+                                <label>Mobile Placeholder</label>
+                                <input type="text" class="editable-input" name="mobile_label"
+                                    value="{{ fmt.mobile_label }}">
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:20px; flex-wrap:wrap; margin-top:10px;">
+                            <div style="flex:1;">
+                                <label>Email Placeholder</label>
+                                <input type="text" class="editable-input" name="email_label"
+                                    value="{{ fmt.email_label }}">
+                            </div>
+                            <div style="flex:1;">
+                                <label>Role Dropdown Placeholder</label>
+                                <input type="text" class="editable-input" name="role_label"
+                                    value="{{ fmt.role_label }}">
+
+                                <div style="margin-top:8px;">
+                                    <label style="color: #059669;">Dropdown Options (Comma separated)</label>
+                                    <input type="text" class="editable-input" name="roles_list"
+                                        value="{{ fmt.roles_list }}"
+                                        style="background:#ecfdf5; border-color:#6ee7b7; color: #065f46;">
+                                </div>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend>
+                            <input type="text" class="section-title-input" name="section_3_title"
+                                value="{{ fmt.section_3_title }}">
+                        </legend>
+                        <div style="display:flex; gap:20px; flex-wrap:wrap;">
+                            <div style="flex:1;">
+                                <label>Username Placeholder</label>
+                                <input type="text" class="editable-input" name="username_label"
+                                    value="{{ fmt.username_label }}">
+                            </div>
+                            <div style="flex:1;">
+                                <label>Password Placeholder</label>
+                                <input type="text" class="editable-input" name="password_label"
+                                    value="{{ fmt.password_label }}">
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <div style="text-align:center; margin-top:20px;">
+                        <label>Button Text</label>
+                        <input type="text" name="submit_btn_text" value="{{ fmt.submit_btn_text }}"
+                            style="text-align:center; padding:10px; background:#10b981; color:white; border:none; border-radius:6px; width: 200px; font-size:1rem; cursor:text; font-weight: 600;">
+                    </div>
+
+                    <div style="margin-top:20px; text-align:center; border-top:1px solid #e5e7eb; padding-top:15px;">
+                        <button type="submit"
+                            style="padding:10px 30px; background:#2563eb; color:white; border:none; border-radius:8px; font-size:1rem; cursor:pointer; font-weight: 600; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2); transition: 0.2s;"><i
+                                class="fas fa-save"></i> SAVE CHANGES</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    </div>
+    <script>
+        // Sidebar Toggle Logic
+        const sidebar = document.querySelector('.sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+
+        if (localStorage.getItem('sidebarCollapsed') === 'true') {
+            sidebar.classList.add('collapsed');
+        }
+
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('collapsed');
+            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+        });
+    </script>
+</body>
+
+</html>
+<!-- ========================================== -->

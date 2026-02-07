@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detailed GPS Analysis - {{ vehicle_name }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --warning: #f59e0b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: white;
+            padding: 15px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .btn-back {
+            background: #f1f5f9;
+            color: var(--text-main);
+            padding: 10px 18px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+            border: 1px solid var(--border);
+        }
+
+        .btn-back:hover {
+            background: #e2e8f0;
+            transform: translateX(-3px);
+        }
+
+        .header-title {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header-title h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .header-title p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-download {
+            background: var(--primary);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-download:hover {
+            background: var(--primary-dark);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .map-section {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .sidebar {
+            width: 400px;
+            background: white;
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border);
+            background: #fcfcfd;
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-card {
+            background: white;
+            border: 1px solid var(--border);
+            padding: 12px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-card .label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .stat-card .value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stops-section {
+            padding: 24px;
+        }
+
+        .stops-header {
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stop-count-badge {
+            background: #fef3c7;
+            color: #d97706;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+
+        .stop-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 16px;
+            margin-bottom: 15px;
+            transition: 0.2s;
+            cursor: pointer;
+            border-left: 5px solid var(--warning);
+        }
+
+        .stop-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.05);
+            border-color: var(--primary);
+        }
+
+        .stop-time {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .stop-duration {
+            background: #fff7ed;
+            color: #ea580c;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+
+        .stop-clock {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .stop-location {
+            font-size: 0.9rem;
+            color: var(--text-main);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .stop-location i {
+            margin-top: 3px;
+            color: var(--danger);
+        }
+
+        .btn-focus {
+            width: 100%;
+            padding: 8px;
+            background: #f8fafc;
+            color: var(--primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-focus:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .empty-stops {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-stops i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            display: block;
+            opacity: 0.4;
+        }
+
+        .marker-stop {
+            background: #f59e0b;
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 34px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            box-shadow: 0 4px 10px rgba(245, 158, 11, 0.4);
+        }
+
+        .marker-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+        }
+
+        .icon-start {
+            color: #22c55e;
+        }
+
+        .icon-end {
+            color: #ef4444;
+        }
+
+        .icon-truck {
+            color: #2563eb;
+            transform: scaleX(-1);
+        }
+
+        /* Pulse Animation for Live Truck */
+        .pulse-truck {
+            animation: truck-pulsate 1.5s ease-out infinite;
+            background: rgba(37, 99, 235, 0.1);
+            border-radius: 50%;
+        }
+
+        @keyframes truck-pulsate {
+            0% {
+                transform: scale(0.9);
+                opacity: 0.9;
+                box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4);
+            }
+
+            70% {
+                transform: scale(1.1);
+                opacity: 1;
+                box-shadow: 0 0 0 15px rgba(37, 99, 235, 0);
+            }
+
+            100% {
+                transform: scale(0.9);
+                opacity: 0.9;
+                box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="header-left">
+            <a href="/vehicle_recordings/{{ vehicle_name }}" class="btn-back">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
+            <div class="header-title">
+                <h1>{{ vehicle_name }} - Trip Detail Analysis</h1>
+                <p><i class="fas fa-calendar-alt"></i> Trip #{{ session_num }} | {{ date }}</p>
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="/download_gps/{{ vehicle_name }}/{{ date }}/{{ session_num }}" class="btn-download">
+                <i class="fas fa-download"></i> Download GPS (.txt)
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-container">
+        <!-- Map Section -->
+        <div class="map-section">
+            <div id="map"></div>
+        </div>
+
+        <!-- Sidebar Section -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-chart-line"></i> Trip Statistics</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="label">GPS Points</div>
+                        <div class="value">{{ total_points }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Stop Count</div>
+                        <div class="value">{{ stops|length }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stops-section">
+                <div class="stops-header">
+                    <span>Detected Stops</span>
+                    <span class="stop-count-badge">{{ stops|length }} STOPS</span>
+                </div>
+
+                {% if stops %}
+                {% for stop in stops %}
+                <div class="stop-card" onclick="focusStop({{ stop.lat }}, {{ stop.lng }})">
+                    <div class="stop-time">
+                        <span class="stop-clock"><i class="far fa-clock"></i> {{ stop.start_time.split(' ')[1] if ' ' in
+                            stop.start_time else stop.start_time }}</span>
+                        <span class="stop-duration">{{ stop.duration_text }}</span>
+                    </div>
+                    <div class="stop-location">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>{{ stop.lat|round(6) }}, {{ stop.lng|round(6) }}</span>
+                    </div>
+                    <button class="btn-focus">
+                        <i class="fas fa-search-location"></i> View on Map
+                    </button>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="empty-stops">
+                    <i class="fas fa-route"></i>
+                    <p>No stops longer than 30 seconds detected for this trip.</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Dwell Analysis Section -->
+            <div class="stops-section" style="border-top: 1px solid var(--border); background: #f8fafc;">
+                <div class="stops-header">
+                    <span>Location Dwell Summary</span>
+                    <i class="fas fa-history" style="color: var(--primary);"></i>
+                </div>
+
+                {% if dwell_list %}
+                {% for item in dwell_list %}
+                <div class="stop-card" style="border-left-color: var(--primary);"
+                    onclick="focusStop({{ item.lat }}, {{ item.lng }})">
+                    <div class="stop-time">
+                        <span class="stop-clock"><i class="fas fa-repeat"></i> {{ item.visit_count }} Visits</span>
+                        <span class="stop-duration" style="background: #eff6ff; color: #2563eb;">Total: {{
+                            item.total_duration_text }}</span>
+                    </div>
+                    <div class="stop-location">
+                        <i class="fas fa-map-marked"></i>
+                        <span style="font-size: 0.8rem;">Stationary Area around <br><b>{{ item.lat|round(4) }}, {{
+                                item.lng|round(4) }}</b></span>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p style="text-align: center; color: var(--text-muted); font-size: 0.85rem;">No significant stationary
+                    patterns found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data from server
+        const gpsData = {{ gps_data | tojson }};
+        const stopsData = {{ stops | tojson }};
+
+        let map;
+        let routeLine;
+        let pointMarkers = [];
+
+        function initMap() {
+            if (gpsData.length === 0) return;
+
+            // Initialize map centered at first point
+            map = L.map('map', { zoomControl: false }).setView([gpsData[0].lat, gpsData[0].lng], 15);
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+            // Add High Quality Hybrid Tiles
+            L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+                attribution: 'Google Satellite'
+            }).addTo(map);
+
+            // Draw Route Polyline
+            const latlngs = gpsData.map(p => [p.lat, p.lng]);
+            routeLine = L.polyline(latlngs, {
+                color: '#2563eb', // Electric Blue for better contrast on satellite
+                weight: 6,
+                opacity: 0.9,
+                smoothFactor: 1.5,
+                lineJoin: 'round'
+            }).addTo(map);
+
+            // Glow effect for route
+            L.polyline(latlngs, {
+                color: '#fff',
+                weight: 8,
+                opacity: 0.3,
+                smoothFactor: 1.5
+            }).addTo(map).toBack();
+
+            // Add individual point markers (visible on zoom)
+            gpsData.forEach((p, i) => {
+                const marker = L.circleMarker([p.lat, p.lng], {
+                    radius: i % 10 === 0 ? 5 : 3, // Emphasize every 10th point
+                    fillColor: p.speed > 3 ? '#34d399' : '#f59e0b',
+                    color: '#fff',
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                });
+
+                marker.bindPopup(`
+                    <div style="font-family: Poppins; min-width: 150px;">
+                        <b style="color: #2563eb;">Point #${i + 1}</b><br>
+                        <b>Time:</b> ${p.timestamp.split('T').join(' ')}<br>
+                        <b>Speed:</b> ${p.speed} km/h<br>
+                        <b>Coords:</b> ${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}
+                    </div>
+                `);
+
+                pointMarkers.push(marker);
+            });
+
+            // Layer for point markers to show/hide on zoom
+            const pointLayer = L.layerGroup(pointMarkers);
+
+            map.on('zoomend', function () {
+                if (map.getZoom() >= 17) {
+                    map.addLayer(pointLayer);
+                } else {
+                    map.removeLayer(pointLayer);
+                }
+            });
+
+            // Start & End Markers (Truck Icons)
+            const startPoint = gpsData[0];
+            const livePoint = gpsData[gpsData.length - 1];
+
+            L.marker([startPoint.lat, startPoint.lng], {
+                icon: L.divIcon({
+                    className: 'marker-icon icon-start',
+                    html: '<i class="fas fa-flag-checkered"></i>',
+                    iconSize: [30, 30]
+                }),
+                zIndexOffset: 500
+            }).addTo(map).bindPopup('<b>Trip Start</b><br>' + startPoint.timestamp.split('T').join(' '));
+
+            // Pulse effect for live truck
+            const truckMarker = L.marker([livePoint.lat, livePoint.lng], {
+                icon: L.divIcon({
+                    className: 'marker-icon icon-truck pulse-truck',
+                    html: '<i class="fas fa-truck"></i>',
+                    iconSize: [45, 45]
+                }),
+                zIndexOffset: 1000
+            }).addTo(map);
+
+            truckMarker.bindPopup(`
+                <div style="font-family: Poppins; min-width: 200px;">
+                    <h4 style="color: #2563eb; margin: 0 0 10px 0; border-bottom: 2px solid #eff6ff; padding-bottom: 5px;">
+                        <i class="fas fa-signal"></i> Live Position
+                    </h4>
+                    <p><b>Time:</b> ${livePoint.timestamp.split('T').join(' ')}</p>
+                    <p><b>Speed:</b> <span style="color: #10b981; font-weight: 700;">${livePoint.speed} km/h</span></p>
+                    <p><b>Status:</b> ${livePoint.speed < 3 ? '<span style="color: #f59e0b;">Parked</span>' : '<span style="color: #10b981;">Moving</span>'}</p>
+                    <p style="font-size: 11px; color: #94a3b8; margin-top: 5px;">${livePoint.lat.toFixed(6)}, ${livePoint.lng.toFixed(6)}</p>
+                </div>
+            `);
+
+            // Add Stop Markers
+            stopsData.forEach((stop, index) => {
+                L.marker([stop.lat, stop.lng], {
+                    icon: L.divIcon({
+                        className: 'marker-stop',
+                        html: index + 1,
+                        iconSize: [34, 34]
+                    })
+                }).addTo(map).bindPopup(`
+                    <div style="font-family: Poppins, sans-serif; padding: 5px; min-width: 180px;">
+                        <h4 style="color: #f59e0b; margin-bottom: 8px;">Stop #${index + 1}</h4>
+                        <div style="border-top: 1px solid #eee; padding-top: 8px; font-size: 13px;">
+                            <p><b>Duration:</b> <span style="color: #ea580c;">${stop.duration_text}</span></p>
+                            <p><b>Started:</b> ${stop.start_time.split('T').join(' ')}</p>
+                            <p><b>Ended:</b> ${stop.end_time.split('T').join(' ')}</p>
+                            <p><b>Precise Loc:</b> ${stop.lat.toFixed(6)}, ${stop.lng.toFixed(6)}</p>
+                        </div>
+                    </div>
+                `);
+            });
+
+            // Fit map
+            if (latlngs.length > 0) {
+                const bounds = L.latLngBounds(latlngs);
+                map.fitBounds(bounds, { padding: [50, 50] });
+                // If the bounds are the same point (static), zoom in closer
+                if (bounds.getNorthEast().equals(bounds.getSouthWest())) {
+                    map.setZoom(17);
+                }
+            }
+        }
+
+        function focusStop(lat, lng) {
+            map.setView([lat, lng], 18, { animate: true, duration: 1 });
+        }
+
+        window.onload = initMap;
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,318 @@
+<!-- ========================================== -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>{{ fmt.page_title }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            background-color: #f3f4f6;
+        }
+
+        .navbar {
+            background-color: white;
+            padding: 10px 20px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            width: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 100;
+            box-sizing: border-box;
+        }
+
+        .navbar img {
+            height: 50px;
+            margin-right: 15px;
+            border-radius: 8px;
+        }
+
+        .navbar h2 {
+            margin: 0;
+            color: #111827;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .navbar-user {
+            margin-left: auto;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: #4b5563;
+        }
+
+        .navbar-user a {
+            color: #dc2626;
+            text-decoration: none;
+            font-weight: 600;
+            border: 1px solid #fecaca;
+            padding: 5px 12px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .navbar-user a:hover {
+            background: #fee2e2;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            padding-top: 75px;
+            width: 100%;
+        }
+
+        .sidebar {
+            width: 240px;
+            background: white;
+            border-right: 1px solid #e5e7eb;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .sidebar a {
+            text-decoration: none;
+        }
+
+        .sidebar button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            background-color: white;
+            color: #374151;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            text-align: left;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+            border-left: 3px solid transparent;
+            box-sizing: border-box;
+        }
+
+        .sidebar button i {
+            width: 20px;
+            text-align: center;
+            color: #6b7280;
+        }
+
+        .sidebar button:hover {
+            background-color: #f3f4f6;
+            color: #111827;
+        }
+
+        .sidebar button:hover i {
+            color: #2563eb;
+        }
+
+        .sidebar button.active {
+            background: #eff6ff;
+            color: #2563eb;
+            border-left-color: #2563eb;
+        }
+
+        .sidebar button.active i {
+            color: #2563eb;
+        }
+
+        .main {
+            flex-grow: 1;
+            text-align: center;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: #f9fafb;
+        }
+
+        .form-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            position: relative;
+            border: 1px solid #e5e7eb;
+        }
+
+        input,
+        select {
+            padding: 10px 15px;
+            margin: 5px 0 12px 0;
+            width: 100%;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            box-sizing: border-box;
+            font-size: 0.95rem;
+            transition: border 0.2s;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: #2563eb;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            gap: 15px;
+        }
+
+        .step {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: #e5e7eb;
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        .step.active {
+            background: #2563eb;
+            color: white;
+            box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-next {
+            padding: 12px 30px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-top: 15px;
+            width: 100%;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .btn-next:hover {
+            background: #059669;
+        }
+
+        .dev-fill-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fcd34d;
+            padding: 6px 12px;
+            font-size: 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        fieldset {
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #f9fafb;
+        }
+
+        legend {
+            padding: 0 10px;
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+
+<body>
+    {% include 'navbar.html' %}
+    <div class="container">
+        {% include 'sidebar.html' %}
+        <div class="main">
+
+            <div class="step-indicator">
+                <div class="step active">1</div>
+                <div class="step">2</div>
+            </div>
+
+            <h2 style="color: #111827; margin-bottom: 20px;">{{ fmt.page_title }}</h2>
+
+            <div class="form-container">
+                <button type="button" class="dev-fill-btn" onclick="fillDummy()"><i class="fas fa-bolt"></i> Dev:
+                    Auto-Fill</button>
+
+                {% if error_message %}<div
+                    style="padding: 12px; background: #fee2e2; color: #991b1b; border-radius: 8px; margin-bottom: 20px; border: 1px solid #fecaca;">
+                    {{ error_message }}</div>{% endif %}
+
+                <form method="POST" id="step1Form">
+                    <fieldset>
+                        <legend>{{ fmt.section_1_title }}</legend>
+                        <input type="text" id="name" name="name" placeholder="{{ fmt.name_label }}" required>
+
+                        <!-- Phone number input updated to max 10 digits and numbers only -->
+                        <input type="tel" id="mobile" name="mobile" placeholder="{{ fmt.mobile_label }}" required
+                            maxlength="10" pattern="\d{10}"
+                            oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10)">
+
+                        <input type="email" id="email" name="email" placeholder="{{ fmt.email_label }}" required>
+                        <select name="role" id="role" required>
+                            <option value="" disabled selected>{{ fmt.role_label }}</option>
+                            {% for r in roles_list %}<option value="{{ r }}">{{ r }}</option>{% endfor %}
+                        </select>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend>{{ fmt.section_3_title }}</legend>
+                        <input type="text" id="username" name="username" placeholder="{{ fmt.username_label }}"
+                            required>
+                        <input type="password" id="password" name="password" placeholder="{{ fmt.password_label }}"
+                            required>
+                    </fieldset>
+
+                    <button type="submit" class="btn-next">{{ fmt.submit_btn_text }} <i
+                            class="fas fa-arrow-right"></i></button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script>
+        function fillDummy() {
+            const rand = Math.floor(Math.random() * 1000);
+            document.getElementById('name').value = 'Test User ' + rand;
+            document.getElementById('mobile').value = '9876543210';
+            document.getElementById('email').value = 'test' + rand + '@example.com';
+
+            const roleSelect = document.getElementById('role');
+            if (roleSelect.options.length > 1) roleSelect.selectedIndex = 1;
+
+            document.getElementById('username').value = 'user_' + rand;
+            document.getElementById('password').value = '123';
+        }
+
+    </script>
+</body>
+
+</html>
+<!-- ========================================== -->

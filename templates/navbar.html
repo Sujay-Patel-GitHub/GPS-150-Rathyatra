@@ -1,0 +1,104 @@
+<style>
+    .navbar {
+        background: white;
+        padding: 0 24px;
+        height: 70px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .brand-section {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    #sidebarToggle {
+        background: #f3f4f6;
+        border: none;
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #4b5563;
+        transition: all 0.2s;
+    }
+
+    #sidebarToggle:hover {
+        background: #e5e7eb;
+        color: #111827;
+    }
+
+    .navbar img {
+        height: 45px;
+        border-radius: 8px;
+        object-fit: contain;
+    }
+
+    .navbar h2 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #111827;
+        letter-spacing: -0.025em;
+    }
+
+    .navbar-user {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+
+    .navbar-user span {
+        font-size: 0.9rem;
+        color: #4b5563;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .navbar-user .logout-btn {
+        background: #fef2f2;
+        color: #dc2626;
+        text-decoration: none;
+        font-weight: 600;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+        border: 1px solid #fee2e2;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .navbar-user .logout-btn:hover {
+        background: #fee2e2;
+        transform: translateY(-1px);
+    }
+</style>
+
+<div class="navbar">
+    <div class="brand-section">
+        <button id="sidebarToggle" title="Toggle Sidebar">
+            <i class="fas fa-bars"></i>
+        </button>
+        <img src="{{ logo_url or 'https://i.ibb.co/KzKBD952/FB-IMG-1688957699924.jpg' }}" alt="Logo">
+        <h2>Admin Dashboard</h2>
+    </div>
+    <div class="navbar-user">
+        <span><i class="fas fa-user-shield"></i> <strong>Admin</strong></span>
+        <a href="/logout" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+    </div>
+</div>

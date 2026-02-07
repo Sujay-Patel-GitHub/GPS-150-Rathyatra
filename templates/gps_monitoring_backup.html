@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS Monitoring - Admin Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .navbar {
+            background-color: white;
+            padding: 15px 30px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar h2 {
+            color: #333;
+            font-size: 1.5rem;
+        }
+
+        .navbar-user {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .navbar-user span {
+            color: #666;
+        }
+
+        .navbar-user a {
+            color: #dc3545;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .container {
+            display: flex;
+            height: calc(100vh - 70px);
+        }
+
+        .sidebar {
+            width: 220px;
+            background-color: white;
+            padding: 20px 0;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+        }
+
+        .sidebar a {
+            text-decoration: none;
+        }
+
+        .sidebar button {
+            width: 100%;
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            text-align: left;
+            cursor: pointer;
+            color: #4b5563;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+        }
+
+        .sidebar button.active {
+            background-color: #eff6ff;
+            color: #2563eb;
+            border-left: 3px solid #2563eb;
+        }
+
+        .sidebar button i {
+            width: 20px;
+            text-align: center;
+            color: #6b7280;
+        }
+
+        .sidebar button.active i {
+            color: #2563eb;
+        }
+
+        .sidebar button:hover {
+            background-color: #f3f4f6;
+            color: #111827;
+        }
+
+        .sidebar button:hover i {
+            color: #2563eb;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            background: #f9fafb;
+        }
+
+        .vehicle-list {
+            width: 300px;
+            background: white;
+            border-right: 1px solid #e5e7eb;
+            overflow-y: auto;
+        }
+
+        .vehicle-list-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .vehicle-list-header h3 {
+            font-size: 1.2rem;
+            margin-bottom: 5px;
+        }
+
+        .vehicle-list-header p {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
+        .filter-tabs {
+            display: flex;
+            background: #f3f4f6;
+            padding: 5px;
+            margin: 0;
+        }
+
+        .filter-tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #6b7280;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .filter-tab:hover {
+            background: #e5e7eb;
+        }
+
+        .filter-tab.active {
+            background: white;
+            color: #2563eb;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .filter-tab i {
+            margin-right: 5px;
+        }
+
+        .vehicle-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #f3f4f6;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .vehicle-item:hover {
+            background: #f9fafb;
+        }
+
+        .vehicle-item.active {
+            background: #eff6ff;
+            border-left: 3px solid #2563eb;
+        }
+
+        .vehicle-name {
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .vehicle-name i {
+            color: #667eea;
+        }
+
+        .vehicle-info {
+            font-size: 0.8rem;
+            color: #6b7280;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .status-online {
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        .status-offline {
+            color: #ef4444;
+            font-weight: 600;
+        }
+
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .map-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .map-controls h4 {
+            margin-bottom: 10px;
+            color: #111827;
+            font-size: 0.9rem;
+        }
+
+        .map-controls button {
+            width: 100%;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            border: 1px solid #e5e7eb;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .map-controls button:hover {
+            background: #f3f4f6;
+            border-color: #2563eb;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #9ca3af;
+        }
+
+        .empty-state i {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-state p {
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="navbar">
+        <h2>Admin Dashboard - GPS Monitoring</h2>
+        <div class="navbar-user">
+            <span><i class="fas fa-user-shield"></i> Welcome, <strong>Admin</strong></span>
+            <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <a href="/add_user"><button><i class="fas fa-user-plus"></i> Add New User</button></a>
+            <a href="/admin_dashboard"><button><i class="fas fa-list-ul"></i> Show Devices</button></a>
+            <a href="/gps_monitoring"><button class="active"><i class="fas fa-map-marked-alt"></i> GPS
+                    Monitoring</button></a>
+            <a href="/list_roles"><button><i class="fas fa-users"></i> List Roles</button></a>
+            <a href="/format_add_user"><button><i class="fas fa-cogs"></i> Configure Forms</button></a>
+            <a href="/recordings"><button><i class="fas fa-video"></i> Recordings</button></a>
+        </div>
+
+        <div class="main-content">
+            <div class="vehicle-list">
+                <div class="vehicle-list-header">
+                    <h3><i class="fas fa-truck"></i> Vehicles</h3>
+                    <p id="vehicleCount">{{ vehicles|length }} total vehicles</p>
+                </div>
+
+                <div class="filter-tabs">
+                    <button class="filter-tab active" onclick="filterVehicles('all')">
+                        <i class="fas fa-list"></i> All
+                    </button>
+                    <button class="filter-tab" onclick="filterVehicles('registered')">
+                        <i class="fas fa-check-circle"></i> Registered
+                    </button>
+                    <button class="filter-tab" onclick="filterVehicles('unregistered')">
+                        <i class="fas fa-exclamation-triangle"></i> Unregistered
+                    </button>
+                </div>
+
+                <div id="vehicleListContainer">
+                    {% if vehicles %}
+                    {% for vehicle in vehicles %}
+                    <div class="vehicle-item" data-registered="{% if vehicle.rc_number %}true{% else %}false{% endif %}"
+                        onclick="focusVehicle('{{ vehicle.device_id }}', {{ vehicle.lat|default(0) }}, {{ vehicle.lng|default(0) }})">
+                        <div class="vehicle-name">
+                            <i class="fas fa-truck"></i>
+                            {{ vehicle.device_id }}
+                        </div>
+                        <div class="vehicle-info">
+                            {% if vehicle.rc_number %}
+                            <span><i class="fas fa-id-card"></i> {{ vehicle.rc_number }}</span>
+                            {% else %}
+                            <span style="color: #f59e0b;"><i class="fas fa-exclamation-triangle"></i> Not
+                                Registered</span>
+                            {% endif %}
+                            {% if vehicle.driver_name %}
+                            <span><i class="fas fa-user"></i> {{ vehicle.driver_name }}</span>
+                            {% endif %}
+                            <span class="status-online"><i class="fas fa-circle"></i> Online</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-truck-loading"></i>
+                        <p>No vehicles registered</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="map-container">
+                <div id="map"></div>
+                <div class="map-controls">
+                    <h4><i class="fas fa-layer-group"></i> Map Controls</h4>
+                    <button onclick="showAllVehicles()"><i class="fas fa-expand"></i> Show All Vehicles</button>
+                    <button onclick="refreshLocations()"><i class="fas fa-sync-alt"></i> Refresh Locations</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize map centered on India
+        const map = L.map('map').setView([23.0225, 72.5714], 6);
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Store markers
+        const markers = {};
+
+        // Vehicle data from backend
+        const vehicles = {{ vehicles| tojson }};
+
+        // Add markers for each vehicle
+        vehicles.forEach(vehicle => {
+            const lat = vehicle.lat || 23.0225;  // Default to Ahmedabad if no GPS data
+            const lng = vehicle.lng || 72.5714;
+
+            const marker = L.marker([lat, lng]).addTo(map);
+
+            const popupContent = `
+                <div style="font-family: 'Segoe UI', sans-serif;">
+                    <h4 style="margin: 0 0 10px 0; color: #111827;">
+                        <i class="fas fa-truck"></i> ${vehicle.device_id}
+                    </h4>
+                    ${vehicle.rc_number ? `<p style="margin: 5px 0;"><strong>RC:</strong> ${vehicle.rc_number}</p>` : ''}
+                    ${vehicle.driver_name ? `<p style="margin: 5px 0;"><strong>Driver:</strong> ${vehicle.driver_name}</p>` : ''}
+                    ${vehicle.transporter_name ? `<p style="margin: 5px 0;"><strong>Transporter:</strong> ${vehicle.transporter_name}</p>` : ''}
+                    <p style="margin: 5px 0; color: #10b981;"><i class="fas fa-circle"></i> Online</p>
+                </div>
+            `;
+
+            marker.bindPopup(popupContent);
+            markers[vehicle.device_id] = marker;
+        });
+
+        // Focus on specific vehicle
+        function focusVehicle(deviceId, lat, lng) {
+            if (markers[deviceId]) {
+                map.setView([lat, lng], 15);
+                markers[deviceId].marker.openPopup();
+
+                // Highlight selected vehicle in list
+                document.querySelectorAll('.vehicle-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                event.currentTarget.classList.add('active');
+            }
+        }
+
+        // Show all vehicles
+        function showAllVehicles() {
+            if (vehicles.length > 0) {
+                const bounds = L.latLngBounds(
+                    vehicles.map(v => [v.lat || 23.0225, v.lng || 72.5714])
+                );
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
+        }
+
+        // Refresh locations (placeholder for real-time updates)
+        function refreshLocations() {
+            alert('Location refresh functionality will be implemented with real-time GPS data.');
+            // In production, this would fetch updated GPS coordinates from the server
+        }
+
+        // Filter vehicles by registration status
+        function filterVehicles(filter) {
+            const vehicleItems = document.querySelectorAll('.vehicle-item');
+            let visibleCount = 0;
+
+            // Update active tab
+            document.querySelectorAll('.filter-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+
+            // Filter vehicles
+            vehicleItems.forEach(item => {
+                const isRegistered = item.getAttribute('data-registered') === 'true';
+
+                if (filter === 'all') {
+                    item.style.display = '';
+                    visibleCount++;
+                } else if (filter === 'registered' && isRegistered) {
+                    item.style.display = '';
+                    visibleCount++;
+                } else if (filter === 'unregistered' && !isRegistered) {
+                    item.style.display = '';
+                    visibleCount++;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+
+            // Update count display
+            const countText = filter === 'all' ? 'total vehicles' :
+                filter === 'registered' ? 'registered vehicles' :
+                    'unregistered vehicles';
+            document.getElementById('vehicleCount').textContent = `${visibleCount} ${countText}`;
+        }
+
+        // Auto-fit map to show all vehicles on load
+        if (vehicles.length > 0) {
+            setTimeout(showAllVehicles, 500);
+        }
+    </script>
+</body>
+
+</html>

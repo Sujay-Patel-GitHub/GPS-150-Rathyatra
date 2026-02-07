@@ -1,0 +1,435 @@
+<!-- ========================================== -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>{{ role }} Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            background-color: #f9fafb;
+        }
+
+        .navbar {
+            background-color: white;
+            padding: 10px 20px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            width: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 100;
+            box-sizing: border-box;
+        }
+
+        .navbar img {
+            height: 60px;
+            margin-right: 15px;
+            border-radius: 10px;
+        }
+
+        .navbar h2 {
+            margin: 0;
+            color: #111827;
+            font-size: 1.6rem;
+        }
+
+        .navbar-user {
+            margin-left: auto;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .navbar-user a {
+            color: #dc3545;
+            text-decoration: none;
+            font-weight: bold;
+            border: 1px solid #dc3545;
+            padding: 5px 10px;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+
+        .navbar-user a:hover {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .container {
+            display: flex;
+            height: calc(100vh - 70px);
+            margin-top: 70px;
+        }
+
+        .main {
+            flex-grow: 1;
+            text-align: center;
+            padding: 40px;
+            overflow-y: auto;
+            background-color: #f9fafb;
+        }
+
+        .device-container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 30px;
+            gap: 20px;
+        }
+
+        .device-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            width: 280px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid #e5e7eb;
+        }
+
+        .device-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12);
+        }
+
+        .device-card p {
+            font-size: 1.4em;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #1f2937;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .device-card p:hover {
+            color: #2563eb;
+        }
+
+        .driver-info-box {
+            text-align: left;
+            margin-top: 15px;
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .driver-info-row {
+            margin-bottom: 8px;
+            font-size: 0.95em;
+            color: #4b5563;
+        }
+
+        .driver-info-row strong {
+            color: #111827;
+        }
+
+        /* MODAL STYLING */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 200;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(2px);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 25px;
+            border-radius: 16px;
+            width: 400px;
+            position: relative;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #9ca3af;
+        }
+
+        .close:hover {
+            color: #1f2937;
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            color: #111827;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 5px;
+        }
+
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 0.95rem;
+            transition: border 0.2s;
+        }
+
+        .form-group select:focus {
+            border-color: #2563eb;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .modal-btn {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.2s;
+            font-size: 0.9rem;
+            background: #2563eb;
+            color: white;
+        }
+
+        .modal-btn:hover {
+            background: #1d4ed8;
+        }
+    </style>
+</head>
+
+<body>
+    {% include 'navbar.html' %}
+    <div class="container">
+        {% include 'sidebar.html' %}
+        <div class="main">
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div
+                style="padding: 12px; margin-bottom: 20px; border-radius: 8px; background: {% if category=='error' %}#fee2e2{% else %}#d1fae5{% endif %}; color: {% if category=='error' %}#991b1b{% else %}#065f46{% endif %};">
+                {{ message }}
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            <h2 style="color: #4b5563; margin-bottom: 30px;">
+                {% if role == 'Driver' %} My Assigned Vehicle {% else %} Your Fleet / Devices {% endif %}
+            </h2>
+            <div class="device-container">
+                {% for device in devices %}
+                <div class="device-card">
+                    <div
+                        style="font-size: 3em; color: {% if role == 'Driver' %}#10b981{% else %}#2563eb{% endif %}; margin-bottom: 10px;">
+                        <i class="fas fa-truck"></i>
+                    </div>
+
+                    <!-- Make device name clickable to open camera dashboard -->
+                    <p onclick="window.location.href='/device_info/{{ device.device_name }}'">
+                        <i class="fas fa-video" style="margin-right: 10px; font-size: 0.8em;"></i>
+                        {{ device.device_name }}
+                    </p>
+
+                    <div class="driver-info-box">
+                        {% if role == 'Transporter' %}
+                        {% if device.rc_number %}
+                        <div class="driver-info-row"><strong>RC No:</strong> {{ device.rc_number }}</div>
+                        <div class="driver-info-row"><strong>Driver:</strong>
+                            <span
+                                style="color: {% if device.driver_name == 'Unassigned' %}red{% else %}green{% endif %}; font-weight:bold;">
+                                {{ device.driver_name }}
+                            </span>
+                        </div>
+                        <button
+                            onclick="openDriverModal('{{ device.device_name }}', '{{ device.driver_name }}', '{{ device.rc_number }}')"
+                            style="margin-top: 10px; background: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; width: 100%;">
+                            <i class="fas fa-user-edit"></i> Edit Driver
+                        </button>
+                        {% else %}
+                        <div class="driver-info-row" style="color: #f59e0b; font-weight: bold;">
+                            <i class="fas fa-exclamation-triangle"></i> Not Registered
+                        </div>
+                        <button onclick="openRegisterModal('{{ device.device_name }}')"
+                            style="margin-top: 10px; background: #2563eb; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; width: 100%;">
+                            <i class="fas fa-clipboard-check"></i> Register Vehicle
+                        </button>
+                        {% endif %}
+                        {% else %}
+                        <div class="driver-info-row"><strong>RC No:</strong> {{ device.rc_number }}</div>
+                        <div class="driver-info-row"><strong>Transporter:</strong> {{ device.transporter }}</div>
+                        <div class="driver-info-row"><strong>Driver:</strong> {{ device.driver_name }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- REMOVED: Separate camera button - device name is now clickable -->
+                </div>
+                {% endfor %}
+
+                {% if not devices %}
+                <div
+                    style="background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); width: 100%;">
+                    <i class="fas fa-info-circle" style="font-size: 2em; color: #9ca3af; margin-bottom: 10px;"></i>
+                    <p style="color: #6b7280;">No vehicles assigned yet.</p>
+                    <p style="color: #6b7280;">Contact Admin to assign vehicles to you.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- TRANSPORTER REGISTER VEHICLE MODAL -->
+        {% if role == 'Transporter' %}
+        <div id="registerModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeRegisterModal()">×</span>
+                <h3><i class="fas fa-clipboard-check"></i> Register Vehicle</h3>
+                <p id="registerDeviceName"
+                    style="font-weight:bold; color:#2563eb; margin-bottom:20px; background:#eff6ff; padding:10px; border-radius:6px; border:1px solid #dbeafe;">
+                </p>
+
+                <form action="/transporter_register_vehicle" method="POST">
+                    <input type="hidden" id="registerFormDeviceId" name="device_id">
+
+                    <div class="form-group">
+                        <label>Vehicle RC Number</label>
+                        <input type="text" name="rc_number" placeholder="e.g., GJ-01-AB-1234" required
+                            style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; box-sizing: border-box; font-size: 0.95rem;"
+                            oninput="this.value = this.value.toUpperCase()">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Assign Driver</label>
+                        <select name="driver_name" required>
+                            <option value="" disabled selected>-- Select a Driver --</option>
+                            {% for driver in drivers %}
+                            <option value="{{ driver.name }}">{{ driver.name }} ({{ driver.username }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <button type="submit" class="modal-btn">
+                        <i class="fas fa-save"></i> Register & Assign
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- TRANSPORTER EDIT DRIVER MODAL -->
+        <div id="driverModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeDriverModal()">×</span>
+                <h3><i class="fas fa-user-edit"></i> Edit Driver Assignment</h3>
+                <p id="modalDeviceName"
+                    style="font-weight:bold; color:#2563eb; margin-bottom:10px; background:#eff6ff; padding:10px; border-radius:6px; border:1px solid #dbeafe;">
+                </p>
+
+                <div id="modalCurrentDriver"></div>
+
+                <form action="/transporter_assign_driver" method="POST">
+                    <input type="hidden" id="formDeviceId" name="device_id">
+
+                    <div class="form-group">
+                        <label>Select New Driver</label>
+                        <select name="driver_name" required>
+                            <option value="" disabled selected>-- Select a Driver --</option>
+                            {% for driver in drivers %}
+                            <option value="{{ driver.name }}">{{ driver.name }} ({{ driver.username }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <button type="submit" class="modal-btn">
+                        <i class="fas fa-save"></i> Save Assignment
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <script>
+            function openRegisterModal(deviceId) {
+                document.getElementById('registerModal').style.display = "block";
+                document.getElementById('registerDeviceName').innerText = "Vehicle: " + deviceId;
+                document.getElementById('registerFormDeviceId').value = deviceId;
+            }
+
+            function closeRegisterModal() {
+                document.getElementById('registerModal').style.display = "none";
+            }
+
+            function openDriverModal(deviceId, currentDriver, rcNumber) {
+                document.getElementById('driverModal').style.display = "block";
+                document.getElementById('modalDeviceName').innerText = "Vehicle: " + deviceId + " (RC: " + rcNumber + ")";
+                document.getElementById('formDeviceId').value = deviceId;
+
+                const currentDriverEl = document.getElementById('modalCurrentDriver');
+                if (currentDriver && currentDriver !== 'Unassigned') {
+                    currentDriverEl.innerHTML = `<div style="padding:10px; background:#fff3cd; color:#856404; border:1px solid #ffeeba; border-radius:5px; margin-bottom:15px; font-size:0.9em;">⚠️ Re-assigning will replace: <strong>${currentDriver}</strong></div>`;
+                } else {
+                    currentDriverEl.innerHTML = `<div style="margin-bottom:15px; color:#6b7280; font-size:0.9em; font-style:italic;">Currently Unassigned</div>`;
+                }
+            }
+
+            function closeDriverModal() {
+                document.getElementById('driverModal').style.display = "none";
+            }
+
+            window.onclick = function (event) {
+                if (event.target == document.getElementById('driverModal')) {
+                    closeDriverModal();
+                }
+                if (event.target == document.getElementById('registerModal')) {
+                    closeRegisterModal();
+                }
+            }
+        </script>
+        {% endif %}
+
+    </div><!-- end main -->
+    </div><!-- end container -->
+</body>
+
+</html>
+<!-- ========================================== -->

@@ -1,0 +1,9 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.log
+streams/
+deploy_package.tar.gz
+.vscode/
+.env

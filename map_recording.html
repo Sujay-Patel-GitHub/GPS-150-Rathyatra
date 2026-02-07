@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Map Recording Playback</title>
+    <!-- CSS Dependencies -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --text-color: #1f2937;
+            --bg-color: #f3f4f6;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --border-color: #e5e7eb;
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            background-color: var(--bg-color);
+            height: 100vh;
+            overflow: hidden;
+            color: var(--text-color);
+        }
+
+        /* Override sidebar.html's margin for this page */
+        body>.main-content {
+            margin-left: 240px !important;
+            width: calc(100% - 240px) !important;
+        }
+
+        body.sidebar-collapsed>.main-content {
+            margin-left: 75px !important;
+            width: calc(100% - 75px) !important;
+        }
+
+        .main-content {
+            height: calc(100vh - 70px);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: row;
+        }
+
+        #map {
+            flex: 1;
+            height: 100%;
+            z-index: 1;
+            position: relative;
+        }
+
+        /* Sidebar Controls Panel */
+        .map-controls {
+            width: 320px;
+            background: #fff;
+            padding: 0;
+            /* Padding moved to inner wrapper */
+            border-left: 1px solid var(--border-color);
+            z-index: 1001;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            box-shadow: -4px 0 15px rgba(0, 0, 0, 0.03);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: visible;
+            /* Important for the popped-out button */
+        }
+
+        .controls-content {
+            padding: 32px 24px;
+            overflow-y: auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .map-controls.collapsed .controls-content {
+            display: none;
+        }
+
+        .map-controls.collapsed {
+            width: 60px;
+            padding: 32px 10px;
+        }
+
+        /* Hide all content when collapsed */
+        .map-controls.collapsed .controls-content {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .controls-toggle {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            transform: translateY(-50%) translateX(-100%);
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            width: 32px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 10px;
+            z-index: 1005;
+            box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
+            color: #2563eb;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-left: -4px;
+            /* Slight gap from the edge */
+        }
+
+        .controls-toggle:hover {
+            color: #1d4ed8;
+            background: #f8fafc;
+            width: 36px;
+            box-shadow: -6px 0 16px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Expanded state: Pop out to the left */
+        .map-controls:not(.collapsed) .controls-toggle {
+            left: 0;
+            transform: translateY(-50%) translateX(-100%);
+        }
+
+        /* Collapsed state: Stay visible on the edge */
+        .map-controls.collapsed .controls-toggle {
+            left: 0;
+            transform: translateY(-50%) translateX(-100%);
+            border-radius: 10px;
+            /* Keep uniform rounded corners */
+        }
+
+
+
+        .map-controls h2 {
+            margin: 0 0 20px 0;
+            font-size: 1.25rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #111827;
+        }
+
+        .map-controls h2 i {
+            color: var(--primary-color);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #4b5563;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        /* Searchable Select Styling */
+        .searchable-select {
+            position: relative;
+            width: 100%;
+        }
+
+        .select-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .select-input-wrapper i.left-icon {
+            position: absolute;
+            left: 14px;
+            color: #9ca3af;
+            font-size: 0.9rem;
+        }
+
+        .select-input-wrapper i.right-icon {
+            position: absolute;
+            right: 14px;
+            color: #9ca3af;
+            font-size: 0.8rem;
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 14px 12px 40px;
+            /* Space for icon */
+            border: 1.5px solid var(--border-color);
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            color: #111827;
+            background-color: #fff;
+            transition: all 0.2s;
+            box-sizing: border-box;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+        }
+
+        .options-menu {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            right: 0;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            max-height: 250px;
+            overflow-y: auto;
+            z-index: 3000;
+            display: none;
+            /* Shown on focus */
+            border: 1px solid var(--border-color);
+        }
+
+        .options-menu.show {
+            display: block;
+            animation: slideDown 0.2s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .option-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: #374151;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .option-item:hover {
+            background-color: #f3f4f6;
+            color: var(--primary-color);
+        }
+
+        .option-item i {
+            font-size: 0.8rem;
+            color: #9ca3af;
+        }
+
+        .option-item.no-results {
+            color: #9ca3af;
+            font-style: italic;
+            cursor: default;
+        }
+
+        button.load-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 700;
+            font-size: 1rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+        }
+
+        button.load-btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        #statusMsg {
+            margin-top: 15px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .info-box {
+            margin-top: 20px;
+            padding: 16px;
+            background: #f9fafb;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            font-size: 0.85rem;
+            display: none;
+        }
+
+        .info-box strong {
+            display: block;
+            margin-bottom: 10px;
+            color: #111827;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 0.8rem;
+        }
+
+        .info-row span:first-child {
+            color: #6b7280;
+        }
+
+        .info-row span:last-child {
+            font-weight: 600;
+            color: #111827;
+        }
+
+        /* Playback Controls - Bottom Panel */
+        .playback-panel {
+            position: relative;
+            background: #ffffff;
+            /* Solid white to hide map "backside" */
+            border-top: 1px solid var(--border-color);
+            z-index: 1000;
+            display: none;
+            padding: 10px 20px;
+            /* Reduced height slight */
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .playback-panel.active {
+            display: block;
+        }
+
+        .map-view-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .playback-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 15px;
+        }
+
+        .playback-section {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+        }
+
+        .section-header {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-header i {
+            color: var(--primary-color);
+        }
+
+        .playback-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .playback-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .playback-btn.primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .playback-btn.primary:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        .playback-btn.secondary {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .playback-btn.secondary:hover {
+            background: #d1d5db;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .speed-control label {
+            font-size: 0.8rem;
+            color: #6b7280;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .speed-select {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            background: white;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .progress-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary-color);
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        /* Live Vehicle Details */
+        .vehicle-details {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            color: var(--text-color);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 8px 12px;
+            background: #f8fafc;
+            border: 1px solid #f1f5f9;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .detail-item:hover {
+            background: #f1f5f9;
+            border-color: #e2e8f0;
+        }
+
+        .detail-label {
+            font-size: 0.65rem;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+        }
+
+        .detail-value {
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        .speed-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 6px;
+            background: #dcfce7;
+            color: #166534;
+            font-weight: 700;
+            font-size: 0.85rem;
+            border: 1px solid #bbf7d0;
+        }
+
+        /* Animated Truck Marker */
+        .truck-marker {
+            background: transparent !important;
+            border: none !important;
+        }
+
+        .truck-marker i {
+            animation: pulse 2s infinite;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    {% include 'navbar.html' %}
+    {% include 'sidebar.html' %}
+    <div class="main-content">
+        <div class="map-view-container">
+            <div id="map" style="flex: 1;"></div>
+
+            <!-- Playback Panel - Docked at bottom -->
+            <div id="playbackPanel" class="playback-panel">
+                <div class="playback-grid">
+                    <!-- Playback Controls Section -->
+                    <div class="playback-section">
+                        <div class="section-header">
+                            <i class="fas fa-play-circle"></i> Playback Controls
+                        </div>
+                        <div class="playback-controls">
+                            <div class="speed-control"
+                                style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+                                <label
+                                    style="margin: 0; min-width: 45px; font-size: 0.8rem; font-weight: 600;">Mode:</label>
+                                <select id="speedMode" class="speed-select" onchange="toggleSpeedUI()"
+                                    style="width: auto; padding: 4px 8px; font-size: 0.8rem;">
+                                    <option value="multiplier">Smooth (x)</option>
+                                    <option value="interval">Interval (Jump)</option>
+                                </select>
+
+                                <div id="multiplierWrap" style="display: flex; align-items: center;">
+                                    <select id="playbackSpeed" class="speed-select"
+                                        style="width: 70px; padding: 4px; font-size: 0.8rem;">
+                                        <option value="0.5">0.5x</option>
+                                        <option value="1" selected>1x</option>
+                                        <option value="2">2x</option>
+                                        <option value="10">10x</option>
+                                    </select>
+                                </div>
+
+                                <div id="intervalWrap" style="display: none; align-items: center; gap: 4px;">
+                                    <input type="number" id="jumpValue" class="speed-select" value="5" min="1"
+                                        style="width: 50px; padding: 4px; font-size: 0.8rem;">
+                                    <select id="jumpUnit" class="speed-select"
+                                        style="width: 75px; padding: 4px; font-size: 0.8rem;">
+                                        <option value="1">Sec</option>
+                                        <option value="60" selected>Min</option>
+                                        <option value="3600">Hour</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="control-row">
+                                <button id="playPauseBtn" class="playback-btn primary">
+                                    <i class="fas fa-play"></i> Play
+                                </button>
+                                <button id="resetBtn" class="playback-btn secondary">
+                                    <i class="fas fa-redo"></i> Reset
+                                </button>
+                            </div>
+                            <div class="progress-container">
+                                <div class="progress-bar" id="progressBar">
+                                    <div class="progress-fill" id="progressFill"></div>
+                                </div>
+                                <div class="progress-info">
+                                    <span id="currentPoint">Point: 0/0</span>
+                                    <span id="progressPercent">0%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Details Section -->
+                    <div class="vehicle-details">
+                        <div class="section-header" style="color: #111827; margin-bottom: 8px;">
+                            <i class="fas fa-truck" style="color: #6366f1;"></i> Live Vehicle Details
+                        </div>
+                        <div class="details-grid">
+                            <div class="detail-item">
+                                <span class="detail-label"><i class="fas fa-id-card"></i> Vehicle</span>
+                                <span class="detail-value" id="liveVehicleName">-</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label"><i class="fas fa-tachometer-alt"></i> Speed</span>
+                                <span class="detail-value speed-badge" id="liveSpeed">0 km/h</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label"><i class="fas fa-map-pin"></i> Latitude</span>
+                                <span class="detail-value" id="liveLat">-</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label"><i class="fas fa-map-pin"></i> Longitude</span>
+                                <span class="detail-value" id="liveLng">-</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label"><i class="fas fa-clock"></i> Time</span>
+                                <span class="detail-value" id="liveTime">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="map-controls" id="rightSidebar">
+            <div class="controls-toggle" onclick="toggleRightSidebar()" title="Toggle Controls">
+                <i class="fas fa-chevron-right" id="rightToggleIcon" style="font-size: 1.2rem;"></i>
+            </div>
+            <div class="controls-content">
+                <h2 style="margin-bottom: 32px;"><i class="fas fa-map-marked-alt"></i> Map Playback</h2>
+
+                <div class="form-group">
+                    <label>Select Device</label>
+                    <div class="searchable-select">
+                        <div class="select-input-wrapper">
+                            <i class="fas fa-search left-icon"></i>
+                            <input type="text" id="deviceSearch" class="form-control" placeholder="Search vehicle ID..."
+                                autocomplete="off">
+                            <i class="fas fa-chevron-down right-icon" id="toggleOptions"></i>
+                        </div>
+                        <div class="options-menu" id="optionsMenu">
+                            <!-- Options filled by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="dateSelect">Select Date</label>
+                    <input type="date" id="dateSelect" class="form-control" style="padding-left: 14px;">
+                </div>
+
+                <button class="load-btn" onclick="loadTracks()">
+                    <i class="fas fa-history"></i> Load History
+                </button>
+
+                <button class="load-btn" onclick="exportReport()"
+                    style="margin-top: 10px; background: #166534; box-shadow: 0 4px 6px -1px rgba(22, 101, 52, 0.2);">
+                    <i class="fas fa-file-excel"></i> Export Report
+                </button>
+                <div id="statusMsg"></div>
+
+                <div id="infoBox" class="info-box">
+                    <strong><i class="fas fa-info-circle"></i> Session Summary</strong>
+                    <div class="info-row"><span>Points:</span> <span id="pointCount">0</span></div>
+                    <div class="info-row"><span>Start:</span> <span id="startTime">-</span></div>
+                    <div class="info-row"><span>End:</span> <span id="endTime">-</span></div>
+                </div>
+
+                <div class="form-group" style="margin-top: 24px;">
+                    <label><i class="fas fa-filter"></i> Optimization</label>
+                    <div
+                        style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 10px;">
+                        <label
+                            style="display: flex; align-items: center; justify-content: space-between; font-weight: 500; cursor: pointer; font-size: 0.85rem; color: #475569; margin: 0;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-broom" style="color: var(--primary-color);"></i>
+                                <span>Clean Static Points</span>
+                            </div>
+                            <input type="checkbox" id="cleanData" checked
+                                style="width: 18px; height: 18px; accent-color: var(--primary-color);">
+                        </label>
+                        <p style="font-size: 0.75rem; color: #64748b; margin: 0; line-height: 1.4;">
+                            Removes large sequences of duplicate positions (>500 points) to focus on movement.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 24px;">
+                    <label><i class="fas fa-eye"></i> Display Options</label>
+                    <div
+                        style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 10px;">
+                        <label
+                            style="display: flex; align-items: center; gap: 10px; font-weight: 500; cursor: pointer; font-size: 0.85rem; color: #475569; margin: 0;">
+                            <input type="radio" name="displayMode" value="both" checked onchange="updateDisplayMode()"
+                                style="accent-color: var(--primary-color);">
+                            <span>Show Both (Line & Points)</span>
+                        </label>
+                        <label
+                            style="display: flex; align-items: center; gap: 10px; font-weight: 500; cursor: pointer; font-size: 0.85rem; color: #475569; margin: 0;">
+                            <input type="radio" name="displayMode" value="points" onchange="updateDisplayMode()"
+                                style="accent-color: var(--primary-color);">
+                            <span>Points Only</span>
+                        </label>
+                        <label
+                            style="display: flex; align-items: center; gap: 10px; font-weight: 500; cursor: pointer; font-size: 0.85rem; color: #475569; margin: 0;">
+                            <input type="radio" name="displayMode" value="line" onchange="updateDisplayMode()"
+                                style="accent-color: var(--primary-color);">
+                            <span>Line Only</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+    <script>
+        let map, polyline, startMarker, endMarker;
+        let pointsLayer;
+        let allDevices = [];
+        let selectedDevice = "";
+
+        function exportReport() {
+            const date = document.getElementById('dateSelect').value;
+            if (!selectedDevice || !date) {
+                const status = document.getElementById('statusMsg');
+                status.innerText = "Please select both a device and a date.";
+                status.style.color = "#ef4444";
+                return;
+            }
+
+            // Trigger download via new backend route
+            window.location.href = `/api/export_recordings?vehicle=${selectedDevice}&date=${date}`;
+        }
+
+        // Init Map
+        map = L.map('map', { zoomControl: false }).setView([20.5937, 78.9629], 5);
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+        L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: 'Google'
+        }).addTo(map);
+
+        // Sidebar Management
+        function toggleRightSidebar() {
+            const sidebar = document.getElementById('rightSidebar');
+            const icon = document.getElementById('rightToggleIcon');
+            sidebar.classList.toggle('collapsed');
+
+            // Logic: if collapsed, show icon to expand (<), else show icon to collapse (>)
+            if (sidebar.classList.contains('collapsed')) {
+                icon.className = 'fas fa-chevron-left';
+            } else {
+                icon.className = 'fas fa-chevron-right';
+            }
+
+            setTimeout(() => map.invalidateSize(), 300);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Auto collapse left sidebar to maximize map space
+            const leftSidebar = document.getElementById('mainSidebar');
+            if (leftSidebar && !leftSidebar.classList.contains('collapsed')) {
+                leftSidebar.classList.add('collapsed');
+                document.body.classList.add('sidebar-collapsed');
+                localStorage.setItem('sidebarCollapsed', 'true');
+            }
+
+            // Right sidebar stays open by default as requested
+            setTimeout(() => map.invalidateSize(), 400);
+        });
+
+        // Fetch Devices
+        fetch('/api/get_devices_list')
+            .then(r => r.json())
+            .then(data => {
+                allDevices = Array.isArray(data) ? data : (data.devices || []);
+                renderOptions(allDevices);
+            });
+
+        const searchInput = document.getElementById('deviceSearch');
+        const optionsMenu = document.getElementById('optionsMenu');
+        const toggleBtn = document.getElementById('toggleOptions');
+
+        function renderOptions(list) {
+            optionsMenu.innerHTML = '';
+            if (list.length === 0) {
+                optionsMenu.innerHTML = '<div class="option-item no-results">No vehicles found</div>';
+                return;
+            }
+            list.forEach(d => {
+                const item = document.createElement('div');
+                item.className = 'option-item';
+                item.innerHTML = `<i class="fas fa-truck"></i> ${d}`;
+                item.onclick = () => selectDevice(d);
+                optionsMenu.appendChild(item);
+            });
+        }
+
+        function selectDevice(d) {
+            selectedDevice = d;
+            searchInput.value = d;
+            optionsMenu.classList.remove('show');
+        }
+
+        searchInput.onfocus = () => optionsMenu.classList.add('show');
+
+        // Hide on click outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.searchable-select')) {
+                optionsMenu.classList.remove('show');
+            }
+        });
+
+        searchInput.oninput = (e) => {
+            const term = e.target.value.toLowerCase();
+            const filtered = allDevices.filter(d => d.toLowerCase().includes(term));
+            renderOptions(filtered);
+            optionsMenu.classList.add('show');
+            selectedDevice = ""; // Reset if manually typing
+        };
+
+        toggleBtn.onclick = (e) => {
+            e.stopPropagation();
+            optionsMenu.classList.toggle('show');
+            searchInput.focus();
+        };
+
+        // Date init
+        document.getElementById('dateSelect').valueAsDate = new Date();
+
+        function loadTracks() {
+            const device = selectedDevice || searchInput.value;
+            const date = document.getElementById('dateSelect').value;
+            const msg = document.getElementById('statusMsg');
+
+            if (!device || !date) {
+                msg.innerText = "Please select a vehicle and date.";
+                msg.style.color = "#ef4444";
+                return;
+            }
+
+            msg.innerText = "Loading data...";
+            msg.style.color = "#2563eb";
+            optionsMenu.classList.remove('show');
+
+            // Reset playback
+            stopPlayback();
+            currentIndex = 0;
+            trackData = [];
+
+            if (polyline) map.removeLayer(polyline);
+            if (startMarker) map.removeLayer(startMarker);
+            if (endMarker) map.removeLayer(endMarker);
+            if (pointsLayer) map.removeLayer(pointsLayer);
+            if (animatedMarker) map.removeLayer(animatedMarker);
+            if (animatedPath) map.removeLayer(animatedPath);
+
+            document.getElementById('infoBox').style.display = 'none';
+            document.getElementById('playbackPanel').classList.remove('active');
+
+            function filterGPSSpikes(points) {
+                if (points.length < 3) return points;
+
+                const MAX_SPEED_KMH = 500; // Increased to 500 to catch only major jumps, not normal curves
+                let filtered = [points[0]];
+
+                for (let i = 1; i < points.length; i++) {
+                    const prev = filtered[filtered.length - 1];
+                    const curr = points[i];
+
+                    const from = turf.point([prev.lng, prev.lat]);
+                    const to = turf.point([curr.lng, curr.lat]);
+                    const distanceKm = turf.distance(from, to, { units: 'kilometers' });
+                    const timeSecs = (curr.ts - prev.ts);
+
+                    if (timeSecs > 0) {
+                        const speedKmh = (distanceKm) / (timeSecs / 3600);
+
+                        if (speedKmh > MAX_SPEED_KMH) {
+                            if (i + 1 < points.length) {
+                                const next = points[i + 1];
+                                const distNext = turf.distance(from, turf.point([next.lng, next.lat]), { units: 'kilometers' });
+                                const timeNext = (next.ts - prev.ts);
+                                const speedNext = distNext / (timeNext / 3600);
+
+                                if (speedNext < MAX_SPEED_KMH) {
+                                    continue; // This point is a spike, skip it
+                                }
+                            }
+                        }
+                    }
+                    filtered.push(curr);
+                }
+                return filtered;
+            }
+
+            fetch(`/api/get_map_recordings_data?device_id=${device}&date=${date}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error || !data.points || data.points.length === 0) {
+                        msg.innerText = data.error || "No data for this date.";
+                        msg.style.color = "#ef4444";
+                        return;
+                    }
+                    msg.innerText = "Success!";
+                    msg.style.color = "#10b981";
+
+                    // 1. Filter out major outliers (spikes)
+                    let cleanedData = filterGPSSpikes(data.points);
+
+                    // 2. Filter out large static blocks if toggle is ON
+                    const shouldClean = document.getElementById('cleanData').checked;
+                    if (shouldClean && cleanedData.length > 500) {
+                        let optimized = [];
+                        let i = 0;
+                        while (i < cleanedData.length) {
+                            let startIdx = i;
+                            let endIdx = i;
+
+                            // Find the end of the sequence with same coordinates
+                            while (endIdx + 1 < cleanedData.length &&
+                                cleanedData[endIdx + 1].lat === cleanedData[startIdx].lat &&
+                                cleanedData[endIdx + 1].lng === cleanedData[startIdx].lng) {
+                                endIdx++;
+                            }
+
+                            let count = endIdx - startIdx + 1;
+                            if (count > 500) {
+                                // Keep the first and last point of the static sequence to preserve time tracking
+                                optimized.push(cleanedData[startIdx]);
+                                optimized.push(cleanedData[endIdx]);
+                            } else {
+                                // Keep the whole sequence
+                                for (let k = startIdx; k <= endIdx; k++) {
+                                    optimized.push(cleanedData[k]);
+                                }
+                            }
+                            i = endIdx + 1;
+                        }
+                        cleanedData = optimized;
+                        console.log(`Optimized points from ${data.points.length} to ${cleanedData.length}`);
+                    }
+
+                    trackData = cleanedData;
+
+                    // Split path into segments if there is a gap > 500m (0.5km)
+                    // This prevents straight lines spanning large distances with no data
+                    let segments = [];
+                    if (cleanedData.length > 0) {
+                        let currentSegment = [[cleanedData[0].lat, cleanedData[0].lng]];
+                        for (let i = 1; i < cleanedData.length; i++) {
+                            const prev = cleanedData[i - 1];
+                            const curr = cleanedData[i];
+                            const dist = turf.distance(
+                                turf.point([prev.lng, prev.lat]),
+                                turf.point([curr.lng, curr.lat]),
+                                { units: 'kilometers' }
+                            );
+
+                            if (dist > 0.5) { // 500 meters
+                                curr.isGap = true; // Mark as gap for animated path
+                                segments.push(currentSegment);
+                                currentSegment = [[curr.lat, curr.lng]];
+                            } else {
+                                currentSegment.push([curr.lat, curr.lng]);
+                            }
+                        }
+                        segments.push(currentSegment);
+                    }
+
+                    polyline = L.polyline(segments, { color: '#2563eb', weight: 6, opacity: 0.8 }).addTo(map);
+                    if (cleanedData.length > 0) {
+                        map.fitBounds(polyline.getBounds(), { padding: [100, 100] });
+                    }
+
+                    pointsLayer = L.layerGroup().addTo(map);
+                    data.points.forEach((p, idx) => {
+                        const isStopped = (p.speed || 0) < 3;
+                        L.circleMarker([p.lat, p.lng], {
+                            radius: isStopped ? 4 : 3,
+                            color: isStopped ? "#ef4444" : "#f59e0b",
+                            fillColor: "#fff", fillOpacity: 1, weight: 2
+                        }).addTo(pointsLayer).bindPopup(`
+                            <div style="font-size:12px;">
+                                <strong>#${idx + 1}</strong> | ${p.time}<br>
+                                Speed: <b>${p.speed || 0} km/h</b>
+                            </div>
+                        `);
+                    });
+
+                    startMarker = L.marker([data.points[0].lat, data.points[0].lng]).addTo(map).bindPopup('Start: ' + data.points[0].time);
+                    endMarker = L.marker([data.points[data.points.length - 1].lat, data.points[data.points.length - 1].lng]).addTo(map).bindPopup('End: ' + data.points[data.points.length - 1].time);
+
+                    document.getElementById('infoBox').style.display = 'block';
+                    document.getElementById('pointCount').innerText = data.points.length;
+                    document.getElementById('startTime').innerText = data.points[0].time;
+                    document.getElementById('endTime').innerText = data.points[data.points.length - 1].time;
+
+                    // Show playback panel
+                    document.getElementById('playbackPanel').classList.add('active');
+                    document.getElementById('liveVehicleName').innerText = device;
+
+                    // Apply current display mode
+                    updateDisplayMode();
+
+                    // Initialize animated marker
+                    const truckIcon = L.divIcon({
+                        html: '<i class="fas fa-truck" style="color: #2563eb; font-size: 24px;"></i>',
+                        className: 'truck-marker',
+                        iconSize: [30, 30],
+                        iconAnchor: [15, 15]
+                    });
+
+                    animatedMarker = L.marker([data.points[0].lat, data.points[0].lng], {
+                        icon: truckIcon,
+                        zIndexOffset: 1000
+                    }).addTo(map);
+
+                    // Initialize animated path
+                    animatedPath = L.polyline([], {
+                        color: '#2563eb',
+                        weight: 6,
+                        opacity: 0.8
+                    }).addTo(map);
+
+                    // Update initial details
+                    updateLiveDetails(0);
+                    updateProgress();
+                });
+        }
+
+        // Playback variables
+        let trackData = [];
+        let currentIndex = 0;
+        let isPlaying = false;
+        let playbackInterval = null;
+        let animatedMarker = null;
+        let animatedPath = null;
+
+        // Playback Controls
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const playbackSpeed = document.getElementById('playbackSpeed');
+        const progressBar = document.getElementById('progressBar');
+
+        playPauseBtn.addEventListener('click', togglePlayback);
+        resetBtn.addEventListener('click', resetPlayback);
+
+        progressBar.addEventListener('click', (e) => {
+            const rect = progressBar.getBoundingClientRect();
+            const percent = (e.clientX - rect.left) / rect.width;
+            currentIndex = Math.floor(percent * trackData.length);
+            if (currentIndex >= trackData.length) currentIndex = trackData.length - 1;
+            updatePlaybackPosition();
+        });
+
+        function updateDisplayMode() {
+            const mode = document.querySelector('input[name="displayMode"]:checked').value;
+            if (!polyline || !pointsLayer) return;
+
+            if (mode === 'both') {
+                if (!map.hasLayer(polyline)) map.addLayer(polyline);
+                if (!map.hasLayer(pointsLayer)) map.addLayer(pointsLayer);
+            } else if (mode === 'points') {
+                if (map.hasLayer(polyline)) map.removeLayer(polyline);
+                if (!map.hasLayer(pointsLayer)) map.addLayer(pointsLayer);
+            } else if (mode === 'line') {
+                if (!map.hasLayer(polyline)) map.addLayer(polyline);
+                if (map.hasLayer(pointsLayer)) map.removeLayer(pointsLayer);
+            }
+        }
+
+        function togglePlayback() {
+            if (trackData.length === 0) return;
+
+            isPlaying = !isPlaying;
+
+            if (isPlaying) {
+                playPauseBtn.innerHTML = '<i class="fas fa-pause"></i> Pause';
+                startPlayback();
+            } else {
+                playPauseBtn.innerHTML = '<i class="fas fa-play"></i> Play';
+                stopPlayback();
+            }
+        }
+
+        function toggleSpeedUI() {
+            const mode = document.getElementById('speedMode').value;
+            document.getElementById('multiplierWrap').style.display = mode === 'multiplier' ? 'flex' : 'none';
+            document.getElementById('intervalWrap').style.display = mode === 'interval' ? 'flex' : 'none';
+            if (isPlaying) {
+                stopPlayback();
+                startPlayback();
+            }
+        }
+
+        function startPlayback() {
+            const mode = document.getElementById('speedMode').value;
+            let msInterval = 1000;
+
+            if (mode === 'multiplier') {
+                const speedSelect = document.getElementById('playbackSpeed');
+                const speed = parseFloat(speedSelect.value) || 1;
+                msInterval = 1000 / speed;
+            }
+
+            playbackInterval = setInterval(() => {
+                if (currentIndex >= trackData.length - 1) {
+                    stopPlayback();
+                    playPauseBtn.innerHTML = '<i class="fas fa-play"></i> Play';
+                    isPlaying = false;
+                    return;
+                }
+
+                if (mode === 'multiplier') {
+                    currentIndex++;
+                } else {
+                    const jumpVal = parseInt(document.getElementById('jumpValue').value) || 1;
+                    const jumpUnit = parseInt(document.getElementById('jumpUnit').value) || 1;
+                    const totalSecs = jumpVal * jumpUnit;
+
+                    const currentTs = trackData[currentIndex].ts;
+                    let nextIdx = currentIndex + 1;
+                    // Find the next point that is at least 'totalSecs' ahead
+                    while (nextIdx < trackData.length && (trackData[nextIdx].ts - currentTs < totalSecs)) {
+                        nextIdx++;
+                    }
+                    currentIndex = Math.min(nextIdx, trackData.length - 1);
+                }
+
+                updatePlaybackPosition();
+
+                if (currentIndex >= trackData.length - 1) {
+                    stopPlayback();
+                    playPauseBtn.innerHTML = '<i class="fas fa-play"></i> Play';
+                    isPlaying = false;
+                }
+            }, msInterval);
+        }
+
+        function stopPlayback() {
+            if (playbackInterval) {
+                clearInterval(playbackInterval);
+                playbackInterval = null;
+            }
+        }
+
+        function resetPlayback() {
+            stopPlayback();
+            isPlaying = false;
+            currentIndex = 0;
+            playPauseBtn.innerHTML = '<i class="fas fa-play"></i> Play';
+            updatePlaybackPosition();
+        }
+
+        function updatePlaybackPosition() {
+            if (!trackData[currentIndex]) return;
+
+            const point = trackData[currentIndex];
+
+            // Update marker position
+            animatedMarker.setLatLng([point.lat, point.lng]);
+
+            // Update animated path with gaps support
+            const history = trackData.slice(0, currentIndex + 1);
+            let playbackSegments = [[]];
+            history.forEach(p => {
+                if (p.isGap) playbackSegments.push([]);
+                playbackSegments[playbackSegments.length - 1].push([p.lat, p.lng]);
+            });
+            animatedPath.setLatLngs(playbackSegments);
+
+            // Center map on current position
+            map.panTo([point.lat, point.lng], { animate: true, duration: 0.5 });
+
+            // Update live details
+            updateLiveDetails(currentIndex);
+            updateProgress();
+        }
+
+        function updateLiveDetails(index) {
+            const point = trackData[index];
+            if (!point) return;
+
+            document.getElementById('liveSpeed').innerText = `${point.speed || 0} km/h`;
+            document.getElementById('liveLat').innerText = point.lat.toFixed(6);
+            document.getElementById('liveLng').innerText = point.lng.toFixed(6);
+            document.getElementById('liveTime').innerText = point.time;
+        }
+
+        function updateProgress() {
+            const percent = trackData.length > 0 ? ((currentIndex / (trackData.length - 1)) * 100) : 0;
+            document.getElementById('progressFill').style.width = percent + '%';
+            document.getElementById('currentPoint').innerText = `Point: ${currentIndex + 1}/${trackData.length}`;
+            document.getElementById('progressPercent').innerText = Math.round(percent) + '%';
+        }
+
+        playbackSpeed.addEventListener('change', () => {
+            if (isPlaying) {
+                stopPlayback();
+                startPlayback();
+            }
+        });
+    </script>
+</body>
+
+</html>
