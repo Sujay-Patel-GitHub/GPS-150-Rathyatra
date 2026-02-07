@@ -1002,7 +1002,7 @@ def recordings():
             })
 
     # Check if authenticated in session
-    is_authenticated = session.get('recordings_authenticated', False)
+    is_authenticated = session.get('admin_pages_authenticated', False)
 
     return render_template_string(
         get_template("RECORDINGS_HTML"),
@@ -1024,7 +1024,7 @@ def verify_recordings_password():
     RECORDINGS_PASSWORD = "rushi@9945"
     
     if entered_password == RECORDINGS_PASSWORD:
-        session['recordings_authenticated'] = True
+        session['admin_pages_authenticated'] = True
         return jsonify({"success": True})
     else:
         return jsonify({"success": False, "error": "Incorrect password"})
@@ -1356,6 +1356,9 @@ def time_threshold():
     if session.get('user_type') != 'admin':
         return redirect(url_for('login'))
     
+    # Check if authenticated in session
+    is_authenticated = session.get('admin_pages_authenticated', False)
+    
     # Get all vehicles
     vehicles = list(col_vehicles.find({}))
     
@@ -1409,7 +1412,7 @@ def time_threshold():
             "raw_time": raw_time_str
         })
         
-    return render_template("time_threshold.html", vehicles=display_list, logo_url=LOGO_URL)
+    return render_template("time_threshold.html", vehicles=display_list, logo_url=LOGO_URL, is_authenticated=is_authenticated)
 
 
 @app.route("/save_time_threshold", methods=["POST"])
@@ -1436,6 +1439,9 @@ def save_time_threshold():
 def manage_rtmp():
     if session.get('user_type') != 'admin':
         return redirect(url_for('login'))
+    
+    # Check if authenticated in session
+    is_authenticated = session.get('admin_pages_authenticated', False)
     
     try:
         source = get_rtmp_source()
@@ -1512,7 +1518,8 @@ def manage_rtmp():
                                vehicles=vehicles_display, 
                                logo_url=LOGO_URL, 
                                current_source=source,
-                               power_off_threshold=get_power_off_threshold())
+                               power_off_threshold=get_power_off_threshold(),
+                               is_authenticated=is_authenticated)
         
     except Exception as e:
         print(f"Error in manage_rtmp: {e}")

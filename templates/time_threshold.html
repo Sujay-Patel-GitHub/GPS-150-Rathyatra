@@ -198,6 +198,184 @@
                 align-items: flex-start;
             }
         }
+
+        /* Password Modal Styling */
+        .password-modal-overlay {
+            position: fixed;
+            top: 70px;
+            left: 240px;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: left 0.3s ease;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        body.sidebar-collapsed .password-modal-overlay {
+            left: 75px;
+        }
+
+        .password-modal {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            padding: 50px 40px;
+            max-width: 450px;
+            width: 90%;
+            text-align: center;
+            animation: slideUp 0.4s ease-out;
+        }
+
+        .modal-icon-lock {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+            box-shadow: 0 10px 30px rgba(37, 99, 235, 0.2);
+        }
+
+        .modal-icon-lock i {
+            font-size: 2.5rem;
+            color: white;
+        }
+
+        .password-modal h2 {
+            font-size: 1.8rem;
+            color: #1e293b;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .password-modal p {
+            color: #64748b;
+            font-size: 0.95rem;
+            margin-bottom: 35px;
+            line-height: 1.5;
+        }
+
+        .modal-form-group-lock {
+            margin-bottom: 25px;
+            text-align: left;
+        }
+
+        .modal-form-group-lock label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 8px;
+        }
+
+        .modal-password-wrapper-lock {
+            position: relative;
+        }
+
+        .modal-password-wrapper-lock input {
+            width: 100%;
+            padding: 14px 45px 14px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s;
+            outline: none;
+        }
+
+        .modal-password-wrapper-lock input:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+        }
+
+        .modal-toggle-password-lock {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: color 0.2s;
+        }
+
+        .modal-toggle-password-lock:hover {
+            color: #2563eb;
+        }
+
+        .modal-btn-submit-lock {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+        }
+
+        .modal-btn-submit-lock:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+        }
+
+        .modal-error-lock {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            border-left: 4px solid #dc2626;
+        }
+
+        .modal-error-lock.show {
+            display: flex;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .password-modal-overlay {
+                left: 0;
+                top: 0;
+            }
+        }
     </style>
 </head>
 
@@ -205,6 +383,43 @@
 
     {% include 'navbar.html' %}
     {% include 'sidebar.html' %}
+
+    <!-- Password Modal -->
+    {% if not is_authenticated %}
+    <div class="password-modal-overlay" id="adminPasswordModal">
+        <div class="password-modal">
+            <div class="modal-icon-lock">
+                <i class="fas fa-lock"></i>
+            </div>
+
+            <h2>Admin Access</h2>
+            <p>This section is password protected. Please enter the password to continue.</p>
+
+            <div class="modal-error-lock" id="modalErrorLock">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="errorMessageLock">Incorrect password. Please try again.</span>
+            </div>
+
+            <form id="passwordFormLock" onsubmit="return false;">
+                <div class="modal-form-group-lock">
+                    <label for="modalPasswordLock">
+                        <i class="fas fa-key"></i> Password
+                    </label>
+                    <div class="modal-password-wrapper-lock">
+                        <input type="password" id="modalPasswordLock" placeholder="Enter password" required autofocus>
+                        <button type="button" class="modal-toggle-password-lock" onclick="toggleAdminPassword()">
+                            <i class="fas fa-eye" id="modalToggleIconLock"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="modal-btn-submit-lock" onclick="verifyAdminPassword()">
+                    <i class="fas fa-unlock"></i> Unlock Page
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
 
     <div class="main">
         <div class="page-header">
@@ -361,12 +576,67 @@
             }
         }
 
-        // Init previews
+        // Initialize previews
         document.addEventListener('DOMContentLoaded', () => {
             {% for v in vehicles %}
             updatePreview('{{ v.device_id }}');
             {% endfor %}
         });
+
+        // --- Admin Password Functions ---
+        function toggleAdminPassword() {
+            const passwordInput = document.getElementById('modalPasswordLock');
+            const toggleIcon = document.getElementById('modalToggleIconLock');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+            }
+        }
+
+        async function verifyAdminPassword() {
+            const passwordInput = document.getElementById('modalPasswordLock');
+            const errorDiv = document.getElementById('modalErrorLock');
+            const password = passwordInput.value;
+
+            if (!password) return;
+
+            try {
+                const response = await fetch('/verify_recordings_password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: password })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    errorDiv.querySelector('#errorMessageLock').textContent = data.error || 'Incorrect password';
+                    errorDiv.classList.add('show');
+                    passwordInput.value = '';
+                    passwordInput.focus();
+                }
+            } catch (error) {
+                errorDiv.querySelector('#errorMessageLock').textContent = 'Connection error.';
+                errorDiv.classList.add('show');
+            }
+        }
+
+        // Enter key listener
+        const adminPassInput = document.getElementById('modalPasswordLock');
+        if (adminPassInput) {
+            adminPassInput.addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    verifyAdminPassword();
+                }
+            });
+        }
     </script>
 </body>
 
