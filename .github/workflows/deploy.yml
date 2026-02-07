@@ -27,10 +27,12 @@ jobs:
             # 2. Update dependencies
             ./venv/bin/python3 -m pip install -r requirements.txt
             
-            # 3. Kill old process and start new one
+            # 3. Kill old process and start new one (fully detached)
             pkill -f "app.py" || true
+            sleep 1
             nohup ./venv/bin/python3 app.py > output.log 2>&1 &
+            disown
             
             # 4. Success message
-            sleep 2
             echo "✅ Deployment Successful!"
+            exit 0
