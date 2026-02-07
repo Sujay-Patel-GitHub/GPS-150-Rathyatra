@@ -1146,104 +1146,63 @@ def api_export_recordings():
     if session.get('user_type') != 'admin':
         return jsonify({"success": False, "error": "Unauthorized"}), 403
 
-    vehicle_id = request.args.get('vehicle')
+    device_id = request.args.get('vehicle')
     date_str = request.args.get('date')
 
-    if not vehicle_id or not date_str:
+    if not device_id or not date_str:
         return "Missing vehicle or date", 400
 
     try:
-        # 1. Fetch Vehicle Details (to get camera names)
-        # Note: Re-using logic from get_vehicle_cameras ideally, but inline here for simplicity
-        vh = col_vehicles.find_one({"vehicle_number": vehicle_id})
-        cameras = []
-        if vh:
-            # Check local DB config first
-            device_id = vh.get("device_id", vehicle_id) # key usually used for FB
-            
-            # Fetch from Firebase for latest camera names
-            fb_ref = db.reference(f'users/{device_id}/')
-            device_data = fb_ref.get()
-            
-            if device_data:
-                # Helper to extract stream name
-                def get_stream_name(url):
-                   try:
-                       parts = url.split('/')
-                       return parts[-1] if parts else None
-                   except: return None
-
-                for i in range(1, 5):
-                     url = device_data.get(f"rtmp{i}")
-                     if url:
-                         s_name = get_stream_name(url)
-                         if s_name:
-                             cameras.append({"id": str(i), "name": s_name})
-
-        # 2. Check Storage Status for each camera
-        # We default to checking REMOTE storage as that's the primary archive usually
-        mode = "remote" 
-        base_path = SSH_BASE_PATH if mode == "remote" else LOCAL_BASE_PATH
+        # 1. Fetch Tracking Data from MongoDB
+        start_dt = datetime.strptime(date_str, "%Y-%m-%d")
+        end_dt = start_dt + timedelta(days=1)
+        
+        cursor = col_map_recordings.find({
+            "device_id": device_id,
+            "timestamp": {"$gte": start_dt, "$lt": end_dt}
+        }).sort("timestamp", 1)
+        
+        # 2. Prepare Report Data
+        # Fetch Vehicle details for RC number
+        vh = col_vehicles.find_one({"device_id": device_id})
+        rc_number = vh.get("rc_number", "N/A") if vh else "N/A"
         
         report_rows = []
-        
-        # Connect to storage
-        if mode == "remote":
-            client = get_ssh_client()
-            sftp = client.open_sftp()
+        for doc in cursor:
+            report_rows.append({
+                "Device ID": device_id,
+                "Vehicle RC": rc_number,
+                "Date": doc["timestamp"].strftime("%Y-%m-%d"),
+                "Time": doc["timestamp"].strftime("%H:%M:%S"),
+                "Latitude": doc["lat"],
+                "Longitude": doc["lng"],
+                "Speed (km/h)": doc.get("speed", 0)
+            })
             
-            # List root folders once to minimize calls
-            root_folders = []
-            try:
-                for entry in sftp.listdir_attr(base_path):
-                     if entry.st_mode & 0o40000 == 0o40000:
-                         root_folders.append(entry.filename)
-            except:
-                pass
-                
-            for cam in cameras:
-                # Logic: Check if ROOT folder matches camera name
-                status = "Not Found"
-                details = "No recording folder found"
-                
-                # Check fuzzy match
-                match = next((f for f in root_folders if cam['name'] in f or f in cam['name']), None)
-                
-                if match:
-                    status = "Active / Stored"
-                    details = "Folder exists"
-                
-                report_rows.append({
-                    "Vehicle": vehicle_id,
-                    "Camera ID": cam['id'],
-                    "Camera Name": cam['name'],
-                    "Date": date_str,
-                    "Status": status,
-                    "Last Update": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), # Placeholder for actual file check
-                    "Details": details
-                })
-            
-            sftp.close()
-            client.close()
-        
+        if not report_rows:
+            return f"No tracking data found for {device_id} on {date_str}", 404
+
         # 3. Generate CSV
         import io
         import csv
         
         output = io.StringIO()
-        writer = csv.DictWriter(output, fieldnames=["Vehicle", "Camera ID", "Camera Name", "Date", "Status", "Last Update", "Details"])
+        fieldnames = ["Device ID", "Vehicle RC", "Date", "Time", "Latitude", "Longitude", "Speed (km/h)"]
+        writer = csv.DictWriter(output, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(report_rows)
         
         # Return file
         output.seek(0)
+        filename = f"GPS_Report_{device_id}_{date_str}.csv"
         return Response(
             output.getvalue(),
             mimetype="text/csv",
-            headers={"Content-disposition": f"attachment; filename=report_{vehicle_id}_{date_str}.csv"}
+            headers={"Content-disposition": f"attachment; filename={filename}"}
         )
 
     except Exception as e:
+        print(f"Error generating report: {e}")
         return f"Error generating report: {str(e)}", 500
 
 @app.route("/api/server/delete", methods=["POST"])
