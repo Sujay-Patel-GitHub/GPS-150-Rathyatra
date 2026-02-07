@@ -1175,7 +1175,7 @@ def api_export_recordings():
         cursor = col_map_recordings.find({
             "device_id": device_id,
             "timestamp": {"$gte": start_dt, "$lt": end_dt}
-        }).sort("timestamp", 1)
+        }, {"lat": 1, "lng": 1, "speed": 1, "timestamp": 1, "_id": 0}).sort("timestamp", 1)
         
         # 2. Prepare Report Data
         # Fetch Vehicle details for RC number
