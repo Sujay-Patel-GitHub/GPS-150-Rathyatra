@@ -1209,28 +1209,36 @@ def api_export_recordings():
             # 1. If we have a previous point, check distance
             if last_geocoded_pos:
                 dist = haversine(last_geocoded_pos[1], last_geocoded_pos[0], lng, lat)
-                if dist < 30: # If moved less than 30 meters, reuse address
+                if dist < 50: # If moved less than 50 meters, reuse address
                     return last_address
 
             try:
-                # Use Photon (Fast, based on OSM, less restrictive than Nominatim)
+                # Use Photon (Fast, based on OSM)
                 url = f"https://photon.komoot.io/reverse?lon={lng}&lat={lat}"
-                res = requests.get(url, timeout=3)
-                data = res.json()
-                if data.get("features"):
+                headers = {"User-Agent": "AUM_GPS_Report_Gen_1.0"}
+                res = requests.get(url, headers=headers, timeout=5)
+                
+                if res.status_code != 200:
+                    print(f"Geocoding API error {res.status_code}")
+                    return last_address
+
+                try:
+                    data = res.json()
+                except Exception:
+                    return last_address
+
+                if data and data.get("features"):
                     f = data["features"][0]["properties"]
                     addr_parts = []
-                    if f.get("name"): addr_parts.append(f["name"])
-                    if f.get("street"): addr_parts.append(f["street"])
-                    if f.get("district"): addr_parts.append(f["district"])
-                    if f.get("city"): addr_parts.append(f["city"])
-                    if f.get("state"): addr_parts.append(f["state"])
+                    # More robust property checks
+                    for key in ["name", "street", "district", "city", "state"]:
+                        if f.get(key): addr_parts.append(str(f[key]))
                     
                     full_addr = ", ".join(addr_parts) if addr_parts else "Unknown Location"
                     last_address = full_addr
                     last_geocoded_pos = (lat, lng)
                     return full_addr
-                return "N/A"
+                return last_address
             except Exception as e:
                 print(f"Geocoding error: {e}")
                 return last_address # Fallback to last known
