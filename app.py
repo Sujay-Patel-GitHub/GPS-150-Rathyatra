@@ -1179,71 +1179,84 @@ def api_export_recordings():
         
         # 2. Prepare Report Data
         # Fetch Vehicle details for RC number
+        # 2. Prepare Report Data
         vh = col_vehicles.find_one({"device_id": device_id})
         rc_number = vh.get("rc_number", "N/A") if vh else "N/A"
         
-        # Get interval from request, default to 1 min
         try:
             interval_min = int(request.args.get('interval', 1))
         except:
             interval_min = 1
             
-        # Optimization: Distance-based caching
-        # We only call the API if the vehicle has moved more than X meters
+        import sqlite3
         from math import radians, cos, sin, asin, sqrt
+
         def haversine(lon1, lat1, lon2, lat2):
             lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
             dlon = lon2 - lon1 
             dlat = lat2 - lat1 
             a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-            return 2 * asin(sqrt(a)) * 6371 * 1000 # Meters
+            return 2 * asin(sqrt(a)) * 6371 * 1000 
 
-        report_rows = []
-        last_recorded_time = None
+        # --- PERSISTENT SQLITE CACHE ---
+        DB_PATH = "geocache.db"
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, address TEXT)")
+        conn.commit()
+
+        def get_cached_address(lat, lng):
+            # Round to 3 decimal places (~110m precision) for high hit rate
+            key = f"{round(float(lat), 3)},{round(float(lng), 3)}"
+            cursor = conn.execute("SELECT address FROM cache WHERE key = ?", (key,))
+            row = cursor.fetchone()
+            return row[0] if row else None
+
+        def save_to_cache(lat, lng, addr):
+            key = f"{round(float(lat), 3)},{round(float(lng), 3)}"
+            try:
+                conn.execute("INSERT OR REPLACE INTO cache (key, address) VALUES (?, ?)", (key, addr))
+                conn.commit()
+            except: pass
+
         last_geocoded_pos = None
         last_address = "N/A"
 
-        def get_address_fast(lat, lng):
+        def get_address_ultra_fast(lat, lng):
             nonlocal last_geocoded_pos, last_address
             
-            # 1. If we have a previous point, check distance
+            # STEP 1: Memory Cache / Distance Check
             if last_geocoded_pos:
                 dist = haversine(last_geocoded_pos[1], last_geocoded_pos[0], lng, lat)
-                if dist < 50: # If moved less than 50 meters, reuse address
+                if dist < 200: # Increase to 200m for "Location Gap" optimization
                     return last_address
 
+            # STEP 2: Persistent Local SQLite Cache (Near instant)
+            cached = get_cached_address(lat, lng)
+            if cached:
+                last_address = cached
+                last_geocoded_pos = (lat, lng)
+                return cached
+
+            # STEP 3: External API (Slowest - Only as last resort)
             try:
-                # Use Photon (Fast, based on OSM)
                 url = f"https://photon.komoot.io/reverse?lon={lng}&lat={lat}"
-                headers = {"User-Agent": "AUM_GPS_Report_Gen_1.0"}
-                res = requests.get(url, headers=headers, timeout=5)
-                
-                if res.status_code != 200:
-                    print(f"Geocoding API error {res.status_code}")
-                    return last_address
-
-                try:
+                headers = {"User-Agent": "AUM_GPS_Report_Gen_2.0"}
+                res = requests.get(url, headers=headers, timeout=3)
+                if res.status_code == 200:
                     data = res.json()
-                except Exception:
-                    return last_address
-
-                if data and data.get("features"):
-                    f = data["features"][0]["properties"]
-                    addr_parts = []
-                    # More robust property checks
-                    for key in ["name", "street", "district", "city", "state"]:
-                        if f.get(key): addr_parts.append(str(f[key]))
-                    
-                    full_addr = ", ".join(addr_parts) if addr_parts else "Unknown Location"
-                    last_address = full_addr
-                    last_geocoded_pos = (lat, lng)
-                    return full_addr
+                    if data and data.get("features"):
+                        f = data["features"][0]["properties"]
+                        addr_parts = [str(f[k]) for k in ["name", "street", "district", "city", "state"] if f.get(k)]
+                        addr = ", ".join(addr_parts) if addr_parts else "Unknown Location"
+                        save_to_cache(lat, lng, addr)
+                        last_address = addr
+                        last_geocoded_pos = (lat, lng)
+                        return addr
                 return last_address
-            except Exception as e:
-                print(f"Geocoding error: {e}")
-                return last_address # Fallback to last known
+            except:
+                return last_address
 
-        # Process points
+        # Process Points
         eligible_points = []
         for doc in cursor:
             current_time = doc["timestamp"]
@@ -1251,9 +1264,9 @@ def api_export_recordings():
                 eligible_points.append(doc)
                 last_recorded_time = current_time
 
-        print(f"Generating optimized report for {len(eligible_points)} points...")
+        print(f"🚀 Generating High-Performance Report: {len(eligible_points)} points...")
         for doc in eligible_points:
-            addr = get_address_fast(doc["lat"], doc["lng"])
+            doc["Location"] = get_address_ultra_fast(doc["lat"], doc["lng"])
             report_rows.append({
                 "Device ID": device_id,
                 "Vehicle RC": rc_number,
@@ -1262,16 +1275,16 @@ def api_export_recordings():
                 "Latitude": doc["lat"],
                 "Longitude": doc["lng"],
                 "Speed (km/h)": doc.get("speed", 0),
-                "Location": addr
+                "Location": doc["Location"]
             })
-            
+        
+        conn.close()
+        
         if not report_rows:
             return f"No tracking data found for {device_id} on {date_str}", 404
 
-        # 3. Generate CSV
         import io
         import csv
-        
         output = io.StringIO()
         fieldnames = ["Device ID", "Vehicle RC", "Date", "Time", "Latitude", "Longitude", "Speed (km/h)", "Location"]
         writer = csv.DictWriter(output, fieldnames=fieldnames)
