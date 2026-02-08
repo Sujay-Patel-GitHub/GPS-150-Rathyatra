@@ -1,3 +1,4 @@
+# GPS Tracking Application - Optimized for High Performance
 from flask import Flask, request, render_template, render_template_string, redirect, url_for, abort, jsonify, \
     session, flash, send_from_directory, Response
 import requests
@@ -1178,8 +1179,11 @@ def api_export_recordings():
         }, {"lat": 1, "lng": 1, "speed": 1, "timestamp": 1, "_id": 0}).sort("timestamp", 1)
         
         # 2. Prepare Report Data
-        vh = col_vehicles.find_one({"device_id": device_id})
-        rc_number = vh.get("rc_number", "N/A") if vh else "N/A"
+        vh = col_vehicles.find_one({"device_id": device_id}) or {}
+        rc_number = vh.get("rc_number", "N/A")
+        driver_name = vh.get("driver_name", "N/A")
+        transporter = vh.get("transporter_name", "N/A")
+        godown = vh.get("godown_manager", "N/A")
         
         try:
             interval_min = int(request.args.get('interval', 1))
@@ -1196,13 +1200,11 @@ def api_export_recordings():
             ct = doc["timestamp"]
             if last_recorded_time is None or (ct - last_recorded_time).total_seconds() >= interval_min * 60:
                 eligible_points.append({
-                    "Device ID": device_id,
-                    "Vehicle RC": rc_number,
                     "Date": ct.strftime("%Y-%m-%d"),
                     "Time": ct.strftime("%H:%M:%S"),
                     "Latitude": doc["lat"],
                     "Longitude": doc["lng"],
-                    "Speed (km/h)": doc.get("speed", 0)
+                    "Speed": doc.get("speed", 0)
                 })
                 last_recorded_time = ct
 
@@ -1217,26 +1219,32 @@ def api_export_recordings():
                 def header(self):
                     self.set_font('Arial', 'B', 14)
                     self.cell(0, 10, f'GPS Tracking Report - {device_id}', 0, 1, 'C')
-                    self.set_font('Arial', 'I', 10)
-                    self.cell(0, 10, f'Date: {date_str} | RC: {rc_number}', 0, 1, 'C')
+                    self.set_font('Arial', '', 10)
+                    self.cell(0, 6, f'RC: {rc_number} | Date: {date_str}', 0, 1, 'C')
+                    self.set_font('Arial', 'B', 9)
+                    self.cell(0, 6, f'Driver: {driver_name} | Transporter: {transporter} | Godown: {godown}', 0, 1, 'C')
                     self.ln(5)
                     # Table Header
-                    self.set_fill_color(220, 220, 220)
+                    self.set_fill_color(37, 99, 235) # Blue header
+                    self.set_text_color(255, 255, 255)
                     self.set_font('Arial', 'B', 9)
-                    self.cell(20, 8, 'Time', 1, 0, 'C', 1)
-                    self.cell(35, 8, 'Latitude', 1, 0, 'C', 1)
-                    self.cell(35, 8, 'Longitude', 1, 0, 'C', 1)
-                    self.cell(30, 8, 'Speed (km/h)', 1, 1, 'C', 1)
+                    self.cell(25, 8, 'Date', 1, 0, 'C', 1)
+                    self.cell(25, 8, 'Time', 1, 0, 'C', 1)
+                    self.cell(40, 8, 'Latitude', 1, 0, 'C', 1)
+                    self.cell(40, 8, 'Longitude', 1, 0, 'C', 1)
+                    self.cell(35, 8, 'Speed (km/h)', 1, 1, 'C', 1)
+                    self.set_text_color(0, 0, 0) # Back to black
 
             pdf = PDF()
             pdf.add_page()
             pdf.set_font('Arial', '', 9)
             
             for row in eligible_points:
-                pdf.cell(20, 7, row["Time"], 1, 0, 'C')
-                pdf.cell(35, 7, str(row["Latitude"]), 1, 0, 'C')
-                pdf.cell(35, 7, str(row["Longitude"]), 1, 0, 'C')
-                pdf.cell(30, 7, str(row["Speed (km/h)"]), 1, 1, 'C')
+                pdf.cell(25, 7, row["Date"], 1, 0, 'C')
+                pdf.cell(25, 7, row["Time"], 1, 0, 'C')
+                pdf.cell(40, 7, str(row["Latitude"]), 1, 0, 'C')
+                pdf.cell(40, 7, str(row["Longitude"]), 1, 0, 'C')
+                pdf.cell(35, 7, str(row["Speed"]), 1, 1, 'C')
                 
             response = Response(pdf.output(dest='S').encode('latin-1'))
             response.headers.set('Content-Disposition', 'attachment', filename=f"Report_{device_id}_{date_str}.pdf")
@@ -1247,10 +1255,27 @@ def api_export_recordings():
             # --- CSV GENERATION (Standard) ---
             import csv
             output = io.StringIO()
-            fieldnames = ["Device ID", "Vehicle RC", "Date", "Time", "Latitude", "Longitude", "Speed (km/h)"]
+            # Include static info as well
+            csv_data = []
+            for p in eligible_points:
+                row = {
+                    "Device ID": device_id,
+                    "Vehicle RC": rc_number,
+                    "Driver": driver_name,
+                    "Transporter": transporter,
+                    "Godown": godown,
+                    "Date": p["Date"],
+                    "Time": p["Time"],
+                    "Latitude": p["Latitude"],
+                    "Longitude": p["Longitude"],
+                    "Speed (km/h)": p["Speed"]
+                }
+                csv_data.append(row)
+
+            fieldnames = ["Device ID", "Vehicle RC", "Driver", "Transporter", "Godown", "Date", "Time", "Latitude", "Longitude", "Speed (km/h)"]
             writer = csv.DictWriter(output, fieldnames=fieldnames)
             writer.writeheader()
-            writer.writerows(eligible_points)
+            writer.writerows(csv_data)
             
             output.seek(0)
             filename = f"GPS_Report_{device_id}_{date_str}.csv"
