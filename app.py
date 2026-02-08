@@ -1178,8 +1178,6 @@ def api_export_recordings():
         }, {"lat": 1, "lng": 1, "speed": 1, "timestamp": 1, "_id": 0}).sort("timestamp", 1)
         
         # 2. Prepare Report Data
-        # Fetch Vehicle details for RC number
-        # 2. Prepare Report Data
         vh = col_vehicles.find_one({"device_id": device_id})
         rc_number = vh.get("rc_number", "N/A") if vh else "N/A"
         
@@ -1220,6 +1218,8 @@ def api_export_recordings():
 
         last_geocoded_pos = None
         last_address = "N/A"
+        last_recorded_time = None
+        report_rows = []
 
         def get_address_ultra_fast(lat, lng):
             nonlocal last_geocoded_pos, last_address
