@@ -921,13 +921,13 @@ def get_map_recordings_data():
         # Optimized query using the new compound index and projection
         cursor = col_map_recordings.find({
             "device_id": device_id,
-            "timestamp": {"$gte": start_dt, "$lt": end_dt}
+            "timestamp": {"$gte": start_dt, "$lt": end_dt, "$ne": None}
         }, {"lat": 1, "lng": 1, "speed": 1, "timestamp": 1, "_id": 0}).sort("timestamp", 1)
         
         # Check count for potential downsampling
         total_points = col_map_recordings.count_documents({
             "device_id": device_id,
-            "timestamp": {"$gte": start_dt, "$lt": end_dt}
+            "timestamp": {"$gte": start_dt, "$lt": end_dt, "$ne": None}
         })
 
         points = []
@@ -941,18 +941,31 @@ def get_map_recordings_data():
             count += 1
             if count % skip_n != 0: continue
             
-            points.append({
-                "lat": doc["lat"],
-                "lng": doc["lng"],
-                "speed": doc.get("speed"),
-                "timestamp": doc["timestamp"].isoformat(),
-                "time": doc["timestamp"].strftime("%H:%M:%S"),
-                "ts": doc["timestamp"].timestamp()
-            })
+            # Validate timestamp exists and is valid
+            ts = doc.get("timestamp")
+            if not ts:
+                continue
+                
+            try:
+                points.append({
+                    "lat": doc.get("lat", 0),
+                    "lng": doc.get("lng", 0),
+                    "speed": doc.get("speed", 0),
+                    "timestamp": ts.isoformat(),
+                    "time": ts.strftime("%H:%M:%S"),
+                    "ts": ts.timestamp()
+                })
+            except (AttributeError, ValueError) as e:
+                # Skip invalid timestamp entries
+                print(f"Skipping invalid timestamp entry: {e}")
+                continue
             
         return jsonify({"points": points, "total_raw": total_points, "optimized": skip_n > 1})
         
     except Exception as e:
+        print(f"Error in get_map_recordings_data: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 @app.route("/recordings")
