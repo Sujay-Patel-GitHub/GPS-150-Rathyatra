@@ -1259,8 +1259,8 @@ def api_export_recordings():
 
         if missing_keys:
             print(f"📡 Fetching {len(missing_keys)} unique addresses from web...")
-            # Use max 10 threads to avoid overwhelming anyone
-            with ThreadPoolExecutor(max_workers=10) as executor:
+            # Use max 15 threads to avoid overwhelming anyone
+            with ThreadPoolExecutor(max_workers=15) as executor:
                 results = list(executor.map(fetch_address, missing_keys))
                 
             # Update cache and map
@@ -1276,7 +1276,7 @@ def api_export_recordings():
         last_geocoded_pos = None
         last_addr = "N/A"
         
-        # Repetition threshold: 1000m (1km) as requested
+        # Repetition threshold: 1000m (1km)
         REPEAT_THRESHOLD = 1000 
 
         for doc in eligible_points:
@@ -1292,8 +1292,8 @@ def api_export_recordings():
             
             if need_new_lookup:
                 # Update current address from the map we built
-                current_addr = final_address_map.get(key, last_addr)
-                if current_addr != "N/A":
+                current_addr = final_address_map.get(key)
+                if current_addr and current_addr != "N/A":
                     last_addr = current_addr
                     last_geocoded_pos = (lat, lng)
             
@@ -1307,6 +1307,20 @@ def api_export_recordings():
                 "Speed (km/h)": doc.get("speed", 0),
                 "Location": last_addr
             })
+
+        # Step 6: Backfill "N/A" if the trip started in an un-geocoded area
+        first_valid_addr = "N/A"
+        for row in report_rows:
+            if row["Location"] != "N/A":
+                first_valid_addr = row["Location"]
+                break
+        
+        if first_valid_addr != "N/A":
+            for row in report_rows:
+                if row["Location"] == "N/A":
+                    row["Location"] = first_valid_addr
+                else:
+                    break
 
         # 3. Generate CSV
         import io, csv
