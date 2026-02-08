@@ -1186,8 +1186,15 @@ def api_export_recordings():
         except:
             interval_min = 1
             
+        # --- HIGH-PERFORMANCE GEOPROCESSING ---
+        from concurrent.futures import ThreadPoolExecutor
         import sqlite3
         from math import radians, cos, sin, asin, sqrt
+
+        DB_PATH = "geocache.db"
+        # Ensure DB exists
+        with sqlite3.connect(DB_PATH) as conn:
+            conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, address TEXT)")
 
         def haversine(lon1, lat1, lon2, lat2):
             lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
@@ -1196,96 +1203,113 @@ def api_export_recordings():
             a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
             return 2 * asin(sqrt(a)) * 6371 * 1000 
 
-        # --- PERSISTENT SQLITE CACHE ---
-        DB_PATH = "geocache.db"
-        conn = sqlite3.connect(DB_PATH)
-        conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, address TEXT)")
-        conn.commit()
+        # 1. First, identify actually unique locations (rounded to 3 decimals ~110m)
+        # 2. Filter those that need geocoding (not in SQLite)
+        # 3. Fetch missing ones in parallel
+        # 4. Compile final report rows by repeating lookups
 
-        def get_cached_address(lat, lng):
-            # Round to 3 decimal places (~110m precision) for high hit rate
-            key = f"{round(float(lat), 3)},{round(float(lng), 3)}"
-            cursor = conn.execute("SELECT address FROM cache WHERE key = ?", (key,))
-            row = cursor.fetchone()
-            return row[0] if row else None
-
-        def save_to_cache(lat, lng, addr):
-            key = f"{round(float(lat), 3)},{round(float(lng), 3)}"
-            try:
-                conn.execute("INSERT OR REPLACE INTO cache (key, address) VALUES (?, ?)", (key, addr))
-                conn.commit()
-            except: pass
-
-        last_geocoded_pos = None
-        last_address = "N/A"
+        # Step 1: Pre-filter points by interval
+        eligible_points = []
         last_recorded_time = None
-        report_rows = []
+        for doc in cursor:
+            ct = doc["timestamp"]
+            if last_recorded_time is None or (ct - last_recorded_time).total_seconds() >= interval_min * 60:
+                eligible_points.append(doc)
+                last_recorded_time = ct
 
-        def get_address_ultra_fast(lat, lng):
-            nonlocal last_geocoded_pos, last_address
-            
-            # STEP 1: Memory Cache / Distance Check
-            if last_geocoded_pos:
-                dist = haversine(last_geocoded_pos[1], last_geocoded_pos[0], lng, lat)
-                # Aggressive repetition: If moved less than 500 meters, do not call API/DB
-                if dist < 500: 
-                    return last_address
+        if not eligible_points:
+            return f"No tracking data found for {device_id} on {date_str}", 404
 
-            # STEP 2: Persistent Local SQLite Cache (Near instant)
-            cached = get_cached_address(lat, lng)
-            if cached:
-                last_address = cached
-                last_geocoded_pos = (lat, lng)
-                return cached
+        # Step 2: Unique Coordinate Grids
+        unique_grids = {}
+        for p in eligible_points:
+            # 3 decimal places = ~110m grid. This is usually plenty for a trip report.
+            key = f"{round(float(p['lat']), 3)},{round(float(p['lng']), 3)}"
+            if key not in unique_grids:
+                unique_grids[key] = (p['lat'], p['lng'])
 
-            # STEP 3: External API (Slowest - Only as last resort)
+        # Step 3: Check local cache first
+        missing_keys = []
+        final_address_map = {}
+        
+        with sqlite3.connect(DB_PATH) as conn:
+            for key in unique_grids:
+                row = conn.execute("SELECT address FROM cache WHERE key = ?", (key,)).fetchone()
+                if row:
+                    final_address_map[key] = row[0]
+                else:
+                    missing_keys.append(key)
+
+        # Step 4: Parallel Fetching for Missing Keys (Photon API can handle it)
+        def fetch_address(key):
+            lat, lng = unique_grids[key]
             try:
                 url = f"https://photon.komoot.io/reverse?lon={lng}&lat={lat}"
-                headers = {"User-Agent": "AUM_GPS_Report_Gen_2.0"}
-                res = requests.get(url, headers=headers, timeout=3)
+                res = requests.get(url, headers={"User-Agent": "AUM_Report_3.0"}, timeout=4)
                 if res.status_code == 200:
                     data = res.json()
-                    if data and data.get("features"):
+                    if data.get("features"):
                         f = data["features"][0]["properties"]
-                        addr_parts = [str(f[k]) for k in ["name", "street", "district", "city", "state"] if f.get(k)]
-                        addr = ", ".join(addr_parts) if addr_parts else "Unknown Location"
-                        save_to_cache(lat, lng, addr)
-                        last_address = addr
-                        last_geocoded_pos = (lat, lng)
-                        return addr
-                return last_address
+                        parts = [str(f[k]) for k in ["name", "street", "district", "city", "state"] if f.get(k)]
+                        addr = ", ".join(parts) if parts else "Unknown Location"
+                        return key, addr
+                return key, None
             except:
-                return last_address
+                return key, None
 
-        # Process Points
-        eligible_points = []
-        for doc in cursor:
-            current_time = doc["timestamp"]
-            if last_recorded_time is None or (current_time - last_recorded_time).total_seconds() >= interval_min * 60:
-                eligible_points.append(doc)
-                last_recorded_time = current_time
+        if missing_keys:
+            print(f"📡 Fetching {len(missing_keys)} unique addresses from web...")
+            # Use max 10 threads to avoid overwhelming anyone
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                results = list(executor.map(fetch_address, missing_keys))
+                
+            # Update cache and map
+            with sqlite3.connect(DB_PATH) as conn:
+                for key, addr in results:
+                    if addr:
+                        final_address_map[key] = addr
+                        conn.execute("INSERT OR REPLACE INTO cache VALUES (?, ?)", (key, addr))
+                conn.commit()
 
-        print(f"🚀 Generating High-Performance Report: {len(eligible_points)} points...")
+        # Step 5: Construct Report Rows with Aggressive Repetition
+        report_rows = []
+        last_geocoded_pos = None
+        last_addr = "N/A"
+        
+        # Repetition threshold: 1000m (1km) as requested
+        REPEAT_THRESHOLD = 1000 
+
         for doc in eligible_points:
-            doc["Location"] = get_address_ultra_fast(doc["lat"], doc["lng"])
+            lat, lng = doc["lat"], doc["lng"]
+            key = f"{round(float(lat), 3)},{round(float(lng), 3)}"
+            
+            # Check repetition first
+            need_new_lookup = True
+            if last_geocoded_pos:
+                dist = haversine(last_geocoded_pos[1], last_geocoded_pos[0], lng, lat)
+                if dist < REPEAT_THRESHOLD and last_addr != "N/A":
+                    need_new_lookup = False
+            
+            if need_new_lookup:
+                # Update current address from the map we built
+                current_addr = final_address_map.get(key, last_addr)
+                if current_addr != "N/A":
+                    last_addr = current_addr
+                    last_geocoded_pos = (lat, lng)
+            
             report_rows.append({
                 "Device ID": device_id,
                 "Vehicle RC": rc_number,
                 "Date": doc["timestamp"].strftime("%Y-%m-%d"),
                 "Time": doc["timestamp"].strftime("%H:%M:%S"),
-                "Latitude": doc["lat"],
-                "Longitude": doc["lng"],
+                "Latitude": lat,
+                "Longitude": lng,
                 "Speed (km/h)": doc.get("speed", 0),
-                "Location": doc["Location"]
+                "Location": last_addr
             })
-        
-        conn.close()
-        
-        if not report_rows:
-            return f"No tracking data found for {device_id} on {date_str}", 404
 
-        import io
-        import csv
+        # 3. Generate CSV
+        import io, csv
         output = io.StringIO()
         fieldnames = ["Device ID", "Vehicle RC", "Date", "Time", "Latitude", "Longitude", "Speed (km/h)", "Location"]
         writer = csv.DictWriter(output, fieldnames=fieldnames)
