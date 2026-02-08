@@ -1191,21 +1191,56 @@ def api_export_recordings():
         report_rows = []
         last_recorded_time = None
         
+        # Simple Cache for Reverse Geocoding to avoid excessive API calls
+        address_cache = {}
+
+        def get_address(lat, lng):
+            # Round to 4 decimal places (~11m precision) to cache nearby points
+            key = (round(float(lat), 4), round(float(lng), 4))
+            if key in address_cache:
+                return address_cache[key]
+            
+            try:
+                # Use Nominatim (be careful with rate limits - 1 req/sec)
+                # Adding delay slightly to be safe
+                time.sleep(1.1)
+                url = f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lng}&zoom=18&addressdetails=1"
+                headers = {"User-Agent": "AUM_GPS_Server_Report_Generator"}
+                res = requests.get(url, headers=headers, timeout=5)
+                data = res.json()
+                addr = data.get("display_name", "N/A")
+                address_cache[key] = addr
+                return addr
+            except Exception as e:
+                print(f"Geocoding error: {e}")
+                return "N/A"
+
+        # Limit points to avoid timeout (max 100 geocoded points per report)
+        # Note: If user selects 1 min interval for 24h, that's 1440 points.
+        # We might only be able to geocode a subset if it's too many.
+        
+        # Find points first
+        eligible_points = []
         for doc in cursor:
             current_time = doc["timestamp"]
-            
-            # Filter by interval
             if last_recorded_time is None or (current_time - last_recorded_time).total_seconds() >= interval_min * 60:
-                report_rows.append({
-                    "Device ID": device_id,
-                    "Vehicle RC": rc_number,
-                    "Date": current_time.strftime("%Y-%m-%d"),
-                    "Time": current_time.strftime("%H:%M:%S"),
-                    "Latitude": doc["lat"],
-                    "Longitude": doc["lng"],
-                    "Speed (km/h)": doc.get("speed", 0)
-                })
+                eligible_points.append(doc)
                 last_recorded_time = current_time
+
+        # Process addresses
+        print(f"Generating report with {len(eligible_points)} points. Geocoding starts...")
+        for doc in eligible_points:
+            addr = get_address(doc["lat"], doc["lng"])
+            report_rows.append({
+                "Device ID": device_id,
+                "Vehicle RC": rc_number,
+                "Date": doc["timestamp"].strftime("%Y-%m-%d"),
+                "Time": doc["timestamp"].strftime("%H:%M:%S"),
+                "Latitude": doc["lat"],
+                "Longitude": doc["lng"],
+                "Speed (km/h)": doc.get("speed", 0),
+                "Location": addr
+            })
             
         if not report_rows:
             return f"No tracking data found for {device_id} on {date_str}", 404
@@ -1215,7 +1250,7 @@ def api_export_recordings():
         import csv
         
         output = io.StringIO()
-        fieldnames = ["Device ID", "Vehicle RC", "Date", "Time", "Latitude", "Longitude", "Speed (km/h)"]
+        fieldnames = ["Device ID", "Vehicle RC", "Date", "Time", "Latitude", "Longitude", "Speed (km/h)", "Location"]
         writer = csv.DictWriter(output, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(report_rows)
