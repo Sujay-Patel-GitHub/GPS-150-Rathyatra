@@ -1227,7 +1227,8 @@ def api_export_recordings():
             # STEP 1: Memory Cache / Distance Check
             if last_geocoded_pos:
                 dist = haversine(last_geocoded_pos[1], last_geocoded_pos[0], lng, lat)
-                if dist < 200: # Increase to 200m for "Location Gap" optimization
+                # Aggressive repetition: If moved less than 500 meters, do not call API/DB
+                if dist < 500: 
                     return last_address
 
             # STEP 2: Persistent Local SQLite Cache (Near instant)
