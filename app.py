@@ -1,4 +1,3 @@
-# GPS Tracking Application - Optimized for High Performance
 from flask import Flask, request, render_template, render_template_string, redirect, url_for, abort, jsonify, \
     session, flash, send_from_directory, Response
 import requests
@@ -921,13 +920,13 @@ def get_map_recordings_data():
         # Optimized query using the new compound index and projection
         cursor = col_map_recordings.find({
             "device_id": device_id,
-            "timestamp": {"$gte": start_dt, "$lt": end_dt, "$ne": None}
+            "timestamp": {"$gte": start_dt, "$lt": end_dt}
         }, {"lat": 1, "lng": 1, "speed": 1, "timestamp": 1, "_id": 0}).sort("timestamp", 1)
         
         # Check count for potential downsampling
         total_points = col_map_recordings.count_documents({
             "device_id": device_id,
-            "timestamp": {"$gte": start_dt, "$lt": end_dt, "$ne": None}
+            "timestamp": {"$gte": start_dt, "$lt": end_dt}
         })
 
         points = []
@@ -941,31 +940,18 @@ def get_map_recordings_data():
             count += 1
             if count % skip_n != 0: continue
             
-            # Validate timestamp exists and is valid
-            ts = doc.get("timestamp")
-            if not ts:
-                continue
-                
-            try:
-                points.append({
-                    "lat": doc.get("lat", 0),
-                    "lng": doc.get("lng", 0),
-                    "speed": doc.get("speed", 0),
-                    "timestamp": ts.isoformat(),
-                    "time": ts.strftime("%H:%M:%S"),
-                    "ts": ts.timestamp()
-                })
-            except (AttributeError, ValueError) as e:
-                # Skip invalid timestamp entries
-                print(f"Skipping invalid timestamp entry: {e}")
-                continue
+            points.append({
+                "lat": doc["lat"],
+                "lng": doc["lng"],
+                "speed": doc.get("speed"),
+                "timestamp": doc["timestamp"].isoformat(),
+                "time": doc["timestamp"].strftime("%H:%M:%S"),
+                "ts": doc["timestamp"].timestamp()
+            })
             
         return jsonify({"points": points, "total_raw": total_points, "optimized": skip_n > 1})
         
     except Exception as e:
-        print(f"Error in get_map_recordings_data: {e}")
-        import traceback
-        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 @app.route("/recordings")
@@ -1177,6 +1163,7 @@ def api_export_recordings():
 
     device_id = request.args.get('vehicle')
     date_str = request.args.get('date')
+    export_format = request.args.get('format', 'csv')  # 'csv' or 'pdf'
 
     if not device_id or not date_str:
         return "Missing vehicle or date", 400
@@ -1192,103 +1179,110 @@ def api_export_recordings():
         }, {"lat": 1, "lng": 1, "speed": 1, "timestamp": 1, "_id": 0}).sort("timestamp", 1)
         
         # 2. Prepare Report Data
-        vh = col_vehicles.find_one({"device_id": device_id}) or {}
-        rc_number = vh.get("rc_number", "N/A")
-        driver_name = vh.get("driver_name", "N/A")
-        transporter = vh.get("transporter_name", "N/A")
-        godown = vh.get("godown_manager", "N/A")
+        vh = col_vehicles.find_one({"device_id": device_id})
+        rc_number = vh.get("rc_number", "N/A") if vh else "N/A"
         
         try:
             interval_min = int(request.args.get('interval', 1))
         except:
             interval_min = 1
             
-        # Get requested format
-        export_format = request.args.get('format', 'csv').lower()
-
-        # Step 1: Pre-filter points by interval
+        # Filter points by interval
         eligible_points = []
         last_recorded_time = None
         for doc in cursor:
             ct = doc["timestamp"]
             if last_recorded_time is None or (ct - last_recorded_time).total_seconds() >= interval_min * 60:
-                eligible_points.append({
-                    "Date": ct.strftime("%Y-%m-%d"),
-                    "Time": ct.strftime("%H:%M:%S"),
-                    "Latitude": doc["lat"],
-                    "Longitude": doc["lng"],
-                    "Speed": doc.get("speed", 0)
-                })
+                eligible_points.append(doc)
                 last_recorded_time = ct
 
         if not eligible_points:
             return f"No tracking data found for {device_id} on {date_str}", 404
 
-        import io
+        # Construct Report Rows (WITHOUT Location column)
+        report_rows = []
+        for doc in eligible_points:
+            report_rows.append({
+                "Device ID": device_id,
+                "Vehicle RC": rc_number,
+                "Date": doc["timestamp"].strftime("%Y-%m-%d"),
+                "Time": doc["timestamp"].strftime("%H:%M:%S"),
+                "Latitude": doc["lat"],
+                "Longitude": doc["lng"],
+                "Speed (km/h)": doc.get("speed", 0)
+            })
+
+        # Generate report based on format
         if export_format == 'pdf':
-            # --- PDF GENERATION ---
-            from fpdf import FPDF
-            class PDF(FPDF):
-                def header(self):
-                    self.set_font('Arial', 'B', 14)
-                    self.cell(0, 10, f'GPS Tracking Report - {device_id}', 0, 1, 'C')
-                    self.set_font('Arial', '', 10)
-                    self.cell(0, 6, f'RC: {rc_number} | Date: {date_str}', 0, 1, 'C')
-                    self.set_font('Arial', 'B', 9)
-                    self.cell(0, 6, f'Driver: {driver_name} | Transporter: {transporter} | Godown: {godown}', 0, 1, 'C')
-                    self.ln(5)
-                    # Table Header
-                    self.set_fill_color(37, 99, 235) # Blue header
-                    self.set_text_color(255, 255, 255)
-                    self.set_font('Arial', 'B', 9)
-                    self.cell(25, 8, 'Date', 1, 0, 'C', 1)
-                    self.cell(25, 8, 'Time', 1, 0, 'C', 1)
-                    self.cell(40, 8, 'Latitude', 1, 0, 'C', 1)
-                    self.cell(40, 8, 'Longitude', 1, 0, 'C', 1)
-                    self.cell(35, 8, 'Speed (km/h)', 1, 1, 'C', 1)
-                    self.set_text_color(0, 0, 0) # Back to black
-
-            pdf = PDF()
-            pdf.add_page()
-            pdf.set_font('Arial', '', 9)
+            # Generate PDF
+            from reportlab.lib import colors
+            from reportlab.lib.pagesizes import A4, landscape
+            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+            from reportlab.lib.styles import getSampleStyleSheet
+            from reportlab.lib.units import inch
+            import io
             
-            for row in eligible_points:
-                pdf.cell(25, 7, row["Date"], 1, 0, 'C')
-                pdf.cell(25, 7, row["Time"], 1, 0, 'C')
-                pdf.cell(40, 7, str(row["Latitude"]), 1, 0, 'C')
-                pdf.cell(40, 7, str(row["Longitude"]), 1, 0, 'C')
-                pdf.cell(35, 7, str(row["Speed"]), 1, 1, 'C')
-                
-            response = Response(pdf.output(dest='S').encode('latin-1'))
-            response.headers.set('Content-Disposition', 'attachment', filename=f"Report_{device_id}_{date_str}.pdf")
-            response.headers.set('Content-Type', 'application/pdf')
-            return response
-
+            buffer = io.BytesIO()
+            doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), 
+                                   rightMargin=30, leftMargin=30, 
+                                   topMargin=30, bottomMargin=18)
+            
+            elements = []
+            styles = getSampleStyleSheet()
+            
+            # Title
+            title = Paragraph(f"<b>GPS Tracking Report</b><br/>{device_id} - {rc_number}<br/>{date_str}", 
+                            styles['Title'])
+            elements.append(title)
+            elements.append(Spacer(1, 0.2*inch))
+            
+            # Table data
+            table_data = [["Device ID", "Vehicle RC", "Date", "Time", "Latitude", "Longitude", "Speed (km/h)"]]
+            for row in report_rows:
+                table_data.append([
+                    row["Device ID"],
+                    row["Vehicle RC"],
+                    row["Date"],
+                    row["Time"],
+                    f"{row['Latitude']:.6f}",
+                    f"{row['Longitude']:.6f}",
+                    row["Speed (km/h)"]
+                ])
+            
+            # Create table
+            table = Table(table_data, repeatRows=1)
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#166534')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -1), 8),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f0f0f0')])
+            ]))
+            
+            elements.append(table)
+            doc.build(elements)
+            
+            buffer.seek(0)
+            filename = f"GPS_Report_{device_id}_{date_str}.pdf"
+            return Response(
+                buffer.getvalue(),
+                mimetype="application/pdf",
+                headers={"Content-disposition": f"attachment; filename={filename}"}
+            )
         else:
-            # --- CSV GENERATION (Standard) ---
-            import csv
+            # Generate CSV
+            import io, csv
             output = io.StringIO()
-            # Include static info as well
-            csv_data = []
-            for p in eligible_points:
-                row = {
-                    "Device ID": device_id,
-                    "Vehicle RC": rc_number,
-                    "Driver": driver_name,
-                    "Transporter": transporter,
-                    "Godown": godown,
-                    "Date": p["Date"],
-                    "Time": p["Time"],
-                    "Latitude": p["Latitude"],
-                    "Longitude": p["Longitude"],
-                    "Speed (km/h)": p["Speed"]
-                }
-                csv_data.append(row)
-
-            fieldnames = ["Device ID", "Vehicle RC", "Driver", "Transporter", "Godown", "Date", "Time", "Latitude", "Longitude", "Speed (km/h)"]
+            fieldnames = ["Device ID", "Vehicle RC", "Date", "Time", "Latitude", "Longitude", "Speed (km/h)"]
             writer = csv.DictWriter(output, fieldnames=fieldnames)
             writer.writeheader()
-            writer.writerows(csv_data)
+            writer.writerows(report_rows)
             
             output.seek(0)
             filename = f"GPS_Report_{device_id}_{date_str}.csv"
