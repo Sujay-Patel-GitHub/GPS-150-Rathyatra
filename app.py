@@ -1188,38 +1188,54 @@ def api_export_recordings():
         except:
             interval_min = 1
             
+        # Optimization: Distance-based caching
+        # We only call the API if the vehicle has moved more than X meters
+        from math import radians, cos, sin, asin, sqrt
+        def haversine(lon1, lat1, lon2, lat2):
+            lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+            dlon = lon2 - lon1 
+            dlat = lat2 - lat1 
+            a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+            return 2 * asin(sqrt(a)) * 6371 * 1000 # Meters
+
         report_rows = []
         last_recorded_time = None
-        
-        # Simple Cache for Reverse Geocoding to avoid excessive API calls
-        address_cache = {}
+        last_geocoded_pos = None
+        last_address = "N/A"
 
-        def get_address(lat, lng):
-            # Round to 4 decimal places (~11m precision) to cache nearby points
-            key = (round(float(lat), 4), round(float(lng), 4))
-            if key in address_cache:
-                return address_cache[key]
+        def get_address_fast(lat, lng):
+            nonlocal last_geocoded_pos, last_address
             
+            # 1. If we have a previous point, check distance
+            if last_geocoded_pos:
+                dist = haversine(last_geocoded_pos[1], last_geocoded_pos[0], lng, lat)
+                if dist < 30: # If moved less than 30 meters, reuse address
+                    return last_address
+
             try:
-                # Use Nominatim (be careful with rate limits - 1 req/sec)
-                # Adding delay slightly to be safe
-                time.sleep(1.1)
-                url = f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lng}&zoom=18&addressdetails=1"
-                headers = {"User-Agent": "AUM_GPS_Server_Report_Generator"}
-                res = requests.get(url, headers=headers, timeout=5)
+                # Use Photon (Fast, based on OSM, less restrictive than Nominatim)
+                url = f"https://photon.komoot.io/reverse?lon={lng}&lat={lat}"
+                res = requests.get(url, timeout=3)
                 data = res.json()
-                addr = data.get("display_name", "N/A")
-                address_cache[key] = addr
-                return addr
+                if data.get("features"):
+                    f = data["features"][0]["properties"]
+                    addr_parts = []
+                    if f.get("name"): addr_parts.append(f["name"])
+                    if f.get("street"): addr_parts.append(f["street"])
+                    if f.get("district"): addr_parts.append(f["district"])
+                    if f.get("city"): addr_parts.append(f["city"])
+                    if f.get("state"): addr_parts.append(f["state"])
+                    
+                    full_addr = ", ".join(addr_parts) if addr_parts else "Unknown Location"
+                    last_address = full_addr
+                    last_geocoded_pos = (lat, lng)
+                    return full_addr
+                return "N/A"
             except Exception as e:
                 print(f"Geocoding error: {e}")
-                return "N/A"
+                return last_address # Fallback to last known
 
-        # Limit points to avoid timeout (max 100 geocoded points per report)
-        # Note: If user selects 1 min interval for 24h, that's 1440 points.
-        # We might only be able to geocode a subset if it's too many.
-        
-        # Find points first
+        # Process points
         eligible_points = []
         for doc in cursor:
             current_time = doc["timestamp"]
@@ -1227,10 +1243,9 @@ def api_export_recordings():
                 eligible_points.append(doc)
                 last_recorded_time = current_time
 
-        # Process addresses
-        print(f"Generating report with {len(eligible_points)} points. Geocoding starts...")
+        print(f"Generating optimized report for {len(eligible_points)} points...")
         for doc in eligible_points:
-            addr = get_address(doc["lat"], doc["lng"])
+            addr = get_address_fast(doc["lat"], doc["lng"])
             report_rows.append({
                 "Device ID": device_id,
                 "Vehicle RC": rc_number,
