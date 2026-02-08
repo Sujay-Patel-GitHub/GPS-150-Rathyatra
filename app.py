@@ -1271,31 +1271,21 @@ def api_export_recordings():
                         conn.execute("INSERT OR REPLACE INTO cache VALUES (?, ?)", (key, addr))
                 conn.commit()
 
-        # Step 5: Construct Report Rows with Aggressive Repetition
+        # Step 5: Construct Report Rows with High Accuracy
         report_rows = []
-        last_geocoded_pos = None
         last_addr = "N/A"
         
-        # Repetition threshold: 1000m (1km)
-        REPEAT_THRESHOLD = 1000 
-
         for doc in eligible_points:
             lat, lng = doc["lat"], doc["lng"]
+            # Grid key is ~110m. This ensures speed by reusing lookups within this block.
             key = f"{round(float(lat), 3)},{round(float(lng), 3)}"
             
-            # Check repetition first
-            need_new_lookup = True
-            if last_geocoded_pos:
-                dist = haversine(last_geocoded_pos[1], last_geocoded_pos[0], lng, lat)
-                if dist < REPEAT_THRESHOLD and last_addr != "N/A":
-                    need_new_lookup = False
+            # Fetch from our pre-geocoded map
+            current_addr = final_address_map.get(key)
             
-            if need_new_lookup:
-                # Update current address from the map we built
-                current_addr = final_address_map.get(key)
-                if current_addr and current_addr != "N/A":
-                    last_addr = current_addr
-                    last_geocoded_pos = (lat, lng)
+            # Only update if we found a valid new address, otherwise keep last known (Smooth transition)
+            if current_addr and current_addr != "N/A":
+                last_addr = current_addr
             
             report_rows.append({
                 "Device ID": device_id,
