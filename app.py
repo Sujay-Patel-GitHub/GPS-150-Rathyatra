@@ -1182,17 +1182,30 @@ def api_export_recordings():
         vh = col_vehicles.find_one({"device_id": device_id})
         rc_number = vh.get("rc_number", "N/A") if vh else "N/A"
         
+        # Get interval from request, default to 1 min
+        try:
+            interval_min = int(request.args.get('interval', 1))
+        except:
+            interval_min = 1
+            
         report_rows = []
+        last_recorded_time = None
+        
         for doc in cursor:
-            report_rows.append({
-                "Device ID": device_id,
-                "Vehicle RC": rc_number,
-                "Date": doc["timestamp"].strftime("%Y-%m-%d"),
-                "Time": doc["timestamp"].strftime("%H:%M:%S"),
-                "Latitude": doc["lat"],
-                "Longitude": doc["lng"],
-                "Speed (km/h)": doc.get("speed", 0)
-            })
+            current_time = doc["timestamp"]
+            
+            # Filter by interval
+            if last_recorded_time is None or (current_time - last_recorded_time).total_seconds() >= interval_min * 60:
+                report_rows.append({
+                    "Device ID": device_id,
+                    "Vehicle RC": rc_number,
+                    "Date": current_time.strftime("%Y-%m-%d"),
+                    "Time": current_time.strftime("%H:%M:%S"),
+                    "Latitude": doc["lat"],
+                    "Longitude": doc["lng"],
+                    "Speed (km/h)": doc.get("speed", 0)
+                })
+                last_recorded_time = current_time
             
         if not report_rows:
             return f"No tracking data found for {device_id} on {date_str}", 404

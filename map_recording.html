@@ -711,7 +711,13 @@
                     <input type="date" id="dateSelect" class="form-control" style="padding-left: 14px;">
                 </div>
 
-                <button class="load-btn" onclick="loadTracks()">
+                <div class="form-group" style="margin-top: 15px;">
+                    <label for="intervalSelect">Report Interval (Minutes)</label>
+                    <input type="number" id="intervalSelect" class="form-control" value="1" min="1" step="1"
+                        style="padding-left: 14px;">
+                </div>
+
+                <button class="load-btn" onclick="loadTracks()" style="margin-top: 20px;">
                     <i class="fas fa-history"></i> Load History
                 </button>
 
@@ -786,6 +792,7 @@
 
         function exportReport() {
             const date = document.getElementById('dateSelect').value;
+            const interval = document.getElementById('intervalSelect').value || 1;
             if (!selectedDevice || !date) {
                 const status = document.getElementById('statusMsg');
                 status.innerText = "Please select both a device and a date.";
@@ -794,7 +801,7 @@
             }
 
             // Trigger download via new backend route
-            window.location.href = `/api/export_recordings?vehicle=${selectedDevice}&date=${date}`;
+            window.location.href = `/api/export_recordings?vehicle=${selectedDevice}&date=${date}&interval=${interval}`;
         }
 
         // Init Map
