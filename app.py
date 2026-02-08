@@ -1186,27 +1186,8 @@ def api_export_recordings():
         except:
             interval_min = 1
             
-        # --- HIGH-PERFORMANCE GEOPROCESSING ---
-        from concurrent.futures import ThreadPoolExecutor
-        import sqlite3
-        from math import radians, cos, sin, asin, sqrt
-
-        DB_PATH = "geocache.db"
-        # Ensure DB exists
-        with sqlite3.connect(DB_PATH) as conn:
-            conn.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, address TEXT)")
-
-        def haversine(lon1, lat1, lon2, lat2):
-            lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
-            dlon = lon2 - lon1 
-            dlat = lat2 - lat1 
-            a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-            return 2 * asin(sqrt(a)) * 6371 * 1000 
-
-        # 1. First, identify actually unique locations (rounded to 3 decimals ~110m)
-        # 2. Filter those that need geocoding (not in SQLite)
-        # 3. Fetch missing ones in parallel
-        # 4. Compile final report rows by repeating lookups
+        # Get requested format
+        export_format = request.args.get('format', 'csv').lower()
 
         # Step 1: Pre-filter points by interval
         eligible_points = []
@@ -1214,120 +1195,70 @@ def api_export_recordings():
         for doc in cursor:
             ct = doc["timestamp"]
             if last_recorded_time is None or (ct - last_recorded_time).total_seconds() >= interval_min * 60:
-                eligible_points.append(doc)
+                eligible_points.append({
+                    "Device ID": device_id,
+                    "Vehicle RC": rc_number,
+                    "Date": ct.strftime("%Y-%m-%d"),
+                    "Time": ct.strftime("%H:%M:%S"),
+                    "Latitude": doc["lat"],
+                    "Longitude": doc["lng"],
+                    "Speed (km/h)": doc.get("speed", 0)
+                })
                 last_recorded_time = ct
 
         if not eligible_points:
             return f"No tracking data found for {device_id} on {date_str}", 404
 
-        # Step 2: Unique Coordinate Grids
-        unique_grids = {}
-        for p in eligible_points:
-            # 3 decimal places = ~110m grid. This is usually plenty for a trip report.
-            key = f"{round(float(p['lat']), 3)},{round(float(p['lng']), 3)}"
-            if key not in unique_grids:
-                unique_grids[key] = (p['lat'], p['lng'])
+        import io
+        if export_format == 'pdf':
+            # --- PDF GENERATION ---
+            from fpdf import FPDF
+            class PDF(FPDF):
+                def header(self):
+                    self.set_font('Arial', 'B', 14)
+                    self.cell(0, 10, f'GPS Tracking Report - {device_id}', 0, 1, 'C')
+                    self.set_font('Arial', 'I', 10)
+                    self.cell(0, 10, f'Date: {date_str} | RC: {rc_number}', 0, 1, 'C')
+                    self.ln(5)
+                    # Table Header
+                    self.set_fill_color(220, 220, 220)
+                    self.set_font('Arial', 'B', 9)
+                    self.cell(20, 8, 'Time', 1, 0, 'C', 1)
+                    self.cell(35, 8, 'Latitude', 1, 0, 'C', 1)
+                    self.cell(35, 8, 'Longitude', 1, 0, 'C', 1)
+                    self.cell(30, 8, 'Speed (km/h)', 1, 1, 'C', 1)
 
-        # Step 3: Check local cache first
-        missing_keys = []
-        final_address_map = {}
-        
-        with sqlite3.connect(DB_PATH) as conn:
-            for key in unique_grids:
-                row = conn.execute("SELECT address FROM cache WHERE key = ?", (key,)).fetchone()
-                if row:
-                    final_address_map[key] = row[0]
-                else:
-                    missing_keys.append(key)
-
-        # Step 4: Parallel Fetching for Missing Keys (Photon API can handle it)
-        def fetch_address(key):
-            lat, lng = unique_grids[key]
-            try:
-                url = f"https://photon.komoot.io/reverse?lon={lng}&lat={lat}"
-                res = requests.get(url, headers={"User-Agent": "AUM_Report_3.0"}, timeout=4)
-                if res.status_code == 200:
-                    data = res.json()
-                    if data.get("features"):
-                        f = data["features"][0]["properties"]
-                        parts = [str(f[k]) for k in ["name", "street", "district", "city", "state"] if f.get(k)]
-                        addr = ", ".join(parts) if parts else "Unknown Location"
-                        return key, addr
-                return key, None
-            except:
-                return key, None
-
-        if missing_keys:
-            print(f"📡 Fetching {len(missing_keys)} unique addresses from web...")
-            # Use max 15 threads to avoid overwhelming anyone
-            with ThreadPoolExecutor(max_workers=15) as executor:
-                results = list(executor.map(fetch_address, missing_keys))
+            pdf = PDF()
+            pdf.add_page()
+            pdf.set_font('Arial', '', 9)
+            
+            for row in eligible_points:
+                pdf.cell(20, 7, row["Time"], 1, 0, 'C')
+                pdf.cell(35, 7, str(row["Latitude"]), 1, 0, 'C')
+                pdf.cell(35, 7, str(row["Longitude"]), 1, 0, 'C')
+                pdf.cell(30, 7, str(row["Speed (km/h)"]), 1, 1, 'C')
                 
-            # Update cache and map
-            with sqlite3.connect(DB_PATH) as conn:
-                for key, addr in results:
-                    if addr:
-                        final_address_map[key] = addr
-                        conn.execute("INSERT OR REPLACE INTO cache VALUES (?, ?)", (key, addr))
-                conn.commit()
+            response = Response(pdf.output(dest='S').encode('latin-1'))
+            response.headers.set('Content-Disposition', 'attachment', filename=f"Report_{device_id}_{date_str}.pdf")
+            response.headers.set('Content-Type', 'application/pdf')
+            return response
 
-        # Step 5: Construct Report Rows with High Accuracy
-        report_rows = []
-        last_addr = "N/A"
-        
-        for doc in eligible_points:
-            lat, lng = doc["lat"], doc["lng"]
-            # Grid key is ~110m. This ensures speed by reusing lookups within this block.
-            key = f"{round(float(lat), 3)},{round(float(lng), 3)}"
+        else:
+            # --- CSV GENERATION (Standard) ---
+            import csv
+            output = io.StringIO()
+            fieldnames = ["Device ID", "Vehicle RC", "Date", "Time", "Latitude", "Longitude", "Speed (km/h)"]
+            writer = csv.DictWriter(output, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(eligible_points)
             
-            # Fetch from our pre-geocoded map
-            current_addr = final_address_map.get(key)
-            
-            # Only update if we found a valid new address, otherwise keep last known (Smooth transition)
-            if current_addr and current_addr != "N/A":
-                last_addr = current_addr
-            
-            report_rows.append({
-                "Device ID": device_id,
-                "Vehicle RC": rc_number,
-                "Date": doc["timestamp"].strftime("%Y-%m-%d"),
-                "Time": doc["timestamp"].strftime("%H:%M:%S"),
-                "Latitude": lat,
-                "Longitude": lng,
-                "Speed (km/h)": doc.get("speed", 0),
-                "Location": last_addr
-            })
-
-        # Step 6: Backfill "N/A" if the trip started in an un-geocoded area
-        first_valid_addr = "N/A"
-        for row in report_rows:
-            if row["Location"] != "N/A":
-                first_valid_addr = row["Location"]
-                break
-        
-        if first_valid_addr != "N/A":
-            for row in report_rows:
-                if row["Location"] == "N/A":
-                    row["Location"] = first_valid_addr
-                else:
-                    break
-
-        # 3. Generate CSV
-        import io, csv
-        output = io.StringIO()
-        fieldnames = ["Device ID", "Vehicle RC", "Date", "Time", "Latitude", "Longitude", "Speed (km/h)", "Location"]
-        writer = csv.DictWriter(output, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(report_rows)
-        
-        # Return file
-        output.seek(0)
-        filename = f"GPS_Report_{device_id}_{date_str}.csv"
-        return Response(
-            output.getvalue(),
-            mimetype="text/csv",
-            headers={"Content-disposition": f"attachment; filename={filename}"}
-        )
+            output.seek(0)
+            filename = f"GPS_Report_{device_id}_{date_str}.csv"
+            return Response(
+                output.getvalue(),
+                mimetype="text/csv",
+                headers={"Content-disposition": f"attachment; filename={filename}"}
+            )
 
     except Exception as e:
         print(f"Error generating report: {e}")

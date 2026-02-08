@@ -721,9 +721,17 @@
                     <i class="fas fa-history"></i> Load History
                 </button>
 
+                <div class="form-group" style="margin-top: 15px;">
+                    <label for="formatSelect">Report Format</label>
+                    <select id="formatSelect" class="form-control" style="padding-left: 14px;">
+                        <option value="csv">Excel (CSV)</option>
+                        <option value="pdf">PDF Document</option>
+                    </select>
+                </div>
+
                 <button class="load-btn" onclick="exportReport()"
                     style="margin-top: 10px; background: #166534; box-shadow: 0 4px 6px -1px rgba(22, 101, 52, 0.2);">
-                    <i class="fas fa-file-excel"></i> Export Report
+                    <i class="fas fa-file-download"></i> Download Report
                 </button>
                 <div id="statusMsg"></div>
 
@@ -793,6 +801,8 @@
         function exportReport() {
             const date = document.getElementById('dateSelect').value;
             const interval = document.getElementById('intervalSelect').value || 1;
+            const format = document.getElementById('formatSelect').value || 'csv';
+
             if (!selectedDevice || !date) {
                 const status = document.getElementById('statusMsg');
                 status.innerText = "Please select both a device and a date.";
@@ -801,7 +811,7 @@
             }
 
             // Trigger download via new backend route
-            window.location.href = `/api/export_recordings?vehicle=${selectedDevice}&date=${date}&interval=${interval}`;
+            window.location.href = `/api/export_recordings?vehicle=${selectedDevice}&date=${date}&interval=${interval}&format=${format}`;
         }
 
         // Init Map
