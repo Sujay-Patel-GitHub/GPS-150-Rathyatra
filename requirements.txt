@@ -18,6 +18,7 @@ paramiko==4.0.0
 pycparser==2.23
 pymongo==4.15.4
 PyNaCl==1.6.2
+reportlab==4.0.9
 requests==2.32.5
 urllib3==2.5.0
 Werkzeug==3.1.3
