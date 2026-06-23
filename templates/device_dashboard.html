@@ -796,7 +796,8 @@
         // Snap-to-road state
         let snapToRoad = false;       // OFF = show raw live GPS, ON = snap marker to nearest road
         let lastRawLatLng = null;     // last real GPS fix, for instant raw<->snap switching
-        let snapCacheKey = null, snapCacheVal = null; // cache OSRM results for repeated coords
+        let snapCacheKey = null, snapCacheVal = null; // cache snap results for repeated coords
+        let lastOverpassFetch = 0;                    // throttle road lookups
 
         // UPDATED: Custom Red Pin with Centered Truck
         const carIcon = L.divIcon({
@@ -1016,20 +1017,57 @@
             }
         }
 
-        // Query OSRM's free "nearest" service to snap a coordinate onto the road network.
+        // Closest point on segment a-b to point p. p={lat,lng}; a,b are OSM nodes {lat,lon}.
+        // Returns {lat,lng,dist} with dist in metres (local equirectangular approximation).
+        function nearestPointOnSegment(p, a, b) {
+            const mLat = 111320, mLng = 111320 * Math.cos(p.lat * Math.PI / 180);
+            const px = p.lng * mLng, py = p.lat * mLat;
+            const ax = a.lon * mLng, ay = a.lat * mLat;
+            const bx = b.lon * mLng, by = b.lat * mLat;
+            const dx = bx - ax, dy = by - ay;
+            const len2 = dx * dx + dy * dy;
+            let t = len2 ? ((px - ax) * dx + (py - ay) * dy) / len2 : 0;
+            t = Math.max(0, Math.min(1, t));
+            const cx = ax + t * dx, cy = ay + t * dy;
+            return { lat: cy / mLat, lng: cx / mLng, dist: Math.hypot(px - cx, py - cy) };
+        }
+
+        // Snap to the nearest REAL road of ANY class (incl. small/service/residential lanes)
+        // using OSM via Overpass, then project the GPS point onto the closest road segment.
+        // Unlike OSRM's car router this won't jump to a far main road. Throws (-> raw GPS
+        // fallback) if no road is within range or the lookup fails.
         async function snapToNearestRoad(lat, lng) {
             const key = lat.toFixed(5) + ',' + lng.toFixed(5);
             if (key === snapCacheKey && snapCacheVal) return snapCacheVal;
-            const url = `https://router.project-osrm.org/nearest/v1/driving/${lng},${lat}?number=1`;
+            // Throttle: reuse last snap if we queried very recently (keeps Overpass happy).
+            if (Date.now() - lastOverpassFetch < 2500 && snapCacheVal) return snapCacheVal;
+            lastOverpassFetch = Date.now();
+
+            const radius = 60; // metres to search around the GPS fix
+            const exclude = "footway|path|pedestrian|steps|cycleway|bridleway|construction|proposed|raceway";
+            const q = `[out:json][timeout:8];way(around:${radius},${lat},${lng})["highway"]["highway"!~"${exclude}"];out geom;`;
+            const url = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(q);
+
             const r = await fetch(url);
             const j = await r.json();
-            if (j && j.code === 'Ok' && j.waypoints && j.waypoints[0] && j.waypoints[0].location) {
-                const loc = j.waypoints[0].location; // [lng, lat]
+            let best = null;
+            const P = { lat, lng };
+            if (j && j.elements) {
+                for (const way of j.elements) {
+                    const g = way.geometry;
+                    if (!g || g.length < 2) continue;
+                    for (let i = 0; i < g.length - 1; i++) {
+                        const cp = nearestPointOnSegment(P, g[i], g[i + 1]);
+                        if (!best || cp.dist < best.dist) best = cp;
+                    }
+                }
+            }
+            if (best) {
                 snapCacheKey = key;
-                snapCacheVal = [loc[1], loc[0]];
+                snapCacheVal = [best.lat, best.lng];
                 return snapCacheVal;
             }
-            throw new Error('snap failed');
+            throw new Error("no road nearby");
         }
 
         // Toggle button: ON snaps the marker to the nearest road; OFF shows raw GPS.
