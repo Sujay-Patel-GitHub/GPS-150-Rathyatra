@@ -1,0 +1,180 @@
+<!-- Global SOS alert overlay (included on every page via navbar.html + device monitor) -->
+<div id="sosOverlay" style="display:none;">
+    <div id="sosBox">
+        <button id="sosClose" title="Dismiss">&times;</button>
+        <div id="sosSiren">🚨</div>
+        <div id="sosTitle">SOS ALERT</div>
+        <div id="sosSub">Emergency signal received from</div>
+        <div id="sosTruck">—</div>
+        <div id="sosCountdown"></div>
+    </div>
+</div>
+
+<style>
+    #sosOverlay {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(150, 0, 0, 0.5);
+        backdrop-filter: blur(3px);
+        animation: sosFlash 1s infinite;
+    }
+
+    @keyframes sosFlash {
+        0%, 100% { background: rgba(150, 0, 0, 0.45); }
+        50%      { background: rgba(220, 0, 0, 0.72); }
+    }
+
+    #sosBox {
+        position: relative;
+        background: #fff;
+        border: 4px solid #dc2626;
+        border-radius: 18px;
+        padding: 34px 40px;
+        width: 420px;
+        max-width: 90%;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    #sosClose {
+        position: absolute;
+        top: 10px;
+        right: 12px;
+        border: none;
+        background: #f1f5f9;
+        color: #334155;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        font-size: 1.4rem;
+        line-height: 1;
+        cursor: pointer;
+        font-weight: 700;
+        transition: all 0.2s;
+    }
+
+    #sosClose:hover { background: #dc2626; color: #fff; }
+
+    #sosSiren {
+        font-size: 3.4rem;
+        animation: sosShake 0.5s infinite;
+    }
+
+    @keyframes sosShake {
+        0%, 100% { transform: rotate(-9deg); }
+        50%      { transform: rotate(9deg); }
+    }
+
+    #sosTitle {
+        font-size: 1.9rem;
+        font-weight: 800;
+        color: #dc2626;
+        letter-spacing: 2px;
+        margin-top: 6px;
+    }
+
+    #sosSub {
+        font-size: 0.85rem;
+        color: #64748b;
+        margin-top: 8px;
+    }
+
+    #sosTruck {
+        font-size: 1.55rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 4px 0;
+        word-break: break-word;
+    }
+
+    #sosCountdown {
+        margin-top: 16px;
+        font-size: 0.8rem;
+        color: #94a3b8;
+        font-weight: 600;
+    }
+</style>
+
+<script>
+    (function () {
+        if (window.__sosInit) return;        // guard against double-include
+        window.__sosInit = true;
+
+        var overlay = document.getElementById('sosOverlay');
+        var truckEl = document.getElementById('sosTruck');
+        var cdEl = document.getElementById('sosCountdown');
+        var closeBtn = document.getElementById('sosClose');
+        if (!overlay) return;
+
+        var current = null, hideTimer = null, cdTimer = null;
+
+        function dismissed() {
+            try { return JSON.parse(sessionStorage.getItem('sosDismissed') || '{}'); }
+            catch (e) { return {}; }
+        }
+        function markDismissed(k) {
+            var d = dismissed(); d[k] = 1;
+            sessionStorage.setItem('sosDismissed', JSON.stringify(d));
+        }
+        function isDismissed(k) { return !!dismissed()[k]; }
+
+        function clearTimers() {
+            if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+            if (cdTimer) { clearInterval(cdTimer); cdTimer = null; }
+        }
+
+        // User closed (or auto-closed) -> hide and remember so it won't re-pop this activation
+        function close() {
+            overlay.style.display = 'none';
+            clearTimers();
+            if (current) { markDismissed(current); current = null; }
+        }
+        closeBtn.addEventListener('click', close);
+
+        function show(item) {
+            var key = item.device_id + '|' + item.started_at;
+            if (current === key) return;     // already showing this one
+            if (isDismissed(key)) return;    // user already closed this activation
+            current = key;
+            truckEl.textContent = item.device_id;
+            overlay.style.display = 'flex';
+
+            var secs = 30;
+            cdEl.textContent = 'Auto-closing in ' + secs + 's';
+            clearTimers();
+            cdTimer = setInterval(function () {
+                secs--;
+                cdEl.textContent = 'Auto-closing in ' + Math.max(secs, 0) + 's';
+                if (secs <= 0) clearInterval(cdTimer);
+            }, 1000);
+            hideTimer = setTimeout(close, 30000);
+        }
+
+        function poll() {
+            fetch('/check_sos').then(function (r) { return r.json(); }).then(function (d) {
+                var list = (d && d.active) || [];
+                var next = null;
+                for (var i = 0; i < list.length; i++) {
+                    var k = list[i].device_id + '|' + list[i].started_at;
+                    if (!isDismissed(k)) { next = list[i]; break; }
+                }
+                if (next) {
+                    show(next);
+                } else if (current) {
+                    // The shown SOS resolved/cleared -> hide quietly (no dismiss needed)
+                    overlay.style.display = 'none';
+                    clearTimers();
+                    current = null;
+                }
+            }).catch(function () { });
+        }
+
+        setInterval(poll, 5000);
+        poll();
+    })();
+</script>

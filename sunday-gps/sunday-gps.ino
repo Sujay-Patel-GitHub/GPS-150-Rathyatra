@@ -36,7 +36,7 @@
 #define PIN_G      16     // Green LED
 #define PIN_BUTTON 2      // Factory reset button (INPUT_PULLUP)
 #define PIN_BUZZER 4      // Buzzer
-#define PIN_MOSFET 5      // MOSFET control pin (GPIO5)
+#define PIN_SOS    5      // D1/GPIO5 - SOS toggle switch (INPUT_PULLUP, switch to GND)
 
 /* ---------------- EEPROM layout ---------------- */
 
@@ -75,6 +75,11 @@ unsigned long buttonPressStart = 0;
 bool buttonWasPressed = false;
 const unsigned long BUTTON_HOLD_MS = 3000;
 
+/* ---------------- SOS toggle (D1 / GPIO5) ---------------- */
+int lastSosState = HIGH;     // INPUT_PULLUP idle = HIGH; switch closed to GND = LOW = SOS ON
+String desiredSos = "0";     // "1" = SOS active, "0" = cleared
+bool sosSent = true;         // false = a state change still needs pushing to Firebase
+
 /* ---------------- GPS & RFID ---------------- */
 
 TinyGPSPlus gps;
@@ -110,7 +115,8 @@ String escapeForJson(const String &s);
 String urlEncode(const String &str);
 String escapeHtml(const String &s);
 bool isIpHost(const String &host);
-void checkMosfetFromFirebase();
+void serviceSos();
+bool sendSosToFirebase(const String &val);
 void checkResetFromFirebase();
 void startAccessPointWithCaptive();
 String makeSetupPage();
@@ -716,10 +722,10 @@ void handleSave() {
   }
 }
 
-/* ======================= Remote MOSFET check (Firebase) ======================= */
+/* ======================= SOS toggle -> Firebase ======================= */
 
-void checkMosfetFromFirebase() {
-  if (WiFi.status() != WL_CONNECTED) return;
+bool sendSosToFirebase(const String &val) {
+  if (WiFi.status() != WL_CONNECTED) return false;
 
   String veh = getJsonValue(configJson, "vehnum");
   if (veh == "") veh = "unknown";
@@ -727,29 +733,37 @@ void checkMosfetFromFirebase() {
   String base = FIREBASE_BASE;
   if (!base.endsWith("/")) base += "/";
 
-  String url = base + "data/" + urlEncode(veh) + "/mosfet.json";
+  // Dedicated top-level node so the website can read every device's SOS flag
+  // in one small GET (sos.json) instead of the whole data tree.
+  String url = base + "sos/" + urlEncode(veh) + ".json";
 
-  String resp;
-  Serial.print("GET -> ");
+  Serial.print("SOS -> ");
+  Serial.print(val);
+  Serial.print(" @ ");
   Serial.println(url);
 
-  if (getFromFirebase(url, resp)) {
-    resp.trim();
-    resp.replace("\"", "");
+  return putToFirebase(url, val);
+}
 
-    Serial.print("Remote MOSFET value: ");
-    Serial.println(resp);
-
-    if (resp == "1") {
-      digitalWrite(PIN_MOSFET, HIGH);
-      Serial.println("MOSFET ON (Firebase command)");
-    } 
-    else if (resp == "0") {
-      digitalWrite(PIN_MOSFET, LOW);
-      Serial.println("MOSFET OFF (Firebase command)");
+// Reads the D1 toggle switch. On a stable state change it records the desired
+// SOS value ("1" = switch closed to GND = active, "0" = open) and pushes it to
+// Firebase as soon as WiFi is available (retries if offline when toggled).
+void serviceSos() {
+  int s = digitalRead(PIN_SOS);
+  if (s != lastSosState) {
+    delay(50);                       // debounce
+    if (digitalRead(PIN_SOS) == s) { // confirm stable change
+      lastSosState = s;
+      desiredSos = (s == LOW) ? "1" : "0";
+      sosSent = false;
+      Serial.print("SOS switch changed -> ");
+      Serial.println(desiredSos);
     }
-  } else {
-    Serial.println("Failed to GET MOSFET status from Firebase");
+  }
+
+  // Push the pending state to Firebase once we have a connection.
+  if (!sosSent && WiFi.status() == WL_CONNECTED) {
+    if (sendSosToFirebase(desiredSos)) sosSent = true;
   }
 }
 
@@ -816,10 +830,10 @@ void setup() {
   pinMode(PIN_G, OUTPUT);
   pinMode(PIN_BUTTON, INPUT_PULLUP);
   pinMode(PIN_BUZZER, OUTPUT);
-  pinMode(PIN_MOSFET, OUTPUT);
+  pinMode(PIN_SOS, INPUT_PULLUP);   // SOS toggle switch on D1
 
   digitalWrite(PIN_BUZZER, LOW);
-  digitalWrite(PIN_MOSFET, LOW);   // MOSFET OFF at start
+  lastSosState = digitalRead(PIN_SOS);   // capture initial switch position
 
   setColor(false, false); // all off
 
@@ -971,15 +985,6 @@ void loop() {
               Serial.print("RFID match found at index: ");
               Serial.println(matchedIndex);
 
-              // ---- MOSFET control ----
-              if (matchedIndex == 1) {
-                digitalWrite(PIN_MOSFET, HIGH);  // ON
-                Serial.println("MOSFET ON (uid1 match)");
-              } else if (matchedIndex == 2) {
-                digitalWrite(PIN_MOSFET, LOW);   // OFF
-                Serial.println("MOSFET OFF (uid2 match)");
-              }
-
               // ---- SUCCESS feedback: green + longer beep ----
               setColor(false, true);      // green ON
               digitalWrite(PIN_BUZZER, HIGH);
@@ -1079,8 +1084,8 @@ void loop() {
       }
     }
 
-    // 🔴 Remote MOSFET control after GPS upload
-    checkMosfetFromFirebase();
+    // 🆘 SOS toggle (D1) -> push state changes to Firebase
+    serviceSos();
 
     // ♻️ Remote EEPROM reset -> reboot into AP setup mode if requested
     checkResetFromFirebase();

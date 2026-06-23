@@ -36,9 +36,13 @@ try:
     
     # 8. Live Map Recordings (from "View Live")
     col_map_recordings = db["map_recordings"]
-    
+
+    # 9. SOS Logs (emergency signals raised from devices)
+    col_sos_logs = db["sos_logs"]
+
     # Create indexes for optimization
     col_map_recordings.create_index([("device_id", 1), ("timestamp", 1)])
+    col_sos_logs.create_index([("started_at", -1)])
 
     print("✅ Connected to Local MongoDB")
     print("✅ Database Structure & Indexes Initialized.")

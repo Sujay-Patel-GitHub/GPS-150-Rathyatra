@@ -14,7 +14,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 
 # --- IMPORT DATABASE & FIREBASE CONFIG ---
-from mongodb import col_godown, col_transporters, col_drivers, col_shopkeepers, col_vehicles, col_settings, col_gps_recordings, col_map_recordings
+from mongodb import col_godown, col_transporters, col_drivers, col_shopkeepers, col_vehicles, col_settings, col_gps_recordings, col_map_recordings, col_sos_logs
 from firebase import FIREBASE_URL, FIREBASE_KEY, LOGO_URL
 
 app = Flask(__name__)
@@ -4709,6 +4709,70 @@ def reset_eeprom():
     except Exception as e:
         print(f"Error sending EEPROM reset: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
+
+
+@app.route("/check_sos")
+def check_sos():
+    """Polled by every page. Returns devices currently raising an SOS and logs each event."""
+    if 'username' not in session:
+        return jsonify({"active": []})
+
+    try:
+        r = requests.get(f"{FIREBASE_URL}/sos.json?auth={FIREBASE_KEY}", timeout=8)
+        sos_map = r.json() or {}
+    except Exception:
+        sos_map = {}
+
+    if not isinstance(sos_map, dict):
+        sos_map = {}
+
+    active_devices = {dev for dev, val in sos_map.items() if str(val) == "1"}
+
+    now = datetime.now()
+    active = []
+
+    # Open a log entry for each newly-active device; collect the active list to return.
+    for device_id in active_devices:
+        open_log = col_sos_logs.find_one({"device_id": device_id, "status": "active"})
+        if not open_log:
+            col_sos_logs.insert_one({
+                "device_id": device_id,
+                "started_at": now,
+                "ended_at": None,
+                "status": "active"
+            })
+            open_log = col_sos_logs.find_one({"device_id": device_id, "status": "active"})
+        started = open_log.get("started_at", now) if open_log else now
+        active.append({
+            "device_id": device_id,
+            "started_at": started.isoformat() if hasattr(started, "isoformat") else str(started)
+        })
+
+    # Close logs for devices no longer raising SOS.
+    for log in col_sos_logs.find({"status": "active"}):
+        if log.get("device_id") not in active_devices:
+            col_sos_logs.update_one({"_id": log["_id"]}, {"$set": {"status": "resolved", "ended_at": now}})
+
+    return jsonify({"active": active})
+
+
+@app.route("/sos_logs")
+def sos_logs():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+
+    raw = list(col_sos_logs.find().sort("started_at", -1).limit(500))
+    logs = []
+    for lg in raw:
+        started = lg.get("started_at")
+        ended = lg.get("ended_at")
+        logs.append({
+            "device_id": lg.get("device_id", "?"),
+            "started": started.strftime("%d-%b-%Y %I:%M:%S %p") if hasattr(started, "strftime") else str(started or "-"),
+            "ended": ended.strftime("%d-%b-%Y %I:%M:%S %p") if hasattr(ended, "strftime") else "-",
+            "status": lg.get("status", "")
+        })
+    return render_template("sos_logs.html", logs=logs, logo_url=LOGO_URL)
 
 
 @app.route("/download_session_zip/<vehicle_name>/<date>/<int:session_number>")
