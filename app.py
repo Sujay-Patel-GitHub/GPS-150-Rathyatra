@@ -4756,6 +4756,22 @@ def check_sos():
     return jsonify({"active": active})
 
 
+@app.route("/reset_sos", methods=["POST"])
+def reset_sos():
+    """Called by the overlay the moment it shows (or closes) to clear Firebase sos/<device> back to 0."""
+    if 'username' not in session:
+        return jsonify({"ok": False}), 403
+    device_id = request.json.get("device_id", "") if request.is_json else request.form.get("device_id", "")
+    if not device_id:
+        return jsonify({"ok": False, "error": "no device_id"}), 400
+    try:
+        url = f"{FIREBASE_URL}/sos/{requests.utils.quote(device_id, safe='')}.json?auth={FIREBASE_KEY}"
+        requests.put(url, json=0, timeout=8)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    return jsonify({"ok": True})
+
+
 @app.route("/sos_logs")
 def sos_logs():
     if 'username' not in session:

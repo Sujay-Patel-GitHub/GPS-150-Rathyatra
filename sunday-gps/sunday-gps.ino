@@ -754,7 +754,7 @@ void serviceSos() {
     delay(50);                       // debounce
     if (digitalRead(PIN_SOS) == s) { // confirm stable change
       lastSosState = s;
-      desiredSos = (s == LOW) ? "1" : "0";
+      desiredSos = "1";   // any toggle = SOS, regardless of direction
       sosSent = false;
       Serial.print("SOS switch changed -> ");
       Serial.println(desiredSos);

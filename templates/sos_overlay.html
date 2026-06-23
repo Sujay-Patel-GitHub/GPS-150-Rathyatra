@@ -111,7 +111,7 @@
         var closeBtn = document.getElementById('sosClose');
         if (!overlay) return;
 
-        var current = null, hideTimer = null, cdTimer = null;
+        var current = null, hideTimer = null, cdTimer = null, currentDevice = null;
 
         function dismissed() {
             try { return JSON.parse(sessionStorage.getItem('sosDismissed') || '{}'); }
@@ -128,11 +128,21 @@
             if (cdTimer) { clearInterval(cdTimer); cdTimer = null; }
         }
 
+        function resetFirebase(deviceId) {
+            fetch('/reset_sos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ device_id: deviceId })
+            }).catch(function () { });
+        }
+
         // User closed (or auto-closed) -> hide and remember so it won't re-pop this activation
         function close() {
             overlay.style.display = 'none';
             clearTimers();
+            if (currentDevice) { resetFirebase(currentDevice); }
             if (current) { markDismissed(current); current = null; }
+            currentDevice = null;
         }
         closeBtn.addEventListener('click', close);
 
@@ -141,8 +151,10 @@
             if (current === key) return;     // already showing this one
             if (isDismissed(key)) return;    // user already closed this activation
             current = key;
+            currentDevice = item.device_id;
             truckEl.textContent = item.device_id;
             overlay.style.display = 'flex';
+            resetFirebase(item.device_id);   // clear Firebase immediately so next toggle is fresh
 
             var secs = 30;
             cdEl.textContent = 'Auto-closing in ' + secs + 's';
