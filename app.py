@@ -4683,6 +4683,11 @@ def reset_eeprom():
     try:
         data = request.json or {}
         device_id = data.get("device_id")
+        password = data.get("password", "")
+
+        # Confirmation password gate before wiping a device's config.
+        if password != "reset":
+            return jsonify({"success": False, "message": "Incorrect password"}), 403
 
         if not device_id:
             return jsonify({"success": False, "message": "Device ID missing"}), 400

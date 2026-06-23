@@ -1014,6 +1014,15 @@
                     The command is delivered the next time the device reports in, so it may take a
                     few moments. The device must be powered on and online.
                 </div>
+                <div class="form-group" style="margin-top:4px;">
+                    <label>Enter password to confirm</label>
+                    <input type="password" id="resetPassword" placeholder="Password" autocomplete="off"
+                        onkeydown="if(event.key==='Enter'){event.preventDefault();confirmResetEeprom();}">
+                    <div id="resetPwError"
+                        style="display:none; color:var(--danger); font-size:0.7rem; font-weight:700; margin-top:6px;">
+                        <i class="fas fa-exclamation-circle"></i> Incorrect password
+                    </div>
+                </div>
                 <div class="btn-row">
                     <button type="button" class="btn-cancel" onclick="closeResetModal()">Cancel</button>
                     <button type="button" class="btn-danger" id="confirmResetBtn"
@@ -1197,7 +1206,10 @@
         function openResetModal(deviceId) {
             resetDeviceId = deviceId;
             document.getElementById('resetDeviceName').textContent = deviceId;
+            document.getElementById('resetPassword').value = '';
+            document.getElementById('resetPwError').style.display = 'none';
             document.getElementById('resetModal').classList.add('active');
+            setTimeout(() => document.getElementById('resetPassword').focus(), 100);
         }
 
         function closeResetModal() {
@@ -1207,6 +1219,15 @@
 
         function confirmResetEeprom() {
             if (!resetDeviceId) return;
+            const pw = document.getElementById('resetPassword').value;
+            const errEl = document.getElementById('resetPwError');
+            if (pw !== 'reset') {
+                errEl.style.display = 'block';
+                const inp = document.getElementById('resetPassword');
+                inp.focus(); inp.select();
+                return;
+            }
+            errEl.style.display = 'none';
             const btn = document.getElementById('confirmResetBtn');
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Sending...';
@@ -1214,7 +1235,7 @@
             fetch('/reset_eeprom', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ device_id: resetDeviceId })
+                body: JSON.stringify({ device_id: resetDeviceId, password: pw })
             })
                 .then(r => r.json())
                 .then(data => {
