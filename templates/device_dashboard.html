@@ -728,6 +728,13 @@
                     <i class="fas fa-map-marker-alt text-red-500"></i> <span id="val-address">Locating Vehicle...</span>
                 </div>
 
+                <!-- Snap to Road toggle: ON = marker snaps to nearest road; OFF = raw live GPS -->
+                <button id="snapRoadBtn" onclick="toggleSnapToRoad()"
+                    class="absolute bottom-28 right-4 z-[400] bg-white text-slate-500 w-8 h-8 rounded shadow border border-slate-300 flex items-center justify-center hover:text-green-600 hover:border-green-600 transition-all"
+                    title="Snap to road: OFF (raw GPS)">
+                    <i class="fas fa-road"></i>
+                </button>
+
                 <!-- NEW: Open in Google Maps Button -->
                 <button onclick="openGoogleMaps()"
                     class="absolute bottom-16 right-4 z-[400] bg-white text-slate-600 w-8 h-8 rounded shadow border border-slate-300 flex items-center justify-center hover:text-green-600 hover:border-green-600 transition-all"
@@ -785,6 +792,11 @@
         // Viewing State
         let viewingRoute = false; // True when previewing/replaying a file
         let lastAddressUpdate = 0; // Throttle address lookups
+
+        // Snap-to-road state
+        let snapToRoad = false;       // OFF = show raw live GPS, ON = snap marker to nearest road
+        let lastRawLatLng = null;     // last real GPS fix, for instant raw<->snap switching
+        let snapCacheKey = null, snapCacheVal = null; // cache OSRM results for repeated coords
 
         // UPDATED: Custom Red Pin with Centered Truck
         const carIcon = L.divIcon({
@@ -933,14 +945,12 @@
                 const lng = parseFloat(d.lng || d.lon);
                 if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) return;
 
-                const newLatLng = [lat, lng];
-
                 if (lastAddressUpdate === 0 || Date.now() - lastAddressUpdate > 10000) {
                     updateAddress(lat, lng);
                     lastAddressUpdate = Date.now();
                 }
 
-                // Update UI Stats
+                // Update UI Stats (always the REAL GPS values)
                 const sEl = document.getElementById('val-speed');
                 const laEl = document.getElementById('val-lat');
                 const loEl = document.getElementById('val-lng');
@@ -948,22 +958,16 @@
                 if (laEl) laEl.innerText = lat.toFixed(5);
                 if (loEl) loEl.innerText = lng.toFixed(5);
 
-                // Map Movement
-                if (liveMarker) {
-                    liveMarker.setLatLng(newLatLng);
+                // Remember the raw GPS so we can switch raw <-> snapped instantly
+                lastRawLatLng = [lat, lng];
+
+                // Place marker: snapped to nearest road if enabled, else raw GPS
+                if (snapToRoad) {
+                    snapToNearestRoad(lat, lng)
+                        .then(([slat, slng]) => placeVehicleMarker(slat, slng))
+                        .catch(() => placeVehicleMarker(lat, lng));
                 } else {
-                    liveMarker = L.marker(newLatLng, { icon: carIcon }).addTo(map);
-                }
-
-                // Auto Focus & Follow Logic
-                const recenterIcon = document.querySelector('button[onclick="recenterMap()"] i');
-
-                if (!initialCenterComplete) {
-                    map.setView(newLatLng, 16);
-                    initialCenterComplete = true;
-                    if (recenterIcon) recenterIcon.classList.add('text-blue-600');
-                } else if (recenterIcon && recenterIcon.classList.contains('text-blue-600') && !viewingRoute) {
-                    map.panTo(newLatLng);
+                    placeVehicleMarker(lat, lng);
                 }
 
                 // Recording Path
@@ -991,6 +995,63 @@
                     .then(d => processGPSPayload(d))
                     .catch(e => console.error(e));
             }, 2000);
+        }
+
+        // --- SNAP TO ROAD ---
+        // Shared marker placement + follow logic (used for both raw and snapped positions).
+        function placeVehicleMarker(lat, lng) {
+            const newLatLng = [lat, lng];
+            if (liveMarker) {
+                liveMarker.setLatLng(newLatLng);
+            } else {
+                liveMarker = L.marker(newLatLng, { icon: carIcon }).addTo(map);
+            }
+            const recenterIcon = document.querySelector('button[onclick="recenterMap()"] i');
+            if (!initialCenterComplete) {
+                map.setView(newLatLng, 16);
+                initialCenterComplete = true;
+                if (recenterIcon) recenterIcon.classList.add('text-blue-600');
+            } else if (recenterIcon && recenterIcon.classList.contains('text-blue-600') && !viewingRoute) {
+                map.panTo(newLatLng);
+            }
+        }
+
+        // Query OSRM's free "nearest" service to snap a coordinate onto the road network.
+        async function snapToNearestRoad(lat, lng) {
+            const key = lat.toFixed(5) + ',' + lng.toFixed(5);
+            if (key === snapCacheKey && snapCacheVal) return snapCacheVal;
+            const url = `https://router.project-osrm.org/nearest/v1/driving/${lng},${lat}?number=1`;
+            const r = await fetch(url);
+            const j = await r.json();
+            if (j && j.code === 'Ok' && j.waypoints && j.waypoints[0] && j.waypoints[0].location) {
+                const loc = j.waypoints[0].location; // [lng, lat]
+                snapCacheKey = key;
+                snapCacheVal = [loc[1], loc[0]];
+                return snapCacheVal;
+            }
+            throw new Error('snap failed');
+        }
+
+        // Toggle button: ON snaps the marker to the nearest road; OFF shows raw GPS.
+        function toggleSnapToRoad() {
+            snapToRoad = !snapToRoad;
+            const btn = document.getElementById('snapRoadBtn');
+            if (btn) {
+                btn.classList.toggle('text-green-600', snapToRoad);
+                btn.classList.toggle('border-green-600', snapToRoad);
+                btn.classList.toggle('text-slate-500', !snapToRoad);
+                btn.title = snapToRoad ? 'Snap to road: ON' : 'Snap to road: OFF (raw GPS)';
+            }
+            // Re-place the marker immediately from the last known GPS fix
+            if (lastRawLatLng) {
+                if (snapToRoad) {
+                    snapToNearestRoad(lastRawLatLng[0], lastRawLatLng[1])
+                        .then(([a, b]) => placeVehicleMarker(a, b))
+                        .catch(() => placeVehicleMarker(lastRawLatLng[0], lastRawLatLng[1]));
+                } else {
+                    placeVehicleMarker(lastRawLatLng[0], lastRawLatLng[1]);
+                }
+            }
         }
 
         // NEW: Fetch Address from Nominatim (OpenStreetMap)
