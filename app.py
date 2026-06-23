@@ -4772,10 +4772,26 @@ def reset_sos():
     return jsonify({"ok": True})
 
 
+@app.route("/sos_unread_count")
+def sos_unread_count():
+    if 'username' not in session:
+        return jsonify({"count": 0})
+    last_seen = session.get("sos_last_seen")
+    if last_seen:
+        count = col_sos_logs.count_documents({"started_at": {"$gt": last_seen}})
+    else:
+        count = col_sos_logs.count_documents({})
+    return jsonify({"count": count})
+
+
 @app.route("/sos_logs")
 def sos_logs():
     if 'username' not in session:
         return redirect(url_for('login'))
+
+    # Stamp last-seen so unread count resets after opening this page
+    session["sos_last_seen"] = datetime.now()
+    session.modified = True
 
     raw = list(col_sos_logs.find().sort("started_at", -1).limit(500))
     logs = []
@@ -5237,6 +5253,43 @@ def logout():
     session.clear()
     flash("You have been logged out.", "success")
     return redirect(url_for('login'))
+
+
+def _sos_background_poller():
+    """Runs forever in a daemon thread. Polls Firebase sos.json every 5s and records
+    events in MongoDB regardless of whether any browser is open."""
+    while True:
+        try:
+            r = requests.get(f"{FIREBASE_URL}/sos.json?auth={FIREBASE_KEY}", timeout=8)
+            sos_map = r.json() or {}
+            if not isinstance(sos_map, dict):
+                sos_map = {}
+
+            active_devices = {dev for dev, val in sos_map.items() if str(val) == "1"}
+            now = datetime.now()
+
+            for device_id in active_devices:
+                if not col_sos_logs.find_one({"device_id": device_id, "status": "active"}):
+                    col_sos_logs.insert_one({
+                        "device_id": device_id,
+                        "started_at": now,
+                        "ended_at": None,
+                        "status": "active"
+                    })
+
+            for log in col_sos_logs.find({"status": "active"}):
+                if log.get("device_id") not in active_devices:
+                    col_sos_logs.update_one(
+                        {"_id": log["_id"]},
+                        {"$set": {"status": "resolved", "ended_at": now}}
+                    )
+        except Exception:
+            pass
+        time.sleep(5)
+
+
+_poller_thread = threading.Thread(target=_sos_background_poller, daemon=True)
+_poller_thread.start()
 
 
 if __name__ == "__main__":

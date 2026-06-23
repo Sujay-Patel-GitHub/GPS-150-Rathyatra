@@ -165,8 +165,32 @@
     <a href="/map_recording"><button class="{{ 'active' if request.path == '/map_recording' else '' }}"><i
                 class="fas fa-map-marked"></i> <span>Map Recording</span></button></a>
     <a href="/sos_logs"><button class="{{ 'active' if request.path == '/sos_logs' else '' }}"><i
-                class="fas fa-triangle-exclamation"></i> <span>SOS Logs</span></button></a>
+                class="fas fa-triangle-exclamation"></i> <span>SOS Logs</span>
+                <span id="sosUnreadBadge" style="display:none; background:#ef4444; color:#fff; font-size:0.6rem; font-weight:800; padding:2px 7px; border-radius:999px; margin-left:auto;"></span>
+            </button></a>
 </div>
+
+<script>
+(function () {
+    function loadSosBadge() {
+        fetch('/sos_unread_count').then(function(r){ return r.json(); }).then(function(d){
+            var el = document.getElementById('sosUnreadBadge');
+            if (!el) return;
+            if (d.count > 0) {
+                el.textContent = d.count;
+                el.style.display = 'inline-block';
+            } else {
+                el.style.display = 'none';
+            }
+        }).catch(function(){});
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadSosBadge);
+    } else {
+        loadSosBadge();
+    }
+})();
+</script>
 
 <script>
     (function () {
