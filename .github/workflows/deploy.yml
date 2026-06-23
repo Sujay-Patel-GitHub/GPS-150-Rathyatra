@@ -27,19 +27,22 @@ jobs:
             # 2. Update dependencies
             ./venv/bin/python3 -m pip install -r requirements.txt
             
-            # 3. Kill old process and start new one
-            pkill -f "app.py" || true
-            sleep 2
-            # Use setsid so the app detaches into its OWN session and survives the
-            # SSH session closing when this step finishes. With plain "nohup ... &"
-            # the background process gets reaped when ssh-action disconnects, which
-            # leaves nothing listening on port 7777.
-            setsid nohup ./venv/bin/python3 app.py < /dev/null > output.log 2>&1 &
+            # 3. Restart the app. It is managed by systemd (gps-server.service);
+            #    do NOT launch app.py manually here or you get duplicate instances
+            #    fighting over port 7777. Prefer a clean systemd restart; if this
+            #    user has no passwordless sudo, just kill the process and let
+            #    systemd's "Restart=always" respawn it with the new code.
+            if sudo -n systemctl restart gps-server.service 2>/dev/null; then
+              echo "Restarted gps-server.service via systemd"
+            else
+              echo "No passwordless sudo for systemctl; killing app.py so systemd respawns it"
+              pkill -f "app.py" || true
+            fi
 
-            # 4. Verify it actually started; fail loudly (and show the log) if not.
-            sleep 5
+            # 4. Verify it came back up; fail loudly (and show the log) if not.
+            sleep 8
             if pgrep -f "app.py" > /dev/null; then
-              echo "✅ Deployment Successful! app.py running (PID $(pgrep -f 'app.py' | tr '\n' ' ')) at http://103.250.160.75:7777"
+              echo "✅ Deployment Successful! app.py running at http://103.250.160.75:7777"
             else
               echo "❌ app.py did NOT start. Last 40 lines of output.log:"
               tail -n 40 output.log || true
