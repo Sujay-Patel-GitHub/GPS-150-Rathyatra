@@ -1,0 +1,1541 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detailed Report - GPS Supply Chain Security</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .main-content {
+            padding: 24px;
+            margin-top: 10px;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            padding: 24px;
+            border-radius: 16px;
+            color: white;
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.15);
+        }
+
+        .page-header-text h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .page-header-text p {
+            font-size: 0.9rem;
+            opacity: 0.85;
+        }
+
+        /* Filter Section */
+        .filter-card {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            margin-bottom: 24px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            align-items: flex-end;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        .form-control {
+            padding: 10px 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.2s;
+            background: #f8fafc;
+        }
+
+        .form-control:focus {
+            border-color: #3b82f6;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 11px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+
+        /* Quick Selection Area */
+        .quick-trips-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #f1f5f9;
+        }
+
+        .quick-trips-section h4 {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .quick-tags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .quick-tag {
+            background: #f1f5f9;
+            color: #334155;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .quick-tag:hover {
+            background: #eff6ff;
+            color: #3b82f6;
+            border-color: #bfdbfe;
+            transform: scale(1.03);
+        }
+
+        .quick-tag.active {
+            background: #eff6ff;
+            color: #3b82f6;
+            border-color: #3b82f6;
+            font-weight: 600;
+        }
+
+        /* Dashboard Overview Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .stat-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-top: 2px;
+        }
+
+        /* Theme Color Classes for Stats */
+        .icon-pings { background: #eff6ff; color: #3b82f6; }
+        .icon-dist { background: #f0fdf4; color: #22c55e; }
+        .icon-max { background: #fff7ed; color: #f97316; }
+        .icon-avg { background: #f5f3ff; color: #8b5cf6; }
+        .icon-stops { background: #fef2f2; color: #ef4444; }
+
+        /* Security / Driver Assignment card */
+        .driver-assignment-card {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e2e8f0;
+            margin-bottom: 24px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .driver-assigned-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .driver-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #cbd5e1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            color: #475569;
+            font-weight: 600;
+        }
+
+        .driver-details-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .driver-role-label {
+            font-size: 0.75rem;
+            color: #64748b;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .driver-name-val {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        /* Dashboard Split Area (Map & Stops) */
+        .dashboard-split {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-split {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .map-section {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 500px;
+        }
+
+        .map-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        .map-wrapper {
+            flex: 1;
+            position: relative;
+            background: #e2e8f0;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .stops-section {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            max-height: 500px;
+            overflow: hidden;
+        }
+
+        .stops-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #f1f5f9;
+            font-weight: 600;
+            color: #0f172a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stops-list-container {
+            overflow-y: auto;
+            flex: 1;
+            padding: 16px;
+        }
+
+        .stop-item-card {
+            background: #f8fafc;
+            border-left: 4px solid #cbd5e1;
+            padding: 12px;
+            border-radius: 0 10px 10px 0;
+            margin-bottom: 12px;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: 1px solid #e2e8f0;
+            border-left-width: 4px;
+        }
+
+        .stop-item-card:hover {
+            transform: scale(1.01);
+            background: #f1f5f9;
+        }
+
+        .stop-item-card.risk-low { border-left-color: #22c55e; }
+        .stop-item-card.risk-medium { border-left-color: #f97316; }
+        .stop-item-card.risk-high { border-left-color: #ef4444; }
+
+        .stop-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .stop-card-title {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stop-duration-badge {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .badge-low { background: #dcfce7; color: #15803d; }
+        .badge-medium { background: #ffedd5; color: #c2410c; }
+        .badge-high { background: #fee2e2; color: #b91c1c; }
+
+        .stop-card-details {
+            font-size: 0.8rem;
+            color: #64748b;
+            line-height: 1.5;
+        }
+
+        .stop-card-actions {
+            margin-top: 8px;
+            display: flex;
+            gap: 12px;
+            font-size: 0.8rem;
+        }
+
+        .stop-card-actions a {
+            color: #3b82f6;
+            text-decoration: none;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .stop-card-actions a:hover {
+            text-decoration: underline;
+        }
+
+        /* Logs Table */
+        .logs-section {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e2e8f0;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .logs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.85rem;
+        }
+
+        th {
+            background: #f8fafc;
+            color: #475569;
+            font-weight: 600;
+            padding: 12px 16px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #334155;
+        }
+
+        tr:hover td {
+            background: #f8fafc;
+        }
+
+        .table-pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+
+        .pagination-buttons {
+            display: flex;
+            gap: 6px;
+        }
+
+        .page-btn {
+            background: white;
+            border: 1px solid #cbd5e1;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+            color: #475569;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            border-color: #3b82f6;
+            color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .page-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Export Bar */
+        .export-btn-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-outline {
+            border: 1px solid #cbd5e1;
+            background: white;
+            color: #334155;
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-outline:hover {
+            border-color: #3b82f6;
+            color: #3b82f6;
+            background: #eff6ff;
+            transform: translateY(-1px);
+        }
+
+        .btn-outline.pdf:hover {
+            border-color: #ef4444;
+            color: #ef4444;
+            background: #fef2f2;
+        }
+
+        /* Emojis & UI alerts */
+        .stationary-alert {
+            background: #eff6ff;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+        }
+
+        .year-mapped-alert {
+            background: #fffbeb;
+            color: #92400e;
+            border: 1px solid #fde68a;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .no-data-card {
+            background: white;
+            border: 1px solid #cbd5e1;
+            padding: 40px;
+            border-radius: 16px;
+            text-align: center;
+            color: #64748b;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        }
+
+        .no-data-card i {
+            font-size: 3rem;
+            color: #94a3b8;
+            margin-bottom: 16px;
+        }
+
+        .no-data-card h3 {
+            color: #0f172a;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        /* Loading Modal Styles */
+        .loading-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .loading-modal-card {
+            background: white;
+            padding: 35px 40px;
+            border-radius: 24px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .loading-spinner-container {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px auto;
+        }
+
+        .loading-spinner {
+            width: 100%;
+            height: 100%;
+            border: 4px solid #eff6ff;
+            border-top: 4px solid #2563eb;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-pdf-icon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2.2rem;
+            color: #ef4444;
+            animation: pulse-icon 1.5s infinite;
+        }
+
+        .loading-modal-card h3 {
+            color: #0f172a;
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .loading-modal-card p {
+            color: #64748b;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+
+        .loading-progress-container {
+            background: #f1f5f9;
+            border-radius: 10px;
+            height: 8px;
+            width: 100%;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .loading-progress-bar {
+            background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+            height: 100%;
+            border-radius: 10px;
+            width: 0%;
+            transition: width 0.4s cubic-bezier(0.1, 0.8, 0.2, 1);
+        }
+
+        .loading-progress-percentage {
+            color: #2563eb;
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes scaleIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse-icon {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Top Navbar -->
+        {% include 'navbar.html' %}
+
+        <!-- Sidebar -->
+        {% include 'sidebar.html' %}
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Header section -->
+            <div class="page-header">
+                <div class="page-header-text">
+                    <h1><i class="fas fa-file-invoice"></i> Detailed Vehicle Stop & Run Report</h1>
+                    <p>Track vehicle stop & run logs, audit route performance, and identify active travel intervals.</p>
+                </div>
+                <div class="export-btn-group" id="headerExportGroup" style="display:none;">
+                    <a href="#" id="exportCsvBtn" class="btn-outline" target="_blank"><i class="fas fa-file-csv"></i> Export CSV</a>
+                    <a href="javascript:void(0);" id="exportPdfBtn" class="btn-outline pdf" onclick="captureMapAndDownloadPDF()"><i class="fas fa-file-pdf"></i> Export PDF</a>
+                </div>
+            </div>
+
+            <!-- Filters & Quick Select Panel -->
+            <div class="filter-card">
+                <div class="filter-grid">
+                    <div class="form-group">
+                        <label for="vehicleSelect"><i class="fas fa-truck"></i> Registered Vehicle</label>
+                        <select id="vehicleSelect" class="form-control" onchange="onVehicleChange()">
+                            <option value="">-- Choose Vehicle --</option>
+                            {% for v in vehicles %}
+                            <option value="{{ v.device_id }}">
+                                {{ v.device_id }}
+                                {% if v.rc_number and v.rc_number != v.device_id %} ({{ v.rc_number }}){% endif %}
+                                {% if v.driver_name %} - {{ v.driver_name }}{% endif %}
+                            </option>
+                            {% endfor %}
+                            <!-- Fallback for other recording devices -->
+                            {% for dev in recordings_devices %}
+                            {% if dev not in vehicles|map(attribute='device_id') %}
+                            <option value="{{ dev }}">{{ dev }} (Map Data)</option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="dateInput"><i class="fas fa-calendar-day"></i> Select Date</label>
+                        <input type="date" id="dateInput" class="form-control">
+                    </div>
+
+                    <button class="btn-primary" onclick="loadReportData()"><i class="fas fa-search"></i> Generate Audit</button>
+                </div>
+
+                <!-- Quick Trips Selection -->
+                <div class="quick-trips-section">
+                    <h4><i class="fas fa-route"></i> Trips History:</h4>
+                    <div class="quick-tags-container" id="quickTagsContainer">
+                        <!-- Javascript will inject quick selection buttons grouped by vehicle -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Smart Year Mapped Warning -->
+            <div id="yearMappedAlert" class="year-mapped-alert" style="display:none;">
+                <i class="fas fa-info-circle fa-lg"></i>
+                <div>
+                    <strong>Smart Year-Mapping Active:</strong> You requested data for year <strong>2025</strong>. Since no tracking logs were recorded in 2025, the system automatically loaded the matching trip from year <strong>2026</strong>.
+                </div>
+            </div>
+
+            <!-- Stationary Alert -->
+            <div id="stationaryAlert" class="stationary-alert" style="display:none;">
+                <i class="fas fa-parking fa-lg"></i>
+                <div>
+                    <strong>Stationary Alert:</strong> The vehicle remained stationary at a single coordinate for the entire day. No active movement path is recorded, but GPS pings indicate 100% device active uptime.
+                </div>
+            </div>
+
+            <!-- No Data State Card -->
+            <div id="noDataStateCard" class="no-data-card">
+                <i class="fas fa-file-invoice"></i>
+                <h3>No Audit Report Generated</h3>
+                <p>Select a vehicle and date above, or click one of the pre-configured quick trips to generate a supply chain audit report.</p>
+            </div>
+
+            <!-- Active Dashboard Grid -->
+            <div id="dashboardDataGrid" style="display:none;">
+                <!-- KPI Scorecard Grid -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon icon-pings"><i class="fas fa-satellite"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-label">Total Pings</span>
+                            <span id="statPings" class="stat-value">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-dist"><i class="fas fa-road"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-label">Distance</span>
+                            <span id="statDistance" class="stat-value">0.0 km</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-max"><i class="fas fa-tachometer-alt"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-label">Max Speed</span>
+                            <span id="statMaxSpeed" class="stat-value">0 km/h</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-avg"><i class="fas fa-gauge-simple-high"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-label">Avg Speed</span>
+                            <span id="statAvgSpeed" class="stat-value">0 km/h</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon icon-stops"><i class="fas fa-hand-holding-hand"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-label">Stops & Runs</span>
+                            <span id="statStops" class="stat-value">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Driver & Security Card -->
+                <div class="driver-assignment-card">
+                    <div class="driver-assigned-item">
+                        <div class="driver-avatar"><i class="fas fa-truck-ramp-box"></i></div>
+                        <div class="driver-details-text">
+                            <span class="driver-role-label">Vehicle RC No.</span>
+                            <span id="driverRcNumber" class="driver-name-val">N/A</span>
+                        </div>
+                    </div>
+                    <div class="driver-assigned-item">
+                        <div class="driver-avatar"><i class="fas fa-user"></i></div>
+                        <div class="driver-details-text">
+                            <span class="driver-role-label">Assigned Driver</span>
+                            <span id="driverName" class="driver-name-val">N/A</span>
+                        </div>
+                    </div>
+                    <div class="driver-assigned-item">
+                        <div class="driver-avatar"><i class="fas fa-people-carry-box"></i></div>
+                        <div class="driver-details-text">
+                            <span class="driver-role-label">Transporter Partner</span>
+                            <span id="driverTransporter" class="driver-name-val">N/A</span>
+                        </div>
+                    </div>
+                    <div class="driver-assigned-item">
+                        <div class="driver-avatar"><i class="fas fa-warehouse"></i></div>
+                        <div class="driver-details-text">
+                            <span class="driver-role-label">Godown Manager</span>
+                            <span id="driverGodown" class="driver-name-val">N/A</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Split Map & Stops Panel -->
+                <div class="dashboard-split">
+                    <!-- Map Card -->
+                    <div class="map-section">
+                        <div class="map-header">
+                            <span><i class="fas fa-map-location-dot"></i> Interactive Route Audit Map</span>
+                            <span id="mapStatusText" style="font-size:0.8rem; color:#64748b; font-weight:500;">Plotting GPS coordinates...</span>
+                        </div>
+                        <div class="map-wrapper">
+                            <div id="map"></div>
+                        </div>
+                    </div>
+
+                    <!-- Stops Analysis Card -->
+                    <div class="stops-section">
+                        <div class="stops-header">
+                            <span><i class="fas fa-circle-exclamation"></i> Stopped & Runned Logs</span>
+                            <span style="font-size:0.8rem; color:#64748b; font-weight:500;" id="stopsHeaderCount">0 stops logged</span>
+                        </div>
+                        <div class="stops-list-container" id="stopsListContainer">
+                            <!-- Stops card logs injected here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Raw Log Table -->
+                <div class="logs-section">
+                    <div class="logs-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                        <span style="display: flex; align-items: center; gap: 8px;"><i class="fas fa-list-check"></i> Active Run & Log Coordinates</span>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <label for="logIntervalSelect" style="font-size: 0.85rem; font-weight: 600; color: #475569;"><i class="fas fa-filter"></i> Interval:</label>
+                            <select id="logIntervalSelect" onchange="onIntervalChange()" style="padding: 6px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.85rem; font-weight: 600; color: #334155; background: white; cursor: pointer; outline: none; transition: border 0.2s;">
+                                <option value="0">Show All</option>
+                                <option value="1" selected>1 Minute</option>
+                                <option value="10">10 Minutes</option>
+                                <option value="60">1 Hour</option>
+                            </select>
+                            <span id="logsTotalCount" style="font-size:0.8rem; color:#64748b; font-weight: 500;">Showing 0 points</span>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Timestamp</th>
+                                    <th>Latitude</th>
+                                    <th>Longitude</th>
+                                    <th>Speed (km/h)</th>
+                                    <th>Location Details</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rawLogsTableBody">
+                                <!-- Tr records injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="table-pagination">
+                        <span id="paginationInfo">Showing 1 to 10 of 100 entries</span>
+                        <div class="pagination-buttons">
+                            <button id="prevPageBtn" class="page-btn" onclick="prevPage()"><i class="fas fa-chevron-left"></i> Prev</button>
+                            <button id="nextPageBtn" class="page-btn" onclick="nextPage()">Next <i class="fas fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Hardcoded User Trip Dates ---
+        const userRequestedTrips = {
+            'GJ01HT7750': [
+                { display: '12/01/26', value: '2026-01-12' },
+                { display: '16/01/26', value: '2026-01-16' },
+                { display: '19/01/26', value: '2026-01-19' },
+                { display: '20/01/26', value: '2026-01-20' },
+                { display: '21/01/26', value: '2026-01-21' },
+                { display: '22/01/26', value: '2026-01-22' },
+                { display: '23/01/26', value: '2026-01-23' }
+            ],
+            'GJ12BW2907': [
+                { display: '01/01/26', value: '2026-01-01' },
+                { display: '02/01/26', value: '2026-01-02' },
+                { display: '03/01/26', value: '2026-01-03' }
+            ],
+            'RJ22xx9999': [
+                { display: '27/01/26', value: '2026-01-27' },
+                { display: '28/01/26', value: '2026-01-28' },
+                { display: '02/02/26', value: '2026-02-02' },
+                { display: '04/02/26', value: '2026-02-04' },
+                { display: '09/02/26', value: '2026-02-09' },
+                { display: '13/02/26', value: '2026-02-13' }
+            ]
+        };
+
+        // --- Map Initialization ---
+        let map;
+        let routeLine;
+        let mapMarkers = [];
+
+        function initMap() {
+            if (map) return;
+            map = L.map('map', {
+                center: [23.0225, 72.5714],
+                zoom: 7,
+                zoomControl: true
+            });
+
+            // Map Layer setup
+            L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                maxZoom: 20,
+                subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+                attribution: 'Google Maps',
+                crossOrigin: true
+            }).addTo(map);
+        }
+
+        // --- State Variables ---
+        let reportData = null;
+        let displayedPoints = [];
+        let currentPage = 1;
+        const itemsPerPage = 10;
+
+        // --- Start/End Icon Assets ---
+        const startIcon = L.divIcon({
+            className: 'start-marker',
+            html: `<div style="background:#22c55e; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; border:3px solid white; box-shadow:0 2px 5px rgba(0,0,0,0.3);">
+                <i class="fas fa-play" style="font-size:10px;"></i>
+            </div>`,
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        });
+
+        const endIcon = L.divIcon({
+            className: 'end-marker',
+            html: `<div style="background:#ef4444; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; border:3px solid white; box-shadow:0 2px 5px rgba(0,0,0,0.3);">
+                <i class="fas fa-flag" style="font-size:10px;"></i>
+            </div>`,
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        });
+
+        function getStopIcon(risk) {
+            let color = '#22c55e'; // Green low
+            let icon = 'fa-parking';
+            if (risk === 'Medium') { color = '#f97316'; icon = 'fa-clock'; } // Orange med
+            else if (risk === 'High') { color = '#ef4444'; icon = 'fa-triangle-exclamation'; } // Red high
+
+            return L.divIcon({
+                className: `stop-marker-${risk}`,
+                html: `<div style="background:${color}; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; border:3px solid white; box-shadow:0 2px 5px rgba(0,0,0,0.3);">
+                    <i class="fas ${icon}" style="font-size:10px;"></i>
+                </div>`,
+                iconSize: [28, 28],
+                iconAnchor: [14, 14]
+            });
+        }
+
+        // --- Quick Select Injection ---
+        function renderQuickTrips() {
+            const container = document.getElementById('quickTagsContainer');
+            container.innerHTML = '';
+
+            let hasTrips = false;
+            Object.keys(userRequestedTrips).forEach(vehicleId => {
+                userRequestedTrips[vehicleId].forEach(trip => {
+                    hasTrips = true;
+                    const button = document.createElement('div');
+                    button.className = 'quick-tag';
+                    button.setAttribute('data-vehicle', vehicleId);
+                    button.setAttribute('data-date', trip.value);
+                    button.onclick = () => selectQuickTrip(vehicleId, trip.value, button);
+                    button.innerHTML = `<i class="fas fa-tags"></i> ${vehicleId.replace(/[^0-9]/g, '') || vehicleId} (${trip.display})`;
+                    container.appendChild(button);
+                });
+            });
+        }
+
+        function onVehicleChange() {
+            const selectedVehicle = document.getElementById('vehicleSelect').value;
+            // Highlight only tags matching the vehicle, low opacity for others
+            document.querySelectorAll('.quick-tag').forEach(tag => {
+                if (!selectedVehicle) {
+                    tag.style.opacity = '1';
+                    tag.classList.remove('active');
+                } else if (tag.getAttribute('data-vehicle') === selectedVehicle) {
+                    tag.style.opacity = '1';
+                } else {
+                    tag.style.opacity = '0.4';
+                    tag.classList.remove('active');
+                }
+            });
+        }
+
+        function selectQuickTrip(vehicleId, dateStr, element) {
+            document.getElementById('vehicleSelect').value = vehicleId;
+            document.getElementById('dateInput').value = dateStr;
+            
+            document.querySelectorAll('.quick-tag').forEach(tag => tag.classList.remove('active'));
+            if (element) element.classList.add('active');
+
+            onVehicleChange();
+            loadReportData();
+        }
+
+        // --- Fetch and Render API Data ---
+        function loadReportData() {
+            const deviceId = document.getElementById('vehicleSelect').value;
+            const dateStr = document.getElementById('dateInput').value;
+
+            if (!deviceId || !dateStr) {
+                alert("⚠️ Please choose a vehicle and a date first!");
+                return;
+            }
+
+            // Show loading indicators
+            document.getElementById('noDataStateCard').style.display = 'none';
+            document.getElementById('dashboardDataGrid').style.display = 'none';
+            document.getElementById('yearMappedAlert').style.display = 'none';
+            document.getElementById('stationaryAlert').style.display = 'none';
+
+            fetch(`/api/monthly_report_data?device_id=${deviceId}&date=${dateStr}`)
+                .then(res => {
+                    if (!res.ok) {
+                        return res.json().then(errData => {
+                            throw new Error(errData.error || `HTTP ${res.status}`);
+                        }).catch(() => {
+                            throw new Error(`HTTP ${res.status}`);
+                        });
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    if (!data.success || !data.points || data.points.length === 0) {
+                        document.getElementById('noDataStateCard').style.display = 'block';
+                        document.getElementById('noDataStateCard').innerHTML = `
+                            <i class="fas fa-triangle-exclamation" style="color: #ef4444;"></i>
+                            <h3>No GPS Records Found</h3>
+                            <p>We could not find any tracking logs in MongoDB for vehicle <strong>${deviceId}</strong> on <strong>${dateStr}</strong> (even after 2026 smart-mapping fallback).</p>
+                        `;
+                        return;
+                    }
+
+                    // Store global data
+                    reportData = data;
+                    currentPage = 1;
+
+                    // Display Dashboard
+                    document.getElementById('dashboardDataGrid').style.display = 'block';
+                    document.getElementById('headerExportGroup').style.display = 'flex';
+
+                    // Update Export Download Links
+                    document.getElementById('exportCsvBtn').href = `/api/export_recordings?vehicle=${deviceId}&date=${data.date}&format=csv`;
+
+                    // Smart year alert
+                    if (data.mapped_year) {
+                        document.getElementById('yearMappedAlert').style.display = 'flex';
+                    }
+
+                    // Render elements
+                    renderKPIs(data);
+                    renderDriverDetails(data.vehicle_info);
+                    applyIntervalFilter();
+                    renderStopsList(data.stops);
+                    
+                    // Map plot
+                    initMap();
+                    setTimeout(() => {
+                        map.invalidateSize();
+                        plotRoute(data.points, data.stops);
+                    }, 200);
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("❌ Error generating audit:\n" + err.message + "\n\nPlease check console logs for details.");
+                });
+        }
+
+        // --- Render KPIs ---
+        function renderKPIs(data) {
+            document.getElementById('statPings').innerText = data.stats.total_pings;
+            document.getElementById('statDistance').innerText = `${data.stats.total_distance.toFixed(1)} km`;
+            document.getElementById('statMaxSpeed').innerText = `${data.stats.max_speed.toFixed(1)} km/h`;
+            document.getElementById('statAvgSpeed').innerText = `${data.stats.avg_speed.toFixed(1)} km/h`;
+
+            // Stopped & Runned stats
+            const stopsCount = data.stats.stops_count;
+            const runsCount = stopsCount + 1;
+            document.getElementById('statStops').innerHTML = `${stopsCount} Stops <span style="font-size:0.75rem; font-weight:600; color:#2563eb;">(${runsCount} Runs)</span>`;
+        }
+
+        // --- Render Driver details ---
+        function renderDriverDetails(info) {
+            document.getElementById('driverRcNumber').innerText = info.rc_number || 'N/A';
+            document.getElementById('driverName').innerText = info.driver_name || 'Unassigned';
+            document.getElementById('driverTransporter').innerText = info.transporter_name || 'Unassigned';
+            document.getElementById('driverGodown').innerText = info.godown_manager || 'Unassigned';
+        }
+
+        // --- Plot Map Route & Stops ---
+        function plotRoute(points, stops) {
+            // Clear existing layers
+            if (routeLine) map.removeLayer(routeLine);
+            mapMarkers.forEach(marker => map.removeLayer(marker));
+            mapMarkers = [];
+
+            // Detect Stationary (all points identical or distance = 0)
+            const isStationary = reportData.stats.total_distance === 0;
+            if (isStationary) {
+                document.getElementById('stationaryAlert').style.display = 'flex';
+                document.getElementById('mapStatusText').innerText = "Stationary state plotted.";
+            } else {
+                document.getElementById('mapStatusText').innerText = "Path route plotted.";
+            }
+
+            // Convert points to Leaflet format
+            const latlngs = points.map(p => [p.lat, p.lng]);
+
+            if (latlngs.length > 0) {
+                // Plot line route
+                if (!isStationary) {
+                    routeLine = L.polyline(latlngs, {
+                        color: '#2563eb',
+                        weight: 5,
+                        opacity: 0.8,
+                        lineJoin: 'round'
+                    }).addTo(map);
+                }
+
+                // Start Marker (First Coordinate)
+                const startPt = latlngs[0];
+                const startMarker = L.marker(startPt, { icon: startIcon }).addTo(map);
+                startMarker.bindPopup(`<b>🏁 Start Node Location</b><br/>Time: ${points[0].time}<br/>Coords: ${startPt[0].toFixed(5)}, ${startPt[1].toFixed(5)}`);
+                mapMarkers.push(startMarker);
+
+                // End Marker (Last Coordinate)
+                if (latlngs.length > 1) {
+                    const endPt = latlngs[latlngs.length - 1];
+                    const endMarker = L.marker(endPt, { icon: endIcon }).addTo(map);
+                    endMarker.bindPopup(`<b>🏁 Destination Node</b><br/>Time: ${points[points.length-1].time}<br/>Coords: ${endPt[0].toFixed(5)}, ${endPt[1].toFixed(5)}`);
+                    mapMarkers.push(endMarker);
+                }
+
+                // Plot Stops markers
+                stops.forEach((stop, index) => {
+                    const risk = stop.duration > 900 ? 'High' : (stop.duration >= 300 ? 'Medium' : 'Low');
+                    const severity = risk === 'High' ? 'Long Stop' : (risk === 'Medium' ? 'Medium Stop' : 'Short Stop');
+                    const stopMarker = L.marker([stop.lat, stop.lng], { icon: getStopIcon(risk) }).addTo(map);
+
+                    const hours = Math.floor(stop.duration / 3600);
+                    const mins = Math.floor((stop.duration % 3600) / 60);
+                    const secs = stop.duration % 60;
+                    const durationText = hours > 0 ? 
+                        `${hours}h ${mins}m ${secs}s` : 
+                        (mins > 0 ? `${mins}m ${secs}s` : `${secs}s`);
+
+                    const popupContent = `
+                        <div style="font-family:'Poppins',sans-serif; min-width:180px;">
+                            <h4 style="margin:0 0 4px 0; color:${risk === 'High' ? '#ef4444' : '#0f172a'}; font-weight:700;">
+                                <i class="fas fa-triangle-exclamation"></i> Stop #${index + 1} (${severity})
+                            </h4>
+                            <div style="font-size:0.8rem; color:#475569; line-height:1.4;">
+                                <strong>Arrival:</strong> ${formatTimeStr(stop.start_time)}<br/>
+                                <strong>Departure:</strong> ${formatTimeStr(stop.end_time)}<br/>
+                                <strong>Duration:</strong> ${durationText}<br/>
+                                <strong>Coords:</strong> ${stop.lat.toFixed(5)}, ${stop.lng.toFixed(5)}
+                            </div>
+                        </div>
+                    `;
+                    stopMarker.bindPopup(popupContent);
+                    stopMarker.stopIndex = index;
+                    mapMarkers.push(stopMarker);
+                });
+
+                // Adjust map bounds to route
+                const group = new L.featureGroup(mapMarkers);
+                map.fitBounds(group.getBounds(), { padding: [40, 40] });
+            }
+        }
+
+        // --- Render Stopped & Runned Logs ---
+        function renderStopsList(stops) {
+            const container = document.getElementById('stopsListContainer');
+            container.innerHTML = '';
+
+            document.getElementById('stopsHeaderCount').innerText = `${stops.length} stops logged`;
+
+            if (stops.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align:center; padding:30px; color:#94a3b8;">
+                        <i class="fas fa-shield-halved" style="font-size:2.5rem; color:#22c55e; margin-bottom:12px;"></i>
+                        <p style="font-weight:600; color:#1e293b;">No stops logged!</p>
+                        <p style="font-size:0.8rem; margin-top:2px;">The vehicle operated continuously without static pauses.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            stops.forEach((stop, index) => {
+                const risk = stop.duration > 900 ? 'High' : (stop.duration >= 300 ? 'Medium' : 'Low');
+                const badgeClass = risk === 'High' ? 'badge-high' : (risk === 'Medium' ? 'badge-medium' : 'badge-low');
+                const severity = risk === 'High' ? 'Long Stop' : (risk === 'Medium' ? 'Medium Stop' : 'Short Stop');
+
+                const hours = Math.floor(stop.duration / 3600);
+                const mins = Math.floor((stop.duration % 3600) / 60);
+                const secs = stop.duration % 60;
+                const durationText = hours > 0 ? 
+                    `${hours}h ${mins}m ${secs}s` : 
+                    (mins > 0 ? `${mins}m ${secs}s` : `${secs}s`);
+
+                const card = document.createElement('div');
+                card.className = `stop-item-card risk-${risk.toLowerCase()}`;
+                card.onclick = () => focusStopOnMap(index, stop.lat, stop.lng);
+
+                card.innerHTML = `
+                    <div class="stop-card-header">
+                        <span class="stop-card-title">
+                            <i class="fas fa-handshake-slash" style="color:${risk === 'High' ? '#ef4444' : '#4b5563'};"></i> Stop #${index + 1}
+                        </span>
+                        <span class="stop-duration-badge ${badgeClass}">${severity}</span>
+                    </div>
+                    <div class="stop-card-details">
+                        <div><i class="fas fa-clock"></i> <strong>Duration:</strong> ${durationText}</div>
+                        <div><i class="fas fa-hourglass-start"></i> <strong>Period:</strong> ${formatTimeStr(stop.start_time)} to ${formatTimeStr(stop.end_time)}</div>
+                        <div style="margin-top:2px;"><i class="fas fa-location-crosshairs"></i> <strong>Location:</strong> ${stop.lat.toFixed(5)}, ${stop.lng.toFixed(5)}</div>
+                    </div>
+                    <div class="stop-card-actions">
+                        <a href="https://www.google.com/maps?q=${stop.lat},${stop.lng}" target="_blank" onclick="event.stopPropagation();">
+                            <i class="fas fa-external-link-alt"></i> Google Maps
+                        </a>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function focusStopOnMap(index, lat, lng) {
+            map.setView([lat, lng], 16, { animate: true, duration: 1.2 });
+            
+            // Find corresponding marker and open popup
+            mapMarkers.forEach(marker => {
+                if (marker.stopIndex === index) {
+                    marker.openPopup();
+                }
+            });
+        }
+
+        // --- Render Paginated Table Logs ---
+        function renderLogsTable() {
+            const tbody = document.getElementById('rawLogsTableBody');
+            tbody.innerHTML = '';
+
+            if (!displayedPoints) return;
+            const total = displayedPoints.length;
+
+            document.getElementById('logsTotalCount').innerText = `Showing ${total} auditable coordinates`;
+
+            const startIdx = (currentPage - 1) * itemsPerPage;
+            const endIdx = Math.min(startIdx + itemsPerPage, total);
+
+            for (let i = startIdx; i < endIdx; i++) {
+                const pt = displayedPoints[i];
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${i + 1}</strong></td>
+                    <td>${formatTimeStr(pt.timestamp)}</td>
+                    <td>${pt.lat.toFixed(6)}</td>
+                    <td>${pt.lng.toFixed(6)}</td>
+                    <td><span style="font-weight:600; color:${pt.speed > 50 ? '#ef4444' : '#1e293b'};">${pt.speed.toFixed(1)} km/h</span></td>
+                    <td>
+                        <a href="https://www.google.com/maps?q=${pt.lat},${pt.lng}" target="_blank" style="color:#3b82f6; text-decoration:none; font-weight:600;">
+                            <i class="fas fa-map-pin"></i> View Map
+                        </a>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            }
+
+            // Pagination Controls
+            document.getElementById('paginationInfo').innerText = `Showing ${total === 0 ? 0 : startIdx + 1} to ${endIdx} of ${total} entries`;
+            document.getElementById('prevPageBtn').disabled = currentPage === 1;
+            document.getElementById('nextPageBtn').disabled = endIdx >= total;
+        }
+
+        function nextPage() {
+            if (currentPage * itemsPerPage < displayedPoints.length) {
+                currentPage++;
+                renderLogsTable();
+            }
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderLogsTable();
+            }
+        }
+
+        function applyIntervalFilter() {
+            if (!reportData || !reportData.points) return;
+            
+            const intervalMinutes = parseInt(document.getElementById('logIntervalSelect').value) || 0;
+            if (intervalMinutes === 0) {
+                displayedPoints = reportData.points;
+            } else {
+                displayedPoints = [];
+                let lastRecordedTime = null;
+                for (let i = 0; i < reportData.points.length; i++) {
+                    const pt = reportData.points[i];
+                    const ct = new Date(pt.timestamp);
+                    if (lastRecordedTime === null || (ct - lastRecordedTime) >= intervalMinutes * 60 * 1000) {
+                        displayedPoints.push(pt);
+                        lastRecordedTime = ct;
+                    }
+                }
+            }
+            currentPage = 1;
+            renderLogsTable();
+        }
+
+        function onIntervalChange() {
+            applyIntervalFilter();
+        }
+
+        // --- Helper: Format ISO Time Strings ---
+        function formatTimeStr(isoStr) {
+            if (!isoStr) return 'N/A';
+            try {
+                const dt = new Date(isoStr);
+                return dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+            } catch (e) {
+                return isoStr.substring(11, 19);
+            }
+        }
+
+        // --- Beautiful Loading Modal Handlers ---
+        function showLoadingModal() {
+            document.getElementById('loadingModal').style.display = 'flex';
+            updateProgress(0, "Preparing stopped & runned audit logs...");
+        }
+        
+        function hideLoadingModal() {
+            document.getElementById('loadingModal').style.display = 'none';
+        }
+        
+        function updateProgress(percentage, text) {
+            document.getElementById('loadingProgressBar').style.width = `${percentage}%`;
+            document.getElementById('loadingProgressPercentage').innerText = `${percentage}%`;
+            if (text) {
+                document.getElementById('loadingModalStatus').innerText = text;
+            }
+        }
+        
+        function captureMapAndDownloadPDF() {
+            const deviceId = document.getElementById('vehicleSelect').value;
+            const dateStr = document.getElementById('dateInput').value;
+            
+            if (!deviceId || !dateStr) {
+                alert("⚠️ Please choose a vehicle and a date first!");
+                return;
+            }
+
+            showLoadingModal();
+            updateProgress(10, "Capturing interactive Leaflet map...");
+            
+            setTimeout(() => {
+                const mapContainer = document.getElementById('map');
+                
+                updateProgress(30, "Rasterizing streets, places, and active route lines...");
+                
+                html2canvas(mapContainer, {
+                    useCORS: true,
+                    allowTaint: false,
+                    logging: false,
+                    scale: 1.5 // High resolution capture
+                }).then(canvas => {
+                    updateProgress(65, "Encoding map image database...");
+                    const base64Image = canvas.toDataURL('image/png');
+                    
+                    updateProgress(80, "Generating Stopped & Runned PDF on server...");
+                    
+                    fetch('/api/export_recordings', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            vehicle: deviceId,
+                            date: dateStr,
+                            format: 'pdf',
+                            map_image: base64Image
+                        })
+                    })
+                    .then(res => {
+                        if (!res.ok) {
+                            return res.text().then(text => { throw new Error(text) });
+                        }
+                        return res.blob();
+                    })
+                    .then(blob => {
+                        updateProgress(95, "Finalizing report download...");
+                        
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `Vehicle_Stop_Run_Report_${deviceId}_${dateStr}.pdf`;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        window.URL.revokeObjectURL(url);
+                        
+                        updateProgress(100, "Report downloaded successfully!");
+                        setTimeout(hideLoadingModal, 1000);
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        alert("❌ Server PDF Generation Failed:\n" + err.message);
+                        hideLoadingModal();
+                    });
+                    
+                }).catch(err => {
+                    console.error(err);
+                    alert("❌ Map capture failed. Downloading PDF with fallback vector projection...\n" + err.message);
+                    
+                    // Fallback to direct download
+                    window.location.href = `/api/export_recordings?vehicle=${deviceId}&date=${dateStr}&format=pdf`;
+                    hideLoadingModal();
+                });
+            }, 600);
+        }
+
+        // --- On Page Load Initializer ---
+        window.onload = () => {
+            renderQuickTrips();
+        };
+    </script>
+
+    <!-- Beautiful Loading Modal HTML -->
+    <div id="loadingModal" class="loading-modal-overlay" style="display: none;">
+        <div class="loading-modal-card">
+            <div class="loading-spinner-container">
+                <div class="loading-spinner"></div>
+                <i class="fas fa-file-pdf loading-pdf-icon"></i>
+            </div>
+            <h3 id="loadingModalTitle">Generating Audit PDF</h3>
+            <p id="loadingModalStatus">Preparing stopped & runned audit logs...</p>
+            <div class="loading-progress-container">
+                <div id="loadingProgressBar" class="loading-progress-bar" style="width: 0%;"></div>
+            </div>
+            <div id="loadingProgressPercentage" class="loading-progress-percentage">0%</div>
+        </div>
+    </div>
+</body>
+
+</html>

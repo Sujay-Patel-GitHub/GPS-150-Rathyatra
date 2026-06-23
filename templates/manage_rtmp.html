@@ -269,6 +269,83 @@
             color: #0f172a;
         }
 
+        .reset-eeprom-btn {
+            border: 1px solid #fecaca;
+            background: #fef2f2;
+            color: #dc2626;
+            border-radius: 6px;
+            padding: 3px 7px;
+            font-size: 0.6rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .reset-eeprom-btn:hover {
+            background: #dc2626;
+            color: #fff;
+            border-color: #dc2626;
+        }
+
+        .reset-warning-box {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 14px;
+            font-size: 0.78rem;
+            color: #7f1d1d;
+            line-height: 1.5;
+        }
+
+        .reset-warning-box b {
+            color: #b91c1c;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 6px;
+        }
+
+        .btn-cancel {
+            flex: 1;
+            padding: 11px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            background: #fff;
+            color: #475569;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .btn-danger {
+            flex: 1;
+            padding: 11px;
+            border: none;
+            border-radius: 10px;
+            background: var(--danger);
+            color: #fff;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-danger:hover {
+            opacity: 0.95;
+        }
+
         .status-badge {
             padding: 1px 6px;
             border-radius: 3px;
@@ -794,6 +871,11 @@
                         <div class="device-title">
                             <i class="fas fa-video"></i>
                             <h4>{{ vehicle.device_name }}</h4>
+                            <button class="reset-eeprom-btn"
+                                title="Reset EEPROM: wipe device config and reboot into setup (AP) mode"
+                                onclick="openResetModal('{{ vehicle.device_name }}')">
+                                <i class="fas fa-eraser"></i> Reset
+                            </button>
                         </div>
                         <div style="display: flex; gap: 4px; align-items: center;">
                             <span class="status-badge" style="background: #f1f5f9; color: #64748b; font-size: 0.5rem;"
@@ -909,6 +991,36 @@
                     </div>
                     <button type="submit" class="save-btn">SAVE THRESHOLD</button>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reset EEPROM Modal -->
+    <div class="modal" id="resetModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 style="color:var(--danger);"><i class="fas fa-eraser"></i> Reset EEPROM</h3>
+                <button onclick="closeResetModal()"
+                    style="background:none; border:none; cursor:pointer; color:#94a3b8;"><i
+                        class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="reset-warning-box">
+                    This will tell <b id="resetDeviceName">device</b> to <b>erase its saved
+                    configuration</b> and reboot into setup mode. The device will create its own
+                    WiFi hotspot <b>"PILAB-GPS"</b> so you can connect and enter the new truck's
+                    details.
+                    <br><br>
+                    The command is delivered the next time the device reports in, so it may take a
+                    few moments. The device must be powered on and online.
+                </div>
+                <div class="btn-row">
+                    <button type="button" class="btn-cancel" onclick="closeResetModal()">Cancel</button>
+                    <button type="button" class="btn-danger" id="confirmResetBtn"
+                        onclick="confirmResetEeprom()">
+                        <i class="fas fa-eraser"></i> Reset EEPROM
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1079,9 +1191,51 @@
             setTimeout(() => div.remove(), 4000);
         }
 
+        // --- Reset EEPROM Functions ---
+        let resetDeviceId = null;
+
+        function openResetModal(deviceId) {
+            resetDeviceId = deviceId;
+            document.getElementById('resetDeviceName').textContent = deviceId;
+            document.getElementById('resetModal').classList.add('active');
+        }
+
+        function closeResetModal() {
+            document.getElementById('resetModal').classList.remove('active');
+            resetDeviceId = null;
+        }
+
+        function confirmResetEeprom() {
+            if (!resetDeviceId) return;
+            const btn = document.getElementById('confirmResetBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Sending...';
+
+            fetch('/reset_eeprom', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ device_id: resetDeviceId })
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showAlert('success', data.message);
+                        closeResetModal();
+                    } else {
+                        showAlert('error', data.message || 'Failed to send reset command');
+                    }
+                })
+                .catch(() => showAlert('error', 'Connection error'))
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-eraser"></i> Reset EEPROM';
+                });
+        }
+
         window.onclick = function (e) {
             if (e.target.id === 'rtmpModal') closeModal();
             if (e.target.id === 'powerModal') closePowerModal();
+            if (e.target.id === 'resetModal') closeResetModal();
         };
 
         // Initialize

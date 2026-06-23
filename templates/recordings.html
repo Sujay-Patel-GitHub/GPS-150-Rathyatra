@@ -13,6 +13,9 @@
         rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Video Support Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/mpegts.js@latest/dist/mpegts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
     <style>
         :root {
@@ -579,6 +582,119 @@
                 transform: translateY(0);
             }
         }
+
+        /* --- Video Modal Styles --- */
+        .video-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+            backdrop-filter: blur(5px);
+        }
+
+        .video-modal-overlay.show {
+            display: flex;
+        }
+
+        .video-modal {
+            width: 90%;
+            max-width: 1000px;
+            background: #000;
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            min-height: 200px;
+        }
+
+        /* Loading Progress Overlay */
+        .video-loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 5;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .video-loading-overlay.show {
+            display: flex;
+        }
+
+        .v-progress-container {
+            width: 280px;
+            height: 10px;
+            background: #334155;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .v-progress-bar {
+            height: 100%;
+            background: var(--primary);
+            width: 0%;
+            transition: width 0.2s;
+        }
+
+        .video-player {
+            width: 100%;
+            display: block;
+            max-height: 80vh;
+        }
+
+        .video-modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+
+        .video-modal-close:hover {
+            background: rgba(255, 255, 255, 0.4);
+            transform: scale(1.1);
+        }
+
+        .video-info-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+            color: white;
+            pointer-events: none;
+        }
+
+        .video-info-overlay h3 {
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+        }
     </style>
 </head>
 
@@ -631,6 +747,35 @@
         </div>
     </div>
     {% endif %}
+
+    <!-- Video Player Modal -->
+    <div class="video-modal-overlay" id="videoModalOverlay" onclick="closeVideoPlayer()">
+        <div class="video-modal" onclick="event.stopPropagation()">
+            <!-- Loading Indicator -->
+            <div class="video-loading-overlay" id="videoLoadingOverlay">
+                <i class="fas fa-cloud-download-alt fa-3x fa-bounce"
+                    style="margin-bottom: 20px; color: var(--primary);"></i>
+                <h3 style="font-family: 'Outfit', sans-serif;">Preparing Video...</h3>
+                <p id="videoLoadMsg" style="color: #94a3b8; font-size: 0.9rem;">Fetching from server for smooth playback
+                </p>
+                <div class="v-progress-container">
+                    <div class="v-progress-bar" id="videoProgressBar"></div>
+                </div>
+                <div id="videoLoadPercent" style="font-weight: 700; font-size: 1.1rem; color: #fff;">0%</div>
+            </div>
+
+            <button class="video-modal-close" onclick="closeVideoPlayer()">
+                <i class="fas fa-times"></i>
+            </button>
+            <video id="mainVideoPlayer" class="video-player" controls preload="auto">
+                Your browser does not support the video tag.
+            </video>
+            <div class="video-info-overlay">
+                <h3 id="videoModalTitle">Video Playback</h3>
+                <p style="font-size: 0.8rem; opacity: 0.7;">Pre-buffered from Server for stable playback.</p>
+            </div>
+        </div>
+    </div>
 
     <div class="app-layout" id="mainContent">
         {% include 'sidebar.html' %}
@@ -736,10 +881,17 @@
 
                     <div style="width: 1px; height: 24px; background: #e2e8f0; margin: 0 5px;"></div>
 
-                    <button class="action-btn" onclick="showAllFolders()"
-                        style="padding: 10px 15px; border-radius: 8px; border: 1px solid var(--border-color); background: white; color: var(--text-main); font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;">
-                        <i class="fas fa-folder-tree"></i> Show All Folders
-                    </button>
+                    <div id="folderActions" style="display: none; gap: 0.5rem; align-items: center;">
+                        <button class="action-btn" id="btnDownloadSelected" onclick="downloadSelectedFiles()"
+                            style="padding: 10px 15px; border-radius: 8px; border: 1px solid #10b981; background: white; color: #10b981; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-check-double"></i> Download Selected
+                        </button>
+
+                        <button class="action-btn" id="btnDownloadAll" onclick="downloadAllInFolder()"
+                            style="padding: 10px 15px; border-radius: 8px; border: none; background: #10b981; color: white; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);">
+                            <i class="fas fa-file-zipper"></i> Download All (ZIP)
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -748,7 +900,11 @@
             <!-- Browser Area -->
             <div class="browser-card" id="browserCard" style="display: none;">
                 <div class="browser-header">
-                    <span>Name</span>
+                    <div style="display: flex; align-items: center; gap: 10px; padding-left: 10px;">
+                        <input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)"
+                            style="width: 16px; height: 16px; cursor: pointer;">
+                        <span>Name</span>
+                    </div>
                     <span>Size</span>
                     <span>Modified</span>
                     <span style="text-align: right;">Actions</span>
@@ -870,9 +1026,9 @@
             endTime.value = "";
 
             recordingsGrid.style.display = 'none';
+            document.getElementById('browserCard').style.display = 'none';
 
             activeCameraNames = [];
-            loadFiles('');
         }
 
         // --- Server Storage Explorer Scripts ---
@@ -890,6 +1046,16 @@
 
         async function loadFiles(path, ignoreFilter = false) {
             currentPath = path;
+
+            // Toggle Folder Actions visibility - only show if NOT at root
+            const folderActions = document.getElementById('folderActions');
+            if (folderActions) {
+                folderActions.style.display = path !== "" ? "flex" : "none";
+            }
+            // Reset Select All checkbox
+            const selectAllBox = document.getElementById('selectAll');
+            if (selectAllBox) selectAllBox.checked = false;
+            updateBulkActions();
 
             // Manage Back Button State
             const btnBack = document.getElementById('btnBack');
@@ -929,8 +1095,8 @@
                     if (currentPath === "" && !ignoreFilter) {
                         if (activeCameraNames.length > 0) {
                             itemsToRender = data.items.filter(item => activeCameraNames.includes(item.name));
-                        } else if (vehicleSelect.value) {
-                            // If vehicle selected but no cameras loaded yet or none found
+                        } else {
+                            // If NO vehicle/camera selected, show NOTHING (prevents server folder exposure)
                             itemsToRender = [];
                         }
                     }
@@ -1035,7 +1201,8 @@
                 const dateStr = new Date(item.mtime * 1000).toLocaleString();
 
                 div.innerHTML = `
-                    <div class="file-name">
+                    <div class="file-name" style="display: flex; align-items: center; gap: 10px; padding-left: 10px;">
+                        <input type="checkbox" class="file-checkbox" data-name="${item.name}" onclick="event.stopPropagation(); updateBulkActions();" style="width: 16px; height: 16px; cursor: pointer;">
                         <i class="fas ${iconClass}"></i>
                         <span>${item.name}</span>
                     </div>
@@ -1043,9 +1210,14 @@
                     <div class="file-date">${dateStr}</div>
                     <div class="file-actions">
                         ${!item.is_dir ? `
-                        <button class="btn-icon" onclick="downloadFile(event, '${item.name}')" title="Download">
-                            <i class="fas fa-download"></i>
-                        </button>` : ''}
+                            ${item.name.match(/\.(mp4|ts|mkv|avi|mov)$/i) ? `
+                            <button class="btn-icon" onclick="playVideo(event, '${item.name}')" title="Play Video" style="color: var(--primary)">
+                                <i class="fas fa-play"></i>
+                            </button>` : ''}
+                            <button class="btn-icon" onclick="downloadFile(event, '${item.name}')" title="Download">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        ` : ''}
                     </div>
                 `;
                 container.appendChild(div);
@@ -1083,10 +1255,6 @@
         }
 
 
-        function showAllFolders() {
-            resetFilters(); // Reset dropdowns and clear active filters
-            loadFiles('', true); // Load all files ignoring any previous filters
-        }
 
         function goBack() {
             if (currentPath) {
@@ -1101,6 +1269,108 @@
             const url = `/api/server/download?path=${encodeURIComponent(currentPath)}&name=${encodeURIComponent(name)}&mode=${storageMode}`;
             window.location.href = url;
         }
+
+        // --- Video Player Functions ---
+        let tsPlayer = null;
+        let activeVideoUrl = null;
+        let videoFetchAbort = null;
+
+        async function playVideo(event, name) {
+            if (event) event.stopPropagation();
+
+            const overlay = document.getElementById('videoModalOverlay');
+            const player = document.getElementById('mainVideoPlayer');
+            const title = document.getElementById('videoModalTitle');
+            const loadingOverlay = document.getElementById('videoLoadingOverlay');
+            const progressBar = document.getElementById('videoProgressBar');
+            const percentText = document.getElementById('videoLoadPercent');
+
+            title.innerText = name;
+            overlay.classList.add('show');
+            loadingOverlay.classList.add('show');
+            progressBar.style.width = '0%';
+            percentText.innerText = '0%';
+
+            // Cleanup old players/URLs
+            if (tsPlayer) { tsPlayer.destroy(); tsPlayer = null; }
+            if (activeVideoUrl) { URL.revokeObjectURL(activeVideoUrl); activeVideoUrl = null; }
+            if (videoFetchAbort) { videoFetchAbort.abort(); }
+
+            player.pause();
+            player.src = "";
+            player.load();
+
+            videoFetchAbort = new AbortController();
+            const url = `/api/video/view?path=${encodeURIComponent(currentPath)}&name=${encodeURIComponent(name)}&mode=${storageMode}`;
+
+            try {
+                const response = await fetch(url, { signal: videoFetchAbort.signal });
+                if (!response.ok) throw new Error("Server communication failed");
+
+                const contentLength = +response.headers.get('Content-Length');
+                const reader = response.body.getReader();
+                let receivedLength = 0;
+                let chunks = [];
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    chunks.push(value);
+                    receivedLength += value.length;
+
+                    if (contentLength) {
+                        const percent = Math.round((receivedLength / contentLength) * 100);
+                        progressBar.style.width = percent + '%';
+                        percentText.innerText = percent + '%';
+                    } else {
+                        percentText.innerText = (receivedLength / (1024 * 1024)).toFixed(1) + ' MB';
+                    }
+                }
+
+                const blob = new Blob(chunks, { type: name.toLowerCase().endsWith('.ts') ? 'video/mp2t' : 'video/mp4' });
+                activeVideoUrl = URL.createObjectURL(blob);
+                loadingOverlay.classList.remove('show');
+
+                if (name.toLowerCase().endsWith('.ts') && mpegts.getFeatureList().msePlayback) {
+                    tsPlayer = mpegts.createPlayer({
+                        type: 'mpegts',
+                        url: activeVideoUrl
+                    });
+                    tsPlayer.attachMediaElement(player);
+                    tsPlayer.load();
+                    tsPlayer.play().catch(e => console.log("Play error:", e));
+                } else {
+                    player.src = activeVideoUrl;
+                    player.play().catch(e => console.log("Native Play error:", e));
+                }
+
+            } catch (err) {
+                if (err.name === 'AbortError') return;
+                console.error("Video Load Error:", err);
+                alert("Playback Error: " + err.message + "\n\nPlease try the 'Download' button instead.");
+                closeVideoPlayer();
+            }
+        }
+
+        function closeVideoPlayer() {
+            const overlay = document.getElementById('videoModalOverlay');
+            const player = document.getElementById('mainVideoPlayer');
+            const loadingOverlay = document.getElementById('videoLoadingOverlay');
+
+            if (videoFetchAbort) { videoFetchAbort.abort(); videoFetchAbort = null; }
+            if (tsPlayer) { tsPlayer.destroy(); tsPlayer = null; }
+            if (activeVideoUrl) { URL.revokeObjectURL(activeVideoUrl); activeVideoUrl = null; }
+
+            player.pause();
+            player.src = "";
+            overlay.classList.remove('show');
+            loadingOverlay.classList.remove('show');
+        }
+
+        // Close modal on escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeVideoPlayer();
+        });
 
         function formatBytes(bytes, decimals = 2) {
             if (bytes === 0) return '0 Bytes';
@@ -1177,6 +1447,100 @@
                     verifyPassword();
                 }
             });
+        }
+
+        function getZipName(suffix = "") {
+            const vText = vehicleSelect.options[vehicleSelect.selectedIndex]?.text || "Vehicle";
+            const cText = cameraSelect.options[cameraSelect.selectedIndex]?.text || "All_Cameras";
+
+            // Clean up names (remove spaces and special chars)
+            const cleanV = vText.split('(')[0].trim().replace(/[^a-z0-9]/gi, '_');
+            const cleanC = cText.replace(/[^a-z0-9]/gi, '_');
+
+            return `${cleanV}_${cleanC}${suffix ? '_' + suffix : ''}.zip`;
+        }
+
+        function toggleSelectAll(box) {
+            const checkboxes = document.querySelectorAll('.file-checkbox');
+            checkboxes.forEach(cb => cb.checked = box.checked);
+            updateBulkActions();
+        }
+
+        function updateBulkActions() {
+            const checkboxes = document.querySelectorAll('.file-checkbox:checked');
+            const btnDownloadSelected = document.getElementById('btnDownloadSelected');
+            if (btnDownloadSelected) {
+                const count = checkboxes.length;
+                btnDownloadSelected.disabled = count === 0;
+                btnDownloadSelected.style.opacity = count === 0 ? "0.5" : "1";
+                btnDownloadSelected.innerHTML = `<i class="fas fa-check-double"></i> Download Selected (${count})`;
+            }
+        }
+
+        async function downloadSelectedFiles() {
+            const checkboxes = document.querySelectorAll('.file-checkbox:checked');
+            if (checkboxes.length === 0) return;
+            const selectedFiles = Array.from(checkboxes).map(cb => cb.dataset.name);
+            await startZipJob(selectedFiles, 'btnDownloadSelected');
+        }
+
+        async function downloadAllInFolder() {
+            if (!currentPath) {
+                alert("Please open a specific trip or camera folder first to download all files.");
+                return;
+            }
+            await startZipJob(null, 'btnDownloadAll');
+        }
+
+        async function startZipJob(files, btnId) {
+            const btn = document.getElementById(btnId);
+            const originalHtml = btn.innerHTML;
+
+            try {
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Initializing...';
+                btn.style.opacity = '0.7';
+                btn.style.pointerEvents = 'none';
+
+                // 1. Request Job Start
+                const startResponse = await fetch('/api/zip/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        path: currentPath,
+                        mode: storageMode,
+                        files: files
+                    })
+                });
+
+                if (!startResponse.ok) {
+                    const error = await startResponse.json();
+                    throw new Error(error.error || "Failed to start ZIP job");
+                }
+
+                const result = await startResponse.json();
+                const job_id = result.job_id;
+
+                // 2. Register with Global Manager
+                if (window.zipManager) {
+                    const zipName = getZipName(files ? "Selected" : "");
+                    window.zipManager.addJob(job_id, zipName);
+                }
+
+                // Give immediate feedback
+                btn.innerHTML = '<i class="fas fa-check"></i> Started! Check Top Right';
+                setTimeout(() => resetBtn(), 3000);
+
+            } catch (err) {
+                alert("Download failed: " + err.message);
+                resetBtn();
+            }
+
+            function resetBtn() {
+                btn.innerHTML = originalHtml;
+                btn.style.opacity = '1';
+                btn.style.pointerEvents = 'auto';
+                updateBulkActions();
+            }
         }
     </script>
 </body>

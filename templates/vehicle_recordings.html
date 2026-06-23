@@ -283,6 +283,33 @@
             background: #eff6ff;
         }
 
+        .btn-download-all {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-download-all:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-download-all i {
+            font-size: 1rem;
+        }
+
         .empty-session {
             text-align: center;
             padding: 40px;
@@ -315,11 +342,17 @@
                         <i class="fas fa-route"></i> Trip #{{ session.session_number }}
                         <span style="font-size: 1rem; color: #64748b; font-weight: 500;">- {{ session.date }}</span>
                     </div>
-                    {% if session.is_recording %}
-                    <div class="recording-badge">
-                        <i class="fas fa-circle" style="font-size: 0.6rem;"></i> Live Recording
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        {% if session.is_recording %}
+                        <div class="recording-badge">
+                            <i class="fas fa-circle" style="font-size: 0.6rem;"></i> Live Recording
+                        </div>
+                        {% endif %}
+                        <a href="/download_session_zip/{{ vehicle_name }}/{{ session.date }}/{{ session.session_number }}"
+                            class="btn-download-all" title="Download all videos from this session as ZIP">
+                            <i class="fas fa-download"></i> Download All
+                        </a>
                     </div>
-                    {% endif %}
                 </div>
 
                 <div class="session-stats">

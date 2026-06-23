@@ -7,3 +7,6 @@ streams/
 deploy_package.tar.gz
 .vscode/
 .env
+push_to_server/
+scratch/
+remote_deploy.sh

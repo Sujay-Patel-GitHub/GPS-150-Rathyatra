@@ -60,32 +60,186 @@
         gap: 20px;
     }
 
-    .navbar-user span {
-        font-size: 0.9rem;
-        color: #4b5563;
+    /* --- Zip Notifications --- */
+    .zip-notify-container {
+        position: relative;
+    }
+
+    .zip-notify-btn {
+        background: #f3f4f6;
+        border: none;
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        cursor: pointer;
         display: flex;
         align-items: center;
+        justify-content: center;
+        color: #4b5563;
+        transition: all 0.2s;
+        position: relative;
+    }
+
+    .zip-notify-btn:hover {
+        background: #e5e7eb;
+    }
+
+    .zip-notify-btn.active i {
+        animation: zipPulse 1.5s infinite;
+        color: #2563eb;
+    }
+
+    @keyframes zipPulse {
+        0% {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        50% {
+            transform: scale(1.2);
+            opacity: 0.7;
+        }
+
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+
+    .zip-badge {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        background: #ef4444;
+        color: white;
+        font-size: 0.65rem;
+        font-weight: 700;
+        min-width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid white;
+    }
+
+    .zip-dropdown {
+        position: absolute;
+        top: 55px;
+        right: 0;
+        width: 320px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e5e7eb;
+        display: none;
+        flex-direction: column;
+        z-index: 2000;
+        overflow: hidden;
+    }
+
+    .zip-dropdown.show {
+        display: flex;
+    }
+
+    .zip-dropdown-header {
+        padding: 12px 16px;
+        background: #f8fafc;
+        border-bottom: 1px solid #e5e7eb;
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .zip-job-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .zip-job-item {
+        padding: 16px;
+        border-bottom: 1px solid #f1f5f9;
+        transition: background 0.2s;
+    }
+
+    .zip-job-item:last-child {
+        border-bottom: none;
+    }
+
+    .zip-job-info {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-size: 0.85rem;
+    }
+
+    .zip-job-name {
+        font-weight: 600;
+        color: #1e293b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 180px;
+    }
+
+    .zip-job-percent {
+        color: #64748b;
+        font-weight: 500;
+    }
+
+    .zip-progress-bg {
+        height: 6px;
+        background: #e2e8f0;
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .zip-progress-fill {
+        height: 100%;
+        background: #2563eb;
+        width: 0%;
+        transition: width 0.3s ease;
+    }
+
+    .zip-job-actions {
+        margin-top: 10px;
+        display: flex;
         gap: 8px;
     }
 
-    .navbar-user .logout-btn {
-        background: #fef2f2;
-        color: #dc2626;
-        text-decoration: none;
+    .zip-btn-download {
+        flex: 1;
+        padding: 6px;
+        background: #10b981;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.75rem;
         font-weight: 600;
-        padding: 8px 16px;
-        border-radius: 8px;
-        font-size: 0.85rem;
-        transition: all 0.2s;
-        border: 1px solid #fee2e2;
+        cursor: pointer;
         display: flex;
         align-items: center;
-        gap: 6px;
+        justify-content: center;
+        gap: 4px;
     }
 
-    .navbar-user .logout-btn:hover {
-        background: #fee2e2;
-        transform: translateY(-1px);
+    .zip-btn-remove {
+        padding: 6px 10px;
+        background: #f1f5f9;
+        color: #ef4444;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        cursor: pointer;
+    }
+
+    .zip-empty {
+        padding: 30px 20px;
+        text-align: center;
+        color: #94a3b8;
+        font-size: 0.85rem;
     }
 </style>
 
@@ -98,7 +252,188 @@
         <h2>Admin Dashboard</h2>
     </div>
     <div class="navbar-user">
+        <!-- ZIP Progress Notification -->
+        <div class="zip-notify-container" id="zipNotifyContainer">
+            <button class="zip-notify-btn" id="zipNotifyBtn" title="ZIP Downloads">
+                <i class="fas fa-file-zipper"></i>
+                <div class="zip-badge" id="zipBadge">0</div>
+            </button>
+            <div class="zip-dropdown" id="zipDropdown">
+                <div class="zip-dropdown-header">
+                    <span>Active Downloads</span>
+                    <i class="fas fa-sync-alt fa-sm" style="opacity: 0.5;"></i>
+                </div>
+                <div class="zip-job-list" id="zipJobList">
+                    <div class="zip-empty">No active ZIP tasks</div>
+                </div>
+            </div>
+        </div>
+
         <span><i class="fas fa-user-shield"></i> <strong>Admin</strong></span>
         <a href="/logout" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
     </div>
 </div>
+
+<script>
+    class GlobalZipManager {
+        constructor() {
+            this.jobs = JSON.parse(localStorage.getItem('activeZipJobs') || '{}');
+            this.btn = document.getElementById('zipNotifyBtn');
+            this.dropdown = document.getElementById('zipDropdown');
+            this.list = document.getElementById('zipJobList');
+            this.badge = document.getElementById('zipBadge');
+            this.pollers = {};
+
+            this.init();
+        }
+
+        init() {
+            // Toggle dropdown
+            this.btn.onclick = (e) => {
+                e.stopPropagation();
+                this.dropdown.classList.toggle('show');
+            };
+
+            document.onclick = () => this.dropdown.classList.remove('show');
+            this.dropdown.onclick = (e) => e.stopPropagation();
+
+            // Resume existing jobs
+            Object.keys(this.jobs).forEach(jid => this.startPolling(jid));
+            this.updateUI();
+        }
+
+        addJob(jobId, zipName) {
+            this.jobs[jobId] = {
+                id: jobId,
+                name: zipName || "Recordings Package",
+                current: 0,
+                total: 0,
+                status: 'starting'
+            };
+            this.save();
+            this.startPolling(jobId);
+            this.updateUI();
+
+            // Auto open dropdown to show progress
+            this.dropdown.classList.add('show');
+        }
+
+        save() {
+            localStorage.setItem('activeZipJobs', JSON.stringify(this.jobs));
+        }
+
+        async startPolling(jid) {
+            if (this.pollers[jid]) return;
+
+            this.pollers[jid] = setInterval(async () => {
+                try {
+                    const res = await fetch(`/api/zip/status/${jid}`);
+                    if (!res.ok) {
+                        this.handleError(jid, "Job not found on server");
+                        return;
+                    }
+                    const data = await res.json();
+
+                    if (data.status === 'processing') {
+                        this.jobs[jid].current = data.current;
+                        this.jobs[jid].total = data.total;
+                        this.jobs[jid].status = 'processing';
+                    } else if (data.status === 'completed') {
+                        this.jobs[jid].status = 'completed';
+                        this.stopPolling(jid);
+                        this.showNotification(`ZIP Ready: ${this.jobs[jid].name}`);
+                    } else if (data.status === 'error') {
+                        this.handleError(jid, data.error);
+                    }
+
+                    this.save();
+                    this.updateUI();
+                } catch (e) {
+                    console.error("Poller error:", e);
+                }
+            }, 1000);
+        }
+
+        stopPolling(jid) {
+            if (this.pollers[jid]) {
+                clearInterval(this.pollers[jid]);
+                delete this.pollers[jid];
+            }
+        }
+
+        handleError(jid, msg) {
+            alert(`Error in ZIP ${this.jobs[jid]?.name}: ${msg}`);
+            this.removeJob(jid);
+        }
+
+        removeJob(jid) {
+            this.stopPolling(jid);
+            delete this.jobs[jid];
+            this.save();
+            this.updateUI();
+        }
+
+        updateUI() {
+            const jobIds = Object.keys(this.jobs);
+            const count = jobIds.length;
+
+            // Update badge
+            if (count > 0) {
+                this.badge.innerText = count;
+                this.badge.style.display = 'flex';
+                this.btn.classList.add('active');
+            } else {
+                this.badge.style.display = 'none';
+                this.btn.classList.remove('active');
+            }
+
+            // Update list
+            if (count === 0) {
+                this.list.innerHTML = '<div class="zip-empty">No active ZIP tasks</div>';
+                return;
+            }
+
+            this.list.innerHTML = jobIds.map(jid => {
+                const job = this.jobs[jid];
+                const percent = job.total > 0 ? Math.round((job.current / job.total) * 100) : 0;
+
+                return `
+                    <div class="zip-job-item">
+                        <div class="zip-job-info">
+                            <div class="zip-job-name" title="${job.name}">${job.name}</div>
+                            <div class="zip-job-percent">${job.status === 'completed' ? 'Ready' : percent + '%'}</div>
+                        </div>
+                        <div class="zip-progress-bg">
+                            <div class="zip-progress-fill" style="width: ${job.status === 'completed' ? '100%' : percent}%"></div>
+                        </div>
+                        <div class="zip-job-actions">
+                            ${job.status === 'completed' ?
+                        `<button class="zip-btn-download" onclick="window.location.href='/api/zip/download/${jid}'">
+                                    <i class="fas fa-download"></i> Download
+                                </button>` :
+                        `<div style="font-size:0.7rem; color:#94a3b8; flex:1">Processing ${job.current}/${job.total} files...</div>`
+                    }
+                            <button class="zip-btn-remove" onclick="zipManager.removeJob('${jid}')">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        showNotification(msg) {
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification(msg);
+            }
+        }
+    }
+
+    // Initialize globally
+    window.zipManager = new GlobalZipManager();
+
+    // Ask for permission for desktop notifications if supported
+    if ("Notification" in window && Notification.permission !== "granted") {
+        Notification.requestPermission();
+    }
+</script>

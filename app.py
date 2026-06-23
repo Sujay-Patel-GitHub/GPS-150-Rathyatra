@@ -1,5 +1,5 @@
 from flask import Flask, request, render_template, render_template_string, redirect, url_for, abort, jsonify, \
-    session, flash, send_from_directory, Response
+    session, flash, send_from_directory, Response, send_file
 import requests
 import os
 import time
@@ -8,6 +8,8 @@ import subprocess
 import threading
 import paramiko
 import json
+import zipfile
+import io
 from pathlib import Path
 from datetime import datetime, timedelta
 
@@ -46,6 +48,32 @@ STREAM_ROOT.mkdir(exist_ok=True)
 PROCESS_TABLE = {}
 LAST_HEARTBEAT = {}
 PROCESS_LOCK = threading.Lock()
+ZIP_PROGRESS = {} # job_id -> {current, total, status, file_path, timestamp}
+ZIP_TEMP_DIR = Path(__file__).parent / "temp_zips"
+ZIP_TEMP_DIR.mkdir(exist_ok=True)
+
+def zip_cleanup_task():
+    """Background task to delete old ZIP files every hour"""
+    while True:
+        try:
+            now = time.time()
+            # Clean directory
+            for f in ZIP_TEMP_DIR.glob("*.zip"):
+                if now - f.stat().st_mtime > 7200: # 2 hours old
+                    f.unlink()
+            
+            # Clean dictionary
+            to_delete = [jid for jid, info in ZIP_PROGRESS.items() 
+                        if info.get('timestamp', 0) < now - 7200]
+            for jid in to_delete:
+                del ZIP_PROGRESS[jid]
+                
+        except Exception as e:
+            print(f"Cleanup error: {e}")
+        time.sleep(3600) # Run every hour
+
+# Start cleanup thread
+threading.Thread(target=zip_cleanup_task, daemon=True).start()
 
 
 # --- TEMPLATE LOADING UTILITY ---
@@ -158,6 +186,143 @@ def safe_float(val):
         return float(clean_val)
     except:
         return 0.0
+
+
+def is_valid_gps_coordinate(lat, lng):
+    """
+    Checks if the GPS coordinate is valid and within the bounds of India.
+    India's approximate bounding box:
+    Latitude: 8.0 to 38.0
+    Longitude: 68.0 to 98.0
+    """
+    if lat is None or lng is None:
+        return False
+    try:
+        lat_val = float(lat)
+        lng_val = float(lng)
+        # Skip exact zeros or coordinates very close to 0
+        if abs(lat_val) < 0.0001 or abs(lng_val) < 0.0001:
+            return False
+        # Bounding box check for India
+        if not (8.0 <= lat_val <= 38.0 and 68.0 <= lng_val <= 98.0):
+            return False
+        return True
+    except (ValueError, TypeError):
+        return False
+
+
+def filter_coordinate_spikes(points):
+    """
+    Filters out transient coordinate spikes (single bad GPS pings) from a list of points.
+    A spike is detected if a point deviates significantly from both the previous and next points,
+    but the previous and next points are close to each other.
+    Also checks for impossible speed jumps between consecutive points.
+    """
+    if len(points) < 3:
+        return points
+        
+    import math
+    from datetime import datetime
+    
+    def haversine_distance(coord1, coord2):
+        R = 6371.0 # km
+        lat1, lon1 = math.radians(coord1[0]), math.radians(coord1[1])
+        lat2, lon2 = math.radians(coord2[0]), math.radians(coord2[1])
+        dlat = lat2 - lat1
+        dlon = lon2 - lon1
+        a = math.sin(dlat / 2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        return R * c
+
+    def get_timestamp(pt):
+        # Extract timestamp as a datetime or float timestamp
+        ts = pt.get('ts')
+        if ts is not None:
+            return float(ts)
+        t_obj = pt.get('timestamp')
+        if isinstance(t_obj, datetime):
+            return t_obj.timestamp()
+        if isinstance(t_obj, str):
+            try:
+                # parse ISO string or similar
+                return datetime.fromisoformat(t_obj.replace('Z', '+00:00')).timestamp()
+            except:
+                pass
+        return None
+
+    n = len(points)
+    to_remove = set()
+    
+    for i in range(1, n - 1):
+        prev_pt = points[i-1]
+        curr_pt = points[i]
+        next_pt = points[i+1]
+        
+        try:
+            d1 = haversine_distance((prev_pt['lat'], prev_pt['lng']), (curr_pt['lat'], curr_pt['lng']))
+            d2 = haversine_distance((curr_pt['lat'], curr_pt['lng']), (next_pt['lat'], next_pt['lng']))
+            d3 = haversine_distance((prev_pt['lat'], prev_pt['lng']), (next_pt['lat'], next_pt['lng']))
+            
+            t_prev = get_timestamp(prev_pt)
+            t_curr = get_timestamp(curr_pt)
+            t_next = get_timestamp(next_pt)
+            
+            # Check time gaps (in seconds)
+            dt1 = (t_curr - t_prev) if (t_prev is not None and t_curr is not None) else None
+            dt2 = (t_next - t_curr) if (t_curr is not None and t_next is not None) else None
+            
+            # Double-sided jump spike conditions:
+            # 1. Massive jump (e.g. > 15km) in both directions, and returning close to prev (shortcut d3 is small)
+            if d1 > 15.0 and d2 > 15.0 and d3 < 10.0:
+                if dt1 is None or dt2 is None or (dt1 < 600 and dt2 < 600):
+                    to_remove.add(i)
+                    continue
+                    
+            # 2. Impossible speeds (e.g. > 180 km/h) on both legs, returning to a small fraction of the total jump distance
+            if dt1 and dt2 and dt1 > 0 and dt2 > 0:
+                speed1 = (d1 / dt1) * 3600.0
+                speed2 = (d2 / dt2) * 3600.0
+                if speed1 > 180.0 and speed2 > 180.0 and d3 < (d1 + d2) * 0.2:
+                    to_remove.add(i)
+                    continue
+                    
+            # 3. Fallback absolute distance jump without time check (e.g., > 50km jump and return, shortcut is small)
+            if d1 > 50.0 and d2 > 50.0 and d3 < 10.0:
+                to_remove.add(i)
+                continue
+                
+        except Exception as e:
+            pass
+            
+    # Handle first point spike check
+    if n >= 2:
+        try:
+            d = haversine_distance((points[0]['lat'], points[0]['lng']), (points[1]['lat'], points[1]['lng']))
+            t0 = get_timestamp(points[0])
+            t1 = get_timestamp(points[1])
+            dt = (t1 - t0) if (t1 is not None and t0 is not None) else None
+            
+            if d > 50.0:
+                if dt is None or dt < 600:
+                    to_remove.add(0)
+        except:
+            pass
+            
+    # Handle last point spike check
+    if n >= 2:
+        try:
+            d = haversine_distance((points[n-2]['lat'], points[n-2]['lng']), (points[n-1]['lat'], points[n-1]['lng']))
+            t_pen = get_timestamp(points[n-2])
+            t_last = get_timestamp(points[n-1])
+            dt = (t_last - t_pen) if (t_last is not None and t_pen is not None) else None
+            
+            if d > 50.0:
+                if dt is None or dt < 600:
+                    to_remove.add(n-1)
+        except:
+            pass
+            
+    return [points[i] for i in range(n) if i not in to_remove]
 
 
 def sanitize_data(raw_data):
@@ -378,9 +543,12 @@ def admin_dashboard():
                 if location:
                     # Get coordinates
                     try:
-                        gps_lat = float(location.get("lat", 0))
-                        gps_lng = float(location.get("lon", 0))
-                        if gps_lat == 0 and gps_lng == 0:
+                        lat_val = float(location.get("lat", 0))
+                        lng_val = float(location.get("lon", 0))
+                        if is_valid_gps_coordinate(lat_val, lng_val):
+                            gps_lat = lat_val
+                            gps_lng = lng_val
+                        else:
                             gps_lat = None
                             gps_lng = None
                     except:
@@ -552,11 +720,7 @@ def admin_dashboard():
     )
 
 
-@app.route("/gps_monitoring")
-def gps_monitoring():
-    if session.get('user_type') != 'admin':
-        return redirect(url_for('login'))
-    
+def get_processed_vehicles_list():
     # Get all devices from Firebase
     try:
         devices_url = f"{FIREBASE_URL}/data.json?auth={FIREBASE_KEY}"
@@ -579,7 +743,6 @@ def gps_monitoring():
         lat = None
         lng = None
         has_gps = False
-        last_updated = "N/A"
         speed = 0
         
         location = {}
@@ -591,8 +754,8 @@ def gps_monitoring():
                     try:
                         lat_val = float(location.get("lat", 0))
                         lng_val = float(location.get("lon", 0))
-                        # Only consider it valid GPS if both are non-zero
-                        if lat_val != 0 and lng_val != 0:
+                        # Only consider it valid GPS if it is within bounds
+                        if is_valid_gps_coordinate(lat_val, lng_val):
                             lat = lat_val
                             lng = lng_val
                             has_gps = True
@@ -705,6 +868,15 @@ def gps_monitoring():
             "trip_status": "Ongoing" if raw_trip_status == "1" else "Stop",
             "speed": speed
         })
+    return vehicles_list
+
+
+@app.route("/gps_monitoring")
+def gps_monitoring():
+    if session.get('user_type') != 'admin':
+        return redirect(url_for('login'))
+    
+    vehicles_list = get_processed_vehicles_list()
     
     return render_template_string(
         get_template("GPS_MONITORING_HTML"),
@@ -734,8 +906,11 @@ def get_vehicle_gps(device_id):
         
         if location:
             try:
-                lat = float(location.get("lat", 0))
-                lon = float(location.get("lon", 0))
+                lat_val = float(location.get("lat", 0))
+                lon_val = float(location.get("lon", 0))
+                if is_valid_gps_coordinate(lat_val, lon_val):
+                    lat = lat_val
+                    lon = lon_val
             except:
                 pass
         
@@ -870,9 +1045,8 @@ def get_all_vehicle_locations():
         return jsonify({"error": "Unauthorized"}), 403
     
     try:
-        devices_url = f"{FIREBASE_URL}/data.json?auth={FIREBASE_KEY}"
-        raw_firebase_data = requests.get(devices_url).json() or {}
-        return jsonify(raw_firebase_data)
+        vehicles_list = get_processed_vehicles_list()
+        return jsonify(vehicles_list)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -937,6 +1111,8 @@ def get_map_recordings_data():
 
         count = 0
         for doc in cursor:
+            if not is_valid_gps_coordinate(doc.get("lat"), doc.get("lng")):
+                continue
             count += 1
             if count % skip_n != 0: continue
             
@@ -949,6 +1125,7 @@ def get_map_recordings_data():
                 "ts": doc["timestamp"].timestamp()
             })
             
+        points = filter_coordinate_spikes(points)
         return jsonify({"points": points, "total_raw": total_points, "optimized": skip_n > 1})
         
     except Exception as e:
@@ -1047,33 +1224,66 @@ def verify_recordings_password():
 
 @app.route("/get_vehicle_cameras/<device_id>")
 def get_vehicle_cameras(device_id):
+    """Get camera information for a vehicle based on RTMP source preference"""
     if session.get('user_type') != 'admin':
         return jsonify({"success": False, "error": "Unauthorized"}), 403
     
     try:
-        r = requests.get(f"{FIREBASE_URL}/data/{device_id}.json?auth={FIREBASE_KEY}", timeout=5)
-        device_data = r.json() or {}
+        # Get vehicle info from MongoDB
+        vehicle_info = col_vehicles.find_one({"device_id": device_id})
+        
+        if not vehicle_info:
+            return jsonify({"success": False, "error": "Vehicle not found"}), 404
+        
+        # Determine RTMP source preference
+        source_pref = vehicle_info.get("rtmp_source", get_rtmp_source())
         
         def extract_stream_name(url, default_num):
-            if not url: return None
+            """Extract camera name from RTMP URL"""
+            if not url:
+                return None
             try:
                 parts = url.strip().split('/')
-                # Get the last part of the RTMP URL as the name
                 name = parts[-1] if parts else f"Camera {default_num}"
-                # Clean up if it's empty or just whitespace
                 return name if name and name.strip() else f"Camera {default_num}"
             except:
                 return f"Camera {default_num}"
-
-        cameras = []
-        for i in range(1, 5):
-            url = device_data.get(f"rtmp{i}")
-            if url:
-                name = extract_stream_name(url, i)
-                cameras.append({"id": str(i), "name": name})
         
-        return jsonify({"success": True, "cameras": cameras})
+        cameras = []
+        
+        # Get camera links based on source preference
+        if source_pref == 'mongo':
+            # Use MongoDB camera links
+            mongo_rtmp = vehicle_info.get("mongo_rtmp", {})
+            for i in range(1, 5):
+                rtmp_url = mongo_rtmp.get(f"rtmp{i}", "")
+                if rtmp_url:
+                    camera_name = extract_stream_name(rtmp_url, i)
+                    cameras.append({
+                        "id": str(i),
+                        "name": camera_name
+                    })
+        else:
+            # Use Firebase camera links
+            try:
+                r = requests.get(f"{FIREBASE_URL}/data/{device_id}.json?auth={FIREBASE_KEY}", timeout=5)
+                device_data = r.json() or {}
+                
+                for i in range(1, 5):
+                    url = device_data.get(f"rtmp{i}")
+                    if url:
+                        name = extract_stream_name(url, i)
+                        cameras.append({"id": str(i), "name": name})
+            except Exception as e:
+                print(f"Error fetching Firebase data: {e}")
+                return jsonify({"success": False, "error": f"Error fetching camera data from Firebase: {str(e)}"}), 500
+        
+        return jsonify({"success": True, "cameras": cameras, "source": source_pref})
+        
     except Exception as e:
+        print(f"Error in get_vehicle_cameras: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -1156,27 +1366,63 @@ def api_server_list():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route("/api/export_recordings")
+@app.route("/api/export_recordings", methods=["GET", "POST"])
 def api_export_recordings():
     if session.get('user_type') != 'admin':
         return jsonify({"success": False, "error": "Unauthorized"}), 403
 
-    device_id = request.args.get('vehicle')
-    date_str = request.args.get('date')
-    export_format = request.args.get('format', 'csv')  # 'csv' or 'pdf'
+    map_image_base64 = None
+    if request.method == "POST":
+        data = request.json or {}
+        device_id = data.get('vehicle')
+        date_str = data.get('date')
+        export_format = data.get('format', 'pdf')
+        map_image_base64 = data.get('map_image')
+    else:
+        device_id = request.args.get('vehicle')
+        date_str = request.args.get('date')
+        export_format = request.args.get('format', 'csv')  # 'csv' or 'pdf'
 
     if not device_id or not date_str:
         return "Missing vehicle or date", 400
 
     try:
         # 1. Fetch Tracking Data from MongoDB
-        start_dt = datetime.strptime(date_str, "%Y-%m-%d")
+        try:
+            start_dt = datetime.strptime(date_str, "%Y-%m-%d")
+        except ValueError:
+            for fmt in ("%d/%m/%y", "%d/%m/%Y", "%d-%m-%Y"):
+                try:
+                    start_dt = datetime.strptime(date_str, fmt)
+                    break
+                except ValueError:
+                    continue
+            else:
+                return "Invalid date format", 400
+                
         end_dt = start_dt + timedelta(days=1)
         
-        cursor = col_map_recordings.find({
-            "device_id": device_id,
-            "timestamp": {"$gte": start_dt, "$lt": end_dt}
-        }, {"lat": 1, "lng": 1, "speed": 1, "timestamp": 1, "_id": 0}).sort("timestamp", 1)
+        def fetch_cursor(s_dt, e_dt):
+            points = list(col_map_recordings.find({
+                "device_id": device_id,
+                "timestamp": {"$gte": s_dt, "$lt": e_dt}
+            }, {"lat": 1, "lng": 1, "speed": 1, "timestamp": 1, "_id": 0}).sort("timestamp", 1))
+            return [pt for pt in points if is_valid_gps_coordinate(pt.get("lat"), pt.get("lng"))]
+            
+        cursor = fetch_cursor(start_dt, end_dt)
+        
+        # Fallback to year 2026 if no data found in 2025
+        if not cursor and start_dt.year == 2025:
+            alt_start_dt = start_dt.replace(year=2026)
+            alt_end_dt = alt_start_dt + timedelta(days=1)
+            cursor = fetch_cursor(alt_start_dt, alt_end_dt)
+            if cursor:
+                start_dt = alt_start_dt
+                end_dt = alt_end_dt
+                date_str = start_dt.strftime("%Y-%m-%d")
+        
+        # Filter spikes (transient coordinate jumps)
+        cursor = filter_coordinate_spikes(cursor)
         
         # 2. Prepare Report Data
         vh = col_vehicles.find_one({"device_id": device_id})
@@ -1214,62 +1460,452 @@ def api_export_recordings():
 
         # Generate report based on format
         if export_format == 'pdf':
-            # Generate PDF
+            # Generate Stopped & Runned PDF Report
             from reportlab.lib import colors
-            from reportlab.lib.pagesizes import A4, landscape
+            from reportlab.lib.pagesizes import A4
             from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-            from reportlab.lib.styles import getSampleStyleSheet
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
             from reportlab.lib.units import inch
             import io
+            import math
             
+            # 1. Calculate Stats and Stops on full cursor list
+            total_pings = len(cursor)
+            total_distance = 0.0
+            speeds = []
+            moving_speeds = []
+            
+            def safe_float(val):
+                try:
+                    return float(str(val).replace('"', '').replace("'", '').strip())
+                except:
+                    return 0.0
+                    
+            def haversine_distance(coord1, coord2):
+                R = 6371.0 # km
+                lat1, lon1 = math.radians(coord1[0]), math.radians(coord1[1])
+                lat2, lon2 = math.radians(coord2[0]), math.radians(coord2[1])
+                dlat = lat2 - lat1
+                dlon = lon2 - lon1
+                a = math.sin(dlat / 2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2)**2
+                c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+                return R * c
+                
+            for i in range(total_pings):
+                pt = cursor[i]
+                speed = safe_float(pt.get('speed', 0))
+                speeds.append(speed)
+                if speed > 2.0:
+                    moving_speeds.append(speed)
+                    
+                if i > 0:
+                    prev = cursor[i-1]
+                    dist = haversine_distance((prev['lat'], prev['lng']), (pt['lat'], pt['lng']))
+                    total_distance += dist
+                    
+            max_speed = max(speeds) if speeds else 0.0
+            avg_speed = sum(moving_speeds) / len(moving_speeds) if moving_speeds else 0.0
+            
+            # Stop detection
+            stops = []
+            current_stop = None
+            SPEED_THRESHOLD = 2.0 # km/h
+            MIN_STOP_DURATION = 120 # seconds (2 minutes)
+            
+            for i, pt in enumerate(cursor):
+                speed = safe_float(pt.get('speed', 0))
+                ts = pt['timestamp']
+                
+                if speed < SPEED_THRESHOLD:
+                    if current_stop is None:
+                        current_stop = {
+                            'start_time': ts,
+                            'end_time': ts,
+                            'lat': pt['lat'],
+                            'lng': pt['lng'],
+                            'points': [pt]
+                        }
+                    else:
+                        current_stop['end_time'] = ts
+                        current_stop['points'].append(pt)
+                else:
+                    if current_stop:
+                        duration = (current_stop['end_time'] - current_stop['start_time']).total_seconds()
+                        if duration >= MIN_STOP_DURATION:
+                            avg_lat = sum(p['lat'] for p in current_stop['points']) / len(current_stop['points'])
+                            avg_lng = sum(p['lng'] for p in current_stop['points']) / len(current_stop['points'])
+                            stops.append({
+                                'start_time': current_stop['start_time'],
+                                'end_time': current_stop['end_time'],
+                                'duration': int(duration),
+                                'lat': avg_lat,
+                                'lng': avg_lng
+                            })
+                        current_stop = None
+                        
+            if current_stop:
+                duration = (current_stop['end_time'] - current_stop['start_time']).total_seconds()
+                if duration >= MIN_STOP_DURATION:
+                    avg_lat = sum(p['lat'] for p in current_stop['points']) / len(current_stop['points'])
+                    avg_lng = sum(p['lng'] for p in current_stop['points']) / len(current_stop['points'])
+                    stops.append({
+                        'start_time': current_stop['start_time'],
+                        'end_time': current_stop['end_time'],
+                        'duration': int(duration),
+                        'lat': avg_lat,
+                        'lng': avg_lng
+                    })
+                    
+            total_stop_duration = sum(s['duration'] for s in stops)
+            stops_count = len(stops)
+            runs_count = stops_count + 1
+            
+            # Fetch vehicle assignment info
+            vh = col_vehicles.find_one({"device_id": device_id}) or {}
+            driver_name = vh.get("driver_name") or "Pending/Unassigned"
+            transporter_name = vh.get("transporter_name") or "Unassigned"
+            godown_manager = vh.get("godown_manager") or "Unassigned"
+            rc_number = vh.get("rc_number") or "N/A"
+            
+            # 2. Setup ReportLab A4 Portrait Document
             buffer = io.BytesIO()
-            doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), 
-                                   rightMargin=30, leftMargin=30, 
-                                   topMargin=30, bottomMargin=18)
+            doc = SimpleDocTemplate(
+                buffer,
+                pagesize=A4, 
+                rightMargin=36,
+                leftMargin=36, 
+                topMargin=36,
+                bottomMargin=36
+            )
             
             elements = []
             styles = getSampleStyleSheet()
             
-            # Title
-            title = Paragraph(f"<b>GPS Tracking Report</b><br/>{device_id} - {rc_number}<br/>{date_str}", 
-                            styles['Title'])
-            elements.append(title)
-            elements.append(Spacer(1, 0.2*inch))
+            # Define Custom Styles
+            title_style = ParagraphStyle(
+                'ReportTitle',
+                parent=styles['Normal'],
+                fontName='Helvetica-Bold',
+                fontSize=18,
+                leading=22,
+                textColor=colors.HexColor('#0f172a'),
+                alignment=0, # Left
+                spaceAfter=4
+            )
             
-            # Table data
-            table_data = [["Device ID", "Vehicle RC", "Date", "Time", "Latitude", "Longitude", "Speed (km/h)"]]
-            for row in report_rows:
-                table_data.append([
-                    row["Device ID"],
-                    row["Vehicle RC"],
-                    row["Date"],
-                    row["Time"],
-                    f"{row['Latitude']:.6f}",
-                    f"{row['Longitude']:.6f}",
-                    row["Speed (km/h)"]
-                ])
+            subtitle_style = ParagraphStyle(
+                'ReportSubtitle',
+                parent=styles['Normal'],
+                fontName='Helvetica',
+                fontSize=8.5,
+                leading=12,
+                textColor=colors.HexColor('#475569'),
+                spaceAfter=12
+            )
             
-            # Create table
-            table = Table(table_data, repeatRows=1)
-            table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#166534')),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-                ('FONTSIZE', (0, 1), (-1, -1), 8),
-                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f0f0f0')])
+            section_style = ParagraphStyle(
+                'ReportSection',
+                parent=styles['Normal'],
+                fontName='Helvetica-Bold',
+                fontSize=11,
+                leading=15,
+                textColor=colors.HexColor('#1e293b'),
+                spaceBefore=14,
+                spaceAfter=6
+            )
+            
+            grid_key_style = ParagraphStyle(
+                'GridKey',
+                parent=styles['Normal'],
+                fontName='Helvetica-Bold',
+                fontSize=8,
+                leading=10,
+                textColor=colors.HexColor('#475569')
+            )
+            
+            grid_val_style = ParagraphStyle(
+                'GridVal',
+                parent=styles['Normal'],
+                fontName='Helvetica',
+                fontSize=8.5,
+                leading=11,
+                textColor=colors.HexColor('#0f172a')
+            )
+            
+            th_style = ParagraphStyle(
+                'TableHeader',
+                parent=styles['Normal'],
+                fontName='Helvetica-Bold',
+                fontSize=8.5,
+                leading=11,
+                textColor=colors.whitesmoke,
+                alignment=1
+            )
+            
+            td_style = ParagraphStyle(
+                'TableCell',
+                parent=styles['Normal'],
+                fontName='Helvetica',
+                fontSize=8,
+                leading=10,
+                alignment=1
+            )
+
+            td_left_style = ParagraphStyle(
+                'TableCellLeft',
+                parent=styles['Normal'],
+                fontName='Helvetica',
+                fontSize=8.5,
+                leading=12,
+                alignment=0
+            )
+            
+            badge_short = ParagraphStyle(
+                'BadgeShort',
+                parent=styles['Normal'],
+                fontName='Helvetica-Bold',
+                fontSize=7.5,
+                leading=9,
+                textColor=colors.HexColor('#15803d'),
+                alignment=1
+            )
+            badge_medium = ParagraphStyle(
+                'BadgeMedium',
+                parent=styles['Normal'],
+                fontName='Helvetica-Bold',
+                fontSize=7.5,
+                leading=9,
+                textColor=colors.HexColor('#c2410c'),
+                alignment=1
+            )
+            badge_long = ParagraphStyle(
+                'BadgeLong',
+                parent=styles['Normal'],
+                fontName='Helvetica-Bold',
+                fontSize=7.5,
+                leading=9,
+                textColor=colors.HexColor('#b91c1c'),
+                alignment=1
+            )
+            
+            # Sleek primary accent top border bar
+            header_bar = Table([[""]], colWidths=[520], rowHeights=[4])
+            header_bar.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#2563eb')),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
             ]))
+            elements.append(header_bar)
+            elements.append(Spacer(1, 10))
             
-            elements.append(table)
+            # Report title
+            elements.append(Paragraph("VEHICLE STOP & RUN AUDIT REPORT", title_style))
+            gen_time_str = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
+            elements.append(Paragraph(f"Official supply chain audit log • Generated on {gen_time_str}", subtitle_style))
+            
+            # Section: Performance summary
+            elements.append(Paragraph("1. Trip Performance Summary Grid", section_style))
+            
+            summary_data = [
+                [
+                    Paragraph("Registered Vehicle", grid_key_style), Paragraph(f"{device_id} ({rc_number})", grid_val_style),
+                    Paragraph("Audit Date", grid_key_style), Paragraph(date_str, grid_val_style)
+                ],
+                [
+                    Paragraph("Assigned Driver", grid_key_style), Paragraph(driver_name, grid_val_style),
+                    Paragraph("Total Distance", grid_key_style), Paragraph(f"{total_distance:.2f} km", grid_val_style)
+                ],
+                [
+                    Paragraph("Transporter Partner", grid_key_style), Paragraph(transporter_name, grid_val_style),
+                    Paragraph("Max / Avg Speed", grid_key_style), Paragraph(f"{max_speed:.1f} km/h / {avg_speed:.1f} km/h", grid_val_style)
+                ],
+                [
+                    Paragraph("Godown Manager", grid_key_style), Paragraph(godown_manager, grid_val_style),
+                    Paragraph("Stopped & Runned Stats", grid_key_style), Paragraph(f"{stops_count} Stops ({runs_count} Runs)", grid_val_style)
+                ],
+                [
+                    Paragraph("Total GPS Records", grid_key_style), Paragraph(str(total_pings), grid_val_style),
+                    Paragraph("Total Stopped Time", grid_key_style), Paragraph(f"{total_stop_duration // 60}m {total_stop_duration % 60}s", grid_val_style)
+                ]
+            ]
+            
+            summary_table = Table(summary_data, colWidths=[120, 140, 120, 140])
+            summary_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f8fafc')),
+                ('BACKGROUND', (2, 0), (2, -1), colors.HexColor('#f8fafc')),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
+                ('TOPPADDING', (0, 0), (-1, -1), 5),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+            ]))
+            elements.append(summary_table)
+            
+            # Section 2: Visual Route & Stops Map
+            elements.append(Paragraph("2. Route & Stops Shape Projection Map", section_style))
+            
+            map_inserted = False
+            
+            if map_image_base64 and "," in map_image_base64:
+                try:
+                    import base64
+                    from reportlab.platypus import Image
+                    img_data = base64.b64decode(map_image_base64.split(",")[1])
+                    img_buffer = io.BytesIO(img_data)
+                    # Create a beautiful ReportLab flowable image sized 520x230 to fit A4 perfectly
+                    map_image_flowable = Image(img_buffer, width=520, height=230)
+                    elements.append(map_image_flowable)
+                    map_inserted = True
+                except Exception as e:
+                    print(f"Error decoding base64 map image: {e}")
+                    
+            if not map_inserted:
+                # Vector Map Drawing Fallback
+                from reportlab.graphics.shapes import Drawing, Rect, String, Circle, Line
+                map_draw = Drawing(520, 230)
+                # Background card styling
+                map_draw.add(Rect(0, 0, 520, 230, fillColor=colors.HexColor('#f8fafc'), strokeColor=colors.HexColor('#e2e8f0'), strokeWidth=1, rx=8, ry=8))
+                
+                # Map Label
+                map_draw.add(String(12, 12, "Route Shape Visualizer (Preserved True Aspect Ratio)", fontName="Helvetica-Bold", fontSize=8, fillColor=colors.HexColor('#64748b')))
+                
+                if total_pings > 0:
+                    lats = [pt['lat'] for pt in cursor]
+                    lngs = [pt['lng'] for pt in cursor]
+                    min_lat, max_lat = min(lats), max(lats)
+                    min_lng, max_lng = min(lngs), max(lngs)
+                    
+                    lat_range = max_lat - min_lat
+                    lng_range = max_lng - min_lng
+                    
+                    if lat_range == 0: lat_range = 0.0001
+                    if lng_range == 0: lng_range = 0.0001
+                    
+                    # Fit map in a 460x160 bounding box with padding
+                    scale_x = 460.0 / lng_range
+                    scale_y = 160.0 / lat_range
+                    scale = min(scale_x, scale_y)
+                    
+                    # Center the projected elements inside 520x230 card
+                    x_offset = 30.0 + (460.0 - lng_range * scale) / 2.0
+                    y_offset = 35.0 + (160.0 - lat_range * scale) / 2.0
+                    
+                    def project(lat, lng):
+                        x = x_offset + (lng - min_lng) * scale
+                        y = y_offset + (lat - min_lat) * scale
+                        return x, y
+                        
+                    projected_points = [project(pt['lat'], pt['lng']) for pt in cursor]
+                    
+                    # Draw route segment-by-segment
+                    for i in range(1, len(projected_points)):
+                        x1, y1 = projected_points[i-1]
+                        x2, y2 = projected_points[i]
+                        map_draw.add(Line(x1, y1, x2, y2, strokeColor=colors.HexColor('#2563eb'), strokeWidth=2.8))
+                        
+                    # Draw Start Marker
+                    start_x, start_y = projected_points[0]
+                    map_draw.add(Circle(start_x, start_y, 7, fillColor=colors.HexColor('#22c55e'), strokeColor=colors.white, strokeWidth=1.5))
+                    map_draw.add(String(start_x + 9, start_y - 3, "START", fontName="Helvetica-Bold", fontSize=7, fillColor=colors.HexColor('#15803d')))
+                    
+                    # Draw End Marker
+                    if len(projected_points) > 1:
+                        end_x, end_y = projected_points[-1]
+                        map_draw.add(Circle(end_x, end_y, 7, fillColor=colors.HexColor('#ef4444'), strokeColor=colors.white, strokeWidth=1.5))
+                        map_draw.add(String(end_x + 9, end_y - 3, "END", fontName="Helvetica-Bold", fontSize=7, fillColor=colors.HexColor('#b91c1c')))
+                        
+                    # Draw Stops
+                    for idx, stop in enumerate(stops):
+                        stop_x, stop_y = project(stop['lat'], stop['lng'])
+                        duration = stop['duration']
+                        risk = 'High' if duration > 900 else ('Medium' if duration >= 300 else 'Low')
+                        stop_color = colors.HexColor('#ef4444') if risk == 'High' else (colors.HexColor('#f97316') if risk == 'Medium' else colors.HexColor('#22c55e'))
+                        
+                        map_draw.add(Circle(stop_x, stop_y, 6, fillColor=stop_color, strokeColor=colors.white, strokeWidth=1.2))
+                        map_draw.add(String(stop_x - 3, stop_y + 8, f"#{idx+1}", fontName="Helvetica-Bold", fontSize=7.5, fillColor=colors.HexColor('#0f172a')))
+                
+                elements.append(map_draw)
+                
+            elements.append(Spacer(1, 10))
+            
+            # Section 3: Stopped & Runned Logs Table
+            elements.append(Paragraph("3. Stopped & Runned Logs Table", section_style))
+            
+            if stops_count == 0:
+                no_stops_data = [[
+                    Paragraph("<font color='#15803d'><b>✔ Continuous Movement Node (No Pauses Logs)</b></font><br/>The vehicle operated continuously without any static pauses (duration >= 2m, speed < 2.0 km/h) recorded during this travel window.", td_left_style)
+                ]]
+                no_stops_table = Table(no_stops_data, colWidths=[520])
+                no_stops_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f0fdf4')),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#bbf7d0')),
+                    ('TOPPADDING', (0, 0), (-1, -1), 12),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 16),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 16),
+                ]))
+                elements.append(no_stops_table)
+            else:
+                stops_table_data = [[
+                    Paragraph("Stop #", th_style),
+                    Paragraph("Stop Type", th_style),
+                    Paragraph("Duration", th_style),
+                    Paragraph("Period (Arrival to Departure)", th_style),
+                    Paragraph("Location Coordinates", th_style)
+                ]]
+                
+                def format_duration(seconds):
+                    if seconds >= 60:
+                        return f"{seconds // 60}m {seconds % 60}s"
+                    return f"{seconds}s"
+                    
+                def format_time_str(dt):
+                    return dt.strftime("%I:%M:%S %p")
+                    
+                t_style = [
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0f172a')), # Slate-900 header
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e2e8f0')),
+                    ('TOPPADDING', (0, 0), (-1, -1), 5),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                ]
+                
+                for idx, stop in enumerate(stops):
+                    row_idx = idx + 1
+                    duration = stop['duration']
+                    risk = 'High' if duration > 900 else ('Medium' if duration >= 300 else 'Low')
+                    severity_str = 'Long Stop' if risk == 'High' else ('Medium Stop' if risk == 'Medium' else 'Short Stop')
+                    
+                    badge_style = badge_long if risk == 'High' else (badge_medium if risk == 'Medium' else badge_short)
+                    badge_color_hex = '#fee2e2' if risk == 'High' else ('#ffedd5' if risk == 'Medium' else '#dcfce7')
+                    
+                    # Apply background color only to the badge cell
+                    t_style.append(('BACKGROUND', (1, row_idx), (1, row_idx), colors.HexColor(badge_color_hex)))
+                    if row_idx % 2 == 0:
+                        t_style.append(('BACKGROUND', (0, row_idx), (0, row_idx), colors.HexColor('#f8fafc')))
+                        t_style.append(('BACKGROUND', (2, row_idx), (-1, row_idx), colors.HexColor('#f8fafc')))
+                        
+                    row = [
+                        Paragraph(f"<b>Stop #{idx + 1}</b>", td_style),
+                        Paragraph(severity_str, badge_style),
+                        Paragraph(format_duration(duration), td_style),
+                        Paragraph(f"{format_time_str(stop['start_time'])} to {format_time_str(stop['end_time'])}", td_style),
+                        Paragraph(f"<a href='https://www.google.com/maps?q={stop['lat']},{stop['lng']}'><font color='#2563eb'><u>{stop['lat']:.5f}, {stop['lng']:.5f}</u></font></a>", td_style)
+                    ]
+                    stops_table_data.append(row)
+                    
+                stops_table = Table(stops_table_data, colWidths=[45, 90, 85, 180, 120])
+                stops_table.setStyle(TableStyle(t_style))
+                elements.append(stops_table)
+                
+            # Build A4 PDF
             doc.build(elements)
             
             buffer.seek(0)
-            filename = f"GPS_Report_{device_id}_{date_str}.pdf"
+            filename = f"Vehicle_Stop_Run_Report_{device_id}_{date_str}.pdf"
             return Response(
                 buffer.getvalue(),
                 mimetype="application/pdf",
@@ -1336,13 +1972,15 @@ def api_server_delete():
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route("/api/server/download")
-def api_server_download():
+@app.route("/api/video/view")
+def api_server_file_handler():
     if session.get('user_type') != 'admin':
         return "Unauthorized", 403
     
     path = request.args.get("path", "").strip("/")
     name = request.args.get("name", "")
     mode = request.args.get("mode", "remote")
+    is_download = "download" in request.path
     
     if not name or ".." in path or ".." in name:
         return "Invalid request", 400
@@ -1350,26 +1988,73 @@ def api_server_download():
     base_path = SSH_BASE_PATH if mode == "remote" else LOCAL_BASE_PATH
     full_path = os.path.join(base_path, path, name).replace("\\", "/")
     
+    # Determine mimetype
+    ext = name.split('.')[-1].lower()
+    mimetype = 'video/mp4' # default
+    if ext == 'ts': mimetype = 'video/mp2t'
+    elif ext == 'mkv': mimetype = 'video/x-matroska'
+    elif ext == 'avi': mimetype = 'video/x-msvideo'
+
     try:
         if mode == "remote":
             client = get_ssh_client()
             sftp = client.open_sftp()
-            remote_file = sftp.open(full_path, 'rb')
             
-            def stream_remote():
+            # Get File Stats for Range Support
+            stat = sftp.stat(full_path)
+            file_size = stat.st_size
+            
+            # Parse Range Header
+            range_header = request.headers.get('Range', None)
+            start = 0
+            end = file_size - 1
+            status_code = 200
+            
+            if range_header:
+                match = re.search(r'bytes=(\d+)-(\d*)', range_header)
+                if match:
+                    start = int(match.group(1))
+                    if match.group(2):
+                        end = int(match.group(2))
+                    status_code = 206
+            
+            content_length = end - start + 1
+            
+            def stream_remote(start_pos, length):
                 try:
-                    while True:
-                        chunk = remote_file.read(1024 * 1024)
+                    remote_file = sftp.open(full_path, 'rb')
+                    remote_file.seek(start_pos)
+                    remaining = length
+                    while remaining > 0:
+                        chunk_size = min(remaining, 1024 * 1024)
+                        chunk = remote_file.read(chunk_size)
                         if not chunk: break
                         yield chunk
-                finally:
+                        remaining -= len(chunk)
                     remote_file.close()
+                finally:
                     sftp.close()
                     client.close()
-            return Response(stream_remote(), mimetype='application/octet-stream', headers={"Content-Disposition": f"attachment; filename={name}"})
+
+            headers = {
+                'Accept-Ranges': 'bytes',
+                'Content-Length': str(content_length),
+            }
+            if status_code == 206:
+                headers['Content-Range'] = f'bytes {start}-{end}/{file_size}'
+            
+            if is_download:
+                headers["Content-Disposition"] = f"attachment; filename={name}"
+                
+            return Response(stream_remote(start, content_length), status=status_code, mimetype=mimetype, headers=headers)
         else:
-            # Local filesystem mode
-            return send_from_directory(os.path.dirname(full_path), os.path.basename(full_path), as_attachment=True)
+            return send_from_directory(
+                os.path.dirname(full_path), 
+                os.path.basename(full_path), 
+                as_attachment=is_download,
+                mimetype=mimetype,
+                conditional=True
+            )
     except Exception as e:
         return str(e), 500
 
@@ -1756,8 +2441,8 @@ def monitor_all_vehicles_gps():
                     lng = float(lng)
                 except: continue
                 
-                # Skip invalid
-                if lat == 0 and lng == 0: continue
+                # Skip invalid / out-of-bounds coordinates
+                if not is_valid_gps_coordinate(lat, lng): continue
                 
                 # Insert into map recordings
                 try:
@@ -1810,6 +2495,14 @@ def record_gps_data(device_name, date_str, session_number):
                     # Extract GPS and device information
                     location = device_data.get('location', {})
                     rfid_data = device_data.get('rfid_data', {})
+                    
+                    # Validate GPS coordinates before recording
+                    lat_val = location.get('lat', 0)
+                    lng_val = location.get('lon', 0)
+                    if not is_valid_gps_coordinate(lat_val, lng_val):
+                        # Skip this ping if it is invalid/out-of-bounds
+                        stop_flag.wait(3)
+                        continue
                     
                     # Create GPS record
                     gps_record = {
@@ -3950,6 +4643,7 @@ def get_gps_update(device_id):
     return api_vehicle(device_id)
 
 
+
 @app.route("/toggle_camera", methods=["POST"])
 def toggle_camera():
     if session.get('user_type') != 'admin':
@@ -3979,6 +4673,478 @@ def toggle_camera():
     except Exception as e:
         print(f"Error toggling camera: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
+
+
+@app.route("/reset_eeprom", methods=["POST"])
+def reset_eeprom():
+    if session.get('user_type') != 'admin':
+        return jsonify({"success": False, "message": "Unauthorized"}), 403
+
+    try:
+        data = request.json or {}
+        device_id = data.get("device_id")
+
+        if not device_id:
+            return jsonify({"success": False, "message": "Device ID missing"}), 400
+
+        # Signal the ESP (via Firebase) to wipe its EEPROM config and reboot
+        # into the AP setup portal. The device polls data/<veh>/reset_eeprom,
+        # clears the flag back to 0, then restarts into setup (AP) mode.
+        url = f"{FIREBASE_URL}/data/{device_id}.json?auth={FIREBASE_KEY}"
+        response = requests.patch(url, json={"reset_eeprom": 1})
+
+        if response.status_code == 200:
+            return jsonify({
+                "success": True,
+                "message": f"Reset sent to {device_id}. It will reboot into setup (AP) mode shortly. Connect to the 'PILAB-GPS' WiFi to reconfigure."
+            })
+        else:
+            return jsonify({"success": False, "message": "Failed to send command to Firebase"}), 500
+
+    except Exception as e:
+        print(f"Error sending EEPROM reset: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@app.route("/download_session_zip/<vehicle_name>/<date>/<int:session_number>")
+def download_session_zip(vehicle_name, date, session_number):
+    """Download all videos from a session as a ZIP file"""
+    if session.get('user_type') != 'admin':
+        return redirect(url_for('login'))
+    
+    try:
+        import zipfile
+        import io
+        from pathlib import Path
+        
+        # Build the session folder path
+        base_path = Path(__file__).parent / "recordings" / vehicle_name / date / str(session_number)
+        
+        if not base_path.exists():
+            return "Session folder not found", 404
+        
+        # Create in-memory ZIP file
+        memory_file = io.BytesIO()
+        
+        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+            # Find all MP4 files in the session folder
+            video_files = list(base_path.glob("*.mp4"))
+            
+            if not video_files:
+                return "No video files found in this session", 404
+            
+            # Add each video to the ZIP
+            for video_file in video_files:
+                # Add file to zip with just the filename (not full path)
+                zf.write(video_file, arcname=video_file.name)
+        
+        # Seek to beginning of file
+        memory_file.seek(0)
+        
+        # Create filename for the ZIP
+        zip_filename = f"{vehicle_name}_{date}_Trip{session_number}.zip"
+        
+        # Send the ZIP file
+        return send_file(
+            memory_file,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=zip_filename
+        )
+        
+    except Exception as e:
+        print(f"Error creating session ZIP: {e}")
+        import traceback
+        traceback.print_exc()
+        return f"Error creating ZIP file: {str(e)}", 500
+
+
+@app.route("/api/zip/start", methods=["POST"])
+def api_zip_start():
+    """Start a background ZIP creation job"""
+    if session.get('user_type') != 'admin':
+        return jsonify({"error": "Unauthorized"}), 403
+
+    try:
+        data = request.json
+        rel_path = data.get("path", "").strip("/")
+        mode = data.get("mode", "local")
+        selected_files = data.get("files") # Optional list of specific files
+        
+        base_path = SSH_BASE_PATH if mode == "remote" else LOCAL_BASE_PATH
+        target_dir = Path(base_path) / rel_path
+        if not target_dir.exists():
+            target_dir = Path(__file__).parent / "recordings" / rel_path
+
+        if not target_dir.exists() or not target_dir.is_dir():
+            return jsonify({"error": "Folder not found"}), 404
+
+        # Generate unique Job ID
+        job_id = f"zip_{int(time.time())}_{os.urandom(4).hex()}"
+        
+        # 1. Identify files to zip
+        files_to_zip = []
+        if selected_files:
+            for f in selected_files:
+                f_path = target_dir / f
+                if f_path.exists() and f_path.is_file():
+                    files_to_zip.append(f_path)
+        else:
+            for f_path in target_dir.rglob("*"):
+                if f_path.is_file():
+                    files_to_zip.append(f_path)
+
+        if not files_to_zip:
+            return jsonify({"error": "No files found to ZIP"}), 404
+
+        ZIP_PROGRESS[job_id] = {
+            "current": 0,
+            "total": len(files_to_zip),
+            "status": "starting",
+            "file_path": None,
+            "zip_name": f"{os.path.basename(rel_path) or 'recordings'}.zip",
+            "timestamp": time.time()
+        }
+
+        # 2. Start background thread
+        def background_zip(jid, files, base_dir, final_name):
+            try:
+                temp_file = ZIP_TEMP_DIR / f"{jid}.zip"
+                with zipfile.ZipFile(temp_file, 'w', zipfile.ZIP_STORED) as zf:
+                    for i, f_path in enumerate(files):
+                        arcname = f_path.relative_to(base_dir)
+                        zf.write(f_path, arcname=arcname)
+                        ZIP_PROGRESS[jid]["current"] = i + 1
+                        ZIP_PROGRESS[jid]["status"] = "processing"
+                
+                ZIP_PROGRESS[jid]["status"] = "completed"
+                ZIP_PROGRESS[jid]["file_path"] = str(temp_file)
+            except Exception as e:
+                print(f"❌ Background ZIP Error [{jid}]: {e}")
+                ZIP_PROGRESS[jid]["status"] = "error"
+                ZIP_PROGRESS[jid]["error"] = str(e)
+
+        thread = threading.Thread(target=background_zip, args=(job_id, files_to_zip, target_dir, ZIP_PROGRESS[job_id]["zip_name"]))
+        thread.daemon = True
+        thread.start()
+
+        return jsonify({"success": True, "job_id": job_id})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/zip/status/<job_id>")
+def api_zip_status(job_id):
+    """Check status of a ZIP job"""
+    status = ZIP_PROGRESS.get(job_id)
+    if not status:
+        return jsonify({"error": "Job not found"}), 404
+    return jsonify(status)
+
+@app.route("/api/zip/download/<job_id>")
+def api_zip_download(job_id):
+    """Download the completed ZIP file"""
+    job = ZIP_PROGRESS.get(job_id)
+    if not job or job["status"] != "completed":
+        return jsonify({"error": "ZIP not ready or job not found"}), 404
+    
+    file_path = job["file_path"]
+    if not os.path.exists(file_path):
+        return jsonify({"error": "Physical file missing"}), 404
+
+    # Send file and cleanup afterwards via a wrapper or simple return
+    # For simplicity in this env, we just return it. 
+    # In production, you'd use a background cleanup task for old temp files.
+    return send_file(file_path, as_attachment=True, download_name=job["zip_name"])
+
+
+# --- MONTHLY REPORT ROUTES ---
+@app.route("/monthly_report")
+def monthly_report():
+    if session.get('user_type') != 'admin':
+        return redirect(url_for('login'))
+        
+    # Get list of all registered vehicles to populate dropdown (only with non-empty device_id)
+    vehicles = list(col_vehicles.find(
+        {"device_id": {"$exists": True, "$ne": ""}},
+        {"device_id": 1, "rc_number": 1, "driver_name": 1, "_id": 0}
+    ))
+    
+    # Get unique device_ids from map recordings
+    recordings_devices = col_map_recordings.distinct("device_id")
+    
+    # Remove any fallback devices that are already registered (case & space insensitive)
+    registered_ids = {v.get("device_id", "").strip().lower().replace(" ", "") for v in vehicles}
+    
+    fallback_devices = []
+    for dev in recordings_devices:
+        if dev and dev.strip().lower().replace(" ", "") not in registered_ids:
+            fallback_devices.append(dev)
+            
+    return render_template_string(
+        get_template("monthly_report.html"),
+        vehicles=vehicles,
+        recordings_devices=fallback_devices,
+        logo_url=LOGO_URL
+    )
+
+@app.route("/api/monthly_report_data")
+def api_monthly_report_data():
+    if session.get('user_type') != 'admin':
+        return jsonify({"error": "Unauthorized"}), 403
+        
+    device_id = request.args.get('device_id', '').strip()
+    date_str = request.args.get('date', '').strip()
+    
+    if not device_id or not date_str:
+        return jsonify({"error": "Missing device_id or date"}), 400
+        
+    # Parse date
+    def parse_date(d_str):
+        for fmt in ("%Y-%m-%d", "%d/%m/%y", "%d/%m/%Y", "%d-%m-%Y"):
+            try:
+                return datetime.strptime(d_str, fmt)
+            except ValueError:
+                continue
+        return None
+        
+    target_dt = parse_date(date_str)
+    if not target_dt:
+        return jsonify({"error": f"Invalid date format: {date_str}"}), 400
+        
+    # Smart Year-Mapping: Check if the user specified a 2025 date,
+    # but the database has data in 2026 for the same day and month.
+    start_dt = target_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_dt = start_dt + timedelta(days=1)
+    
+    def fetch_points(s_dt, e_dt):
+        points = list(col_map_recordings.find({
+            "device_id": device_id,
+            "timestamp": {"$gte": s_dt, "$lt": e_dt}
+        }).sort("timestamp", 1))
+        return [pt for pt in points if is_valid_gps_coordinate(pt.get('lat'), pt.get('lng'))]
+        
+    points = fetch_points(start_dt, end_dt)
+    
+    # Fallback to year 2026 if no data found in 2025
+    mapped_year = False
+    original_date_str = date_str
+    if not points and start_dt.year == 2025:
+        alt_start_dt = start_dt.replace(year=2026)
+        alt_end_dt = alt_start_dt + timedelta(days=1)
+        points = fetch_points(alt_start_dt, alt_end_dt)
+        if points:
+            start_dt = alt_start_dt
+            end_dt = alt_end_dt
+            target_dt = alt_start_dt
+            date_str = start_dt.strftime("%Y-%m-%d")
+            mapped_year = True
+            
+    # Filter spikes (transient coordinate jumps)
+    points = filter_coordinate_spikes(points)
+    
+    # Calculate vehicle information
+    vehicle_info = col_vehicles.find_one({"device_id": device_id}) or {}
+    driver_name = vehicle_info.get("driver_name") or "Pending/Unassigned"
+    transporter_name = vehicle_info.get("transporter_name") or "Unassigned"
+    godown_manager = vehicle_info.get("godown_manager") or "Unassigned"
+    rc_number = vehicle_info.get("rc_number") or "N/A"
+    
+    # Calculate stats
+    total_pings = len(points)
+    total_distance = 0.0
+    max_speed = 0.0
+    speeds = []
+    moving_speeds = []
+    
+    def safe_float(val):
+        try:
+            return float(str(val).replace('"', '').replace("'", '').strip())
+        except:
+            return 0.0
+            
+    import math
+    def haversine_distance(coord1, coord2):
+        R = 6371.0 # km
+        lat1, lon1 = math.radians(coord1[0]), math.radians(coord1[1])
+        lat2, lon2 = math.radians(coord2[0]), math.radians(coord2[1])
+        dlat = lat2 - lat1
+        dlon = lon2 - lon1
+        a = math.sin(dlat / 2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        return R * c
+        
+    for i in range(total_pings):
+        pt = points[i]
+        speed = safe_float(pt.get('speed', 0))
+        # Ignore glitched speeds (> 120 km/h) from stats, but keep valid coordinates
+        if speed <= 120.0:
+            speeds.append(speed)
+            if speed > 2.0:
+                moving_speeds.append(speed)
+            
+        if i > 0:
+            prev = points[i-1]
+            dist = haversine_distance((prev['lat'], prev['lng']), (pt['lat'], pt['lng']))
+            total_distance += dist
+            
+    max_speed = max(speeds) if speeds else 0.0
+    avg_speed = sum(moving_speeds) / len(moving_speeds) if moving_speeds else 0.0
+    
+    # Enhanced stop detection
+    stops = []
+    current_stop = None
+    SPEED_THRESHOLD = 2.0 # km/h
+    MIN_STOP_DURATION = 120 # seconds (2 minutes)
+    
+    for i, pt in enumerate(points):
+        speed = safe_float(pt.get('speed', 0))
+        ts = pt['timestamp']
+        
+        if speed < SPEED_THRESHOLD:
+            if current_stop is None:
+                current_stop = {
+                    'start_time': ts,
+                    'end_time': ts,
+                    'lat': pt['lat'],
+                    'lng': pt['lng'],
+                    'points': [pt]
+                }
+            else:
+                # Check for transmission gap between consecutive points inside the stop
+                last_pt = current_stop['points'][-1]
+                time_diff = (ts - last_pt['timestamp']).total_seconds()
+                if time_diff > 120: # > 2 minutes transmission gap
+                    # Close current stop if valid, then reset
+                    duration = (current_stop['end_time'] - current_stop['start_time']).total_seconds()
+                    if duration >= MIN_STOP_DURATION and len(current_stop['points']) >= 5:
+                        avg_lat = sum(p['lat'] for p in current_stop['points']) / len(current_stop['points'])
+                        avg_lng = sum(p['lng'] for p in current_stop['points']) / len(current_stop['points'])
+                        
+                        # Apply midnight exclusion filter (12:00 AM to 6:00 AM)
+                        if not (0 <= current_stop['start_time'].hour < 6):
+                            stops.append({
+                                'start_time': current_stop['start_time'].isoformat(),
+                                'end_time': current_stop['end_time'].isoformat(),
+                                'duration': int(duration),
+                                'lat': avg_lat,
+                                'lng': avg_lng
+                            })
+                    current_stop = {
+                        'start_time': ts,
+                        'end_time': ts,
+                        'lat': pt['lat'],
+                        'lng': pt['lng'],
+                        'points': [pt]
+                    }
+                else:
+                    current_stop['end_time'] = ts
+                    current_stop['points'].append(pt)
+        else:
+            if current_stop:
+                duration = (current_stop['end_time'] - current_stop['start_time']).total_seconds()
+                if duration >= MIN_STOP_DURATION and len(current_stop['points']) >= 5:
+                    avg_lat = sum(p['lat'] for p in current_stop['points']) / len(current_stop['points'])
+                    avg_lng = sum(p['lng'] for p in current_stop['points']) / len(current_stop['points'])
+                    
+                    # Apply midnight exclusion filter (12:00 AM to 6:00 AM)
+                    if not (0 <= current_stop['start_time'].hour < 6):
+                        stops.append({
+                            'start_time': current_stop['start_time'].isoformat(),
+                            'end_time': current_stop['end_time'].isoformat(),
+                            'duration': int(duration),
+                            'lat': avg_lat,
+                            'lng': avg_lng
+                        })
+                current_stop = None
+                
+    if current_stop:
+        duration = (current_stop['end_time'] - current_stop['start_time']).total_seconds()
+        if duration >= MIN_STOP_DURATION and len(current_stop['points']) >= 5:
+            avg_lat = sum(p['lat'] for p in current_stop['points']) / len(current_stop['points'])
+            avg_lng = sum(p['lng'] for p in current_stop['points']) / len(current_stop['points'])
+            
+            # Apply midnight exclusion filter (12:00 AM to 6:00 AM)
+            if not (0 <= current_stop['start_time'].hour < 6):
+                stops.append({
+                    'start_time': current_stop['start_time'].isoformat(),
+                    'end_time': current_stop['end_time'].isoformat(),
+                    'duration': int(duration),
+                    'lat': avg_lat,
+                    'lng': avg_lng
+                })
+            
+    # Merge consecutive stops at the same location with a small time gap (e.g. < 5 minutes)
+    merged_stops = []
+    if stops:
+        # Helper to parse ISO format back to datetime
+        def parse_iso(dt_str):
+            try:
+                return datetime.fromisoformat(dt_str)
+            except:
+                return datetime.strptime(dt_str[:19], "%Y-%m-%dT%H:%M:%S")
+
+        current = stops[0]
+        for next_stop in stops[1:]:
+            # Calculate distance between stop locations
+            dist = haversine_distance((current['lat'], current['lng']), (next_stop['lat'], next_stop['lng']))
+            
+            # Calculate time gap between end of current stop and start of next stop
+            end_t = parse_iso(current['end_time'])
+            start_t = parse_iso(next_stop['start_time'])
+            time_gap = (start_t - end_t).total_seconds()
+            
+            # Merge if distance < 100 meters (0.1 km) AND time gap < 300 seconds (5 minutes)
+            if dist < 0.1 and time_gap < 300:
+                current['end_time'] = next_stop['end_time']
+                dur_sec = (parse_iso(current['end_time']) - parse_iso(current['start_time'])).total_seconds()
+                current['duration'] = int(dur_sec)
+                current['lat'] = (current['lat'] + next_stop['lat']) / 2.0
+                current['lng'] = (current['lng'] + next_stop['lng']) / 2.0
+            else:
+                merged_stops.append(current)
+                current = next_stop
+        merged_stops.append(current)
+        stops = merged_stops
+
+    # Compile stops risk levels
+    total_stop_duration = sum(s['duration'] for s in stops)
+    suspicious_stops_count = sum(1 for s in stops if s['duration'] > 900) # > 15 minutes
+    
+    # Format points for JSON
+    json_points = []
+    for pt in points:
+        json_points.append({
+            'lat': pt['lat'],
+            'lng': pt['lng'],
+            'speed': safe_float(pt.get('speed', 0)),
+            'time': pt['timestamp'].strftime("%H:%M:%S"),
+            'timestamp': pt['timestamp'].isoformat()
+        })
+        
+    return jsonify({
+        "success": True,
+        "device_id": device_id,
+        "date": date_str,
+        "original_date": original_date_str,
+        "mapped_year": mapped_year,
+        "vehicle_info": {
+            "driver_name": driver_name,
+            "transporter_name": transporter_name,
+            "godown_manager": godown_manager,
+            "rc_number": rc_number
+        },
+        "stats": {
+            "total_pings": total_pings,
+            "total_distance": round(total_distance, 2),
+            "max_speed": round(max_speed, 2),
+            "avg_speed": round(avg_speed, 2),
+            "stops_count": len(stops),
+            "suspicious_stops_count": suspicious_stops_count,
+            "total_stop_duration": total_stop_duration
+        },
+        "stops": stops,
+        "points": json_points
+    })
 
 
 @app.route("/logout")

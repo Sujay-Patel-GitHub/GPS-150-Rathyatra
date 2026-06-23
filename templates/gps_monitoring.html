@@ -630,10 +630,62 @@
             fetch('/get_all_vehicle_locations')
                 .then(r => r.json())
                 .then(data => {
-                    // Update global data
-                    // Note: In a real app, you'd match IDs and update properties. 
-                    // For now, we'll reload the page to be safe or just re-render markers if IDs match
-                    location.reload();
+                    if (data && !data.error) {
+                        // Keep track of active card before updating
+                        const activeCard = document.querySelector('.vehicle-card.active');
+                        const activeId = activeCard ? activeCard.getAttribute('data-id') : null;
+
+                        vehicles = data;
+
+                        // Update markers on the map
+                        vehicles.forEach(v => {
+                            if (!v.lat || !v.lng) return;
+
+                            const popupContent = `
+                                <div style="min-width: 200px; font-family: 'Poppins', sans-serif;">
+                                    <h4 style="margin:0 0 8px 0; color:#111827; border-bottom:1px solid #eee; padding-bottom:5px;">
+                                        ${v.device_id}
+                                    </h4>
+                                    <div style="font-size:0.85rem; color:#4b5563; line-height:1.6;">
+                                        <strong>Godown:</strong> ${v.godown_manager || 'N/A'}<br>
+                                        <strong>Status:</strong> ${v.has_gps ? '<span style="color:#059669; font-weight:600;">Online</span>' : 'Offline'}<br>
+                                        <strong>Speed:</strong> ${v.speed || 0} km/h<br>
+                                        <div style="margin-top:8px;">
+                                            <a href="https://www.google.com/maps?q=${v.lat},${v.lng}" target="_blank" 
+                                               style="color:#2563eb; text-decoration:none; font-weight:500;">
+                                               <i class="fas fa-external-link-alt"></i> Google Maps
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+
+                            if (markers[v.device_id]) {
+                                // Update position in place
+                                markers[v.device_id].setLatLng([v.lat, v.lng]);
+                                markers[v.device_id].setPopupContent(popupContent);
+                            } else {
+                                // Create marker if it doesn't exist
+                                const marker = L.marker([v.lat, v.lng], { icon: carIcon }).addTo(map);
+                                marker.bindPopup(popupContent);
+                                markers[v.device_id] = marker;
+                            }
+                        });
+
+                        // Re-render vehicle list card content but filter search query as well
+                        filterVehicleList();
+
+                        // Restore active card highlights if they exist
+                        if (activeId) {
+                            const newActiveCard = document.querySelector(`.vehicle-card[data-id="${activeId}"]`);
+                            if (newActiveCard) {
+                                newActiveCard.classList.add('active');
+                            }
+                        }
+
+                        // Update stats summary counter
+                        updateStats();
+                    }
                 })
                 .catch(e => console.error(e));
         }
@@ -683,6 +735,9 @@
         renderList(vehicles);
         updateStats();
         setTimeout(showAllVehicles, 500);
+
+        // Auto-refresh every 1 second
+        setInterval(refreshLocations, 1000);
 
     </script>
 </body>
