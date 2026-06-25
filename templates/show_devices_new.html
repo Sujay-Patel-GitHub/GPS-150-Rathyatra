@@ -761,7 +761,11 @@
                 <div class="device-card" data-device-name="{{ device.device_name }}"
                     data-rc="{{ device.rc_number|lower }}" data-driver="{{ device.driver_name|lower }}"
                     data-transporter="{{ device.transporter|lower }}" data-godown="{{ device.godown_manager|lower }}"
-                    data-registered="{{ 'true' if device.is_registered else 'false' }}">
+                    data-registered="{{ 'true' if device.is_registered else 'false' }}"
+                    data-role="{{ device.assign_role }}"
+                    data-front-rtmp="{{ device.assign_front_rtmp or '' }}"
+                    style="cursor:pointer;"
+                    onclick="openMonitorView('{{ device.device_name }}', '{{ device.assign_role }}', this)">
 
                     <div class="card-header">
                         <a href="/device_info/{{ device.device_name }}" class="device-name-link"
@@ -1453,6 +1457,27 @@
         filterAllDevices();
     </script>
 
+<!-- Monitor View Overlay -->
+<div id="monitorOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#000;flex-direction:column;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#111827;color:#fff;flex-shrink:0;">
+        <div style="display:flex;align-items:center;gap:10px;">
+            <i class="fas fa-truck" style="color:#f97316;"></i>
+            <span id="monitorTitle" style="font-weight:700;font-size:1rem;"></span>
+            <span id="monitorRoleBadge" style="font-size:0.7rem;font-weight:700;padding:2px 10px;border-radius:999px;background:#f97316;color:#fff;text-transform:uppercase;"></span>
+        </div>
+        <button onclick="closeMonitorView()" style="background:#374151;border:none;color:#fff;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:0.85rem;"><i class="fas fa-times"></i> Close</button>
+    </div>
+    <div id="monitorBody" style="display:flex;flex:1;overflow:hidden;">
+        <!-- camera panel (akhada only) -->
+        <div id="monCameraPanel" style="display:none;width:50%;height:100%;background:#0a0a0a;flex-direction:column;flex-shrink:0;">
+            <div style="padding:6px 12px;background:#1f2937;color:#9ca3af;font-size:0.72rem;font-weight:600;"><i class="fas fa-video" style="color:#f97316;"></i> LIVE CAMERA</div>
+            <iframe id="monCameraFrame" src="about:blank" style="flex:1;border:none;width:100%;"></iframe>
+        </div>
+        <!-- map -->
+        <div id="monMapDiv" style="flex:1;height:100%;"></div>
+    </div>
+</div>
+
 <script>
 (function loadTimestamps() {
     var trucks = {{ devices | map(attribute='device_name') | list | tojson }};
@@ -1473,6 +1498,92 @@
             }).catch(function(){});
     });
 })();
+</script>
+
+<script>
+let monMap = null;
+let monMarker = null;
+let monPollInterval = null;
+
+function openMonitorView(truckId, role, cardEl) {
+    // Don't open if clicking a button inside the card
+    if (event && event.target && event.target.closest('button')) return;
+
+    const overlay = document.getElementById('monitorOverlay');
+    overlay.style.display = 'flex';
+    overlay.style.flexDirection = 'column';
+
+    document.getElementById('monitorTitle').textContent = truckId;
+    document.getElementById('monitorRoleBadge').textContent = role || 'NO ROLE';
+
+    const frontRtmp = cardEl ? cardEl.getAttribute('data-front-rtmp') : '';
+    const camPanel = document.getElementById('monCameraPanel');
+    const camFrame = document.getElementById('monCameraFrame');
+
+    if (role === 'AKHADA_USER') {
+        camPanel.style.display = 'flex';
+        camPanel.style.flexDirection = 'column';
+        camFrame.src = frontRtmp || 'about:blank';
+        document.getElementById('monMapDiv').style.width = '50%';
+    } else {
+        camPanel.style.display = 'none';
+        camFrame.src = 'about:blank';
+        document.getElementById('monMapDiv').style.width = '100%';
+    }
+
+    // Init map once
+    setTimeout(() => {
+        if (!monMap) {
+            monMap = L.map('monMapDiv', { zoomControl: true }).setView([23.0225, 72.5714], 13);
+            L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                maxZoom: 20, subdomains: ['mt0','mt1','mt2','mt3']
+            }).addTo(monMap);
+        }
+        monMap.invalidateSize();
+        startMonPoll(truckId);
+    }, 100);
+}
+
+function startMonPoll(truckId) {
+    clearInterval(monPollInterval);
+    function poll() {
+        fetch('/api/truck_last_seen/' + encodeURIComponent(truckId))
+            .then(r => r.json()).then(d => {
+                if (d.ok) {
+                    // also get GPS
+                }
+            }).catch(() => {});
+        fetch('/get_vehicle_gps/' + encodeURIComponent(truckId))
+            .then(r => r.json()).then(d => {
+                if (d.lat && d.lng && !(d.lat == 23.0225 && d.lng == 72.5714)) {
+                    const latlng = [d.lat, d.lng];
+                    if (!monMarker) {
+                        monMarker = L.marker(latlng, {
+                            icon: L.divIcon({
+                                className: '',
+                                html: '<div style="background:#f97316;width:14px;height:14px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 6px #0006;"></div>',
+                                iconSize: [14,14], iconAnchor: [7,7]
+                            })
+                        }).addTo(monMap);
+                        monMap.setView(latlng, 16);
+                    } else {
+                        monMarker.setLatLng(latlng);
+                    }
+                }
+            }).catch(() => {});
+    }
+    poll();
+    monPollInterval = setInterval(poll, 8000);
+}
+
+function closeMonitorView() {
+    clearInterval(monPollInterval);
+    monPollInterval = null;
+    document.getElementById('monitorOverlay').style.display = 'none';
+    document.getElementById('monCameraFrame').src = 'about:blank';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMonitorView(); });
 </script>
 </body>
 

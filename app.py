@@ -1073,6 +1073,7 @@ def admin_dashboard():
                 dev.setdefault("assign_contractor", a.get("contractor_name", ""))
                 dev.setdefault("assign_plate",      a.get("vehicle_plate", ""))
                 dev.setdefault("assign_officer",    a.get("officer_pi", ""))
+                dev.setdefault("assign_front_rtmp", a.get("front_rtmp", ""))
 
         existing_ids = set(d["device_name"] for d in devices_display_list)
         for tid, doc in latest_map.items():
@@ -1095,6 +1096,7 @@ def admin_dashboard():
                 "assign_contractor":  a.get("contractor_name", ""),
                 "assign_plate":       a.get("vehicle_plate", ""),
                 "assign_officer":     a.get("officer_pi", ""),
+                "assign_front_rtmp":  a.get("front_rtmp", ""),
                 # legacy fields (kept blank)
                 "rc_number": "", "transporter": "", "transporter_phone": "",
                 "godown_manager": "", "godown_phone": "", "driver_name": a.get("driver_name",""), "driver_phone": "",
@@ -1269,7 +1271,9 @@ def gps_monitoring():
     vehicles_list = get_processed_vehicles_list()
     try:
         from mongodb import mongo_client
-        assign_map = {d["truck_id"]: d for d in mongo_client["gps_server_db"]["assign_devices"].find()}
+        assign_map = {}
+        for d in mongo_client["gps_server_db"]["assign_devices"].find({}, {"_id": 0}):
+            assign_map[d["truck_id"]] = d
     except Exception:
         assign_map = {}
 
