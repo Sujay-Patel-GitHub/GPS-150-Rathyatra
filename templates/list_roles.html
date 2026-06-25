@@ -902,7 +902,10 @@
             document.getElementById('detailsModal').style.display = "none";
         }
 
+        let _currentTruckId = '';
+
         async function viewAssignDetails(truckId, role) {
+            _currentTruckId = truckId;
             document.getElementById('detailsModal').style.display = "flex";
             document.getElementById('detailTitle').innerText = role + ' — ' + truckId;
             document.getElementById('detailBody').innerHTML = '<div style="text-align:center;padding:30px;color:#9ca3af;"><i class="fas fa-spinner fa-spin" style="font-size:1.5rem;"></i></div>';
@@ -937,7 +940,70 @@
                      + row('fa-phone-alt',    'Contractor Mobile',  d.contractor_mobile)
                      + row('fa-video',        'Front RTMP',         d.front_rtmp)
                      + row('fa-video',        'Rear RTMP',          d.rear_rtmp);
+
+            // Password section
+            html += `<div style="margin-top:14px;border-top:1px solid #f1f5f9;padding-top:14px;">
+                <div style="font-size:0.72rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Password</div>
+                <div style="display:flex;gap:8px;margin-bottom:10px;">
+                    <input id="pwDisplay" type="password" readonly value="" placeholder="••••••••"
+                        style="flex:1;padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:0.88rem;background:#f9fafb;outline:none;">
+                    <button onclick="toggleShowPw('${truckId}')" id="btnShowPw"
+                        style="padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;cursor:pointer;font-size:0.8rem;color:#6b7280;white-space:nowrap;">
+                        <i class="fas fa-eye"></i> Show
+                    </button>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <input id="pwNew" type="password" placeholder="New password"
+                        style="flex:1;padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:0.88rem;outline:none;">
+                    <button onclick="changePw('${truckId}')"
+                        style="padding:8px 14px;background:#f97316;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:0.82rem;font-weight:600;white-space:nowrap;">
+                        <i class="fas fa-key"></i> Change
+                    </button>
+                </div>
+                <div id="pwMsg" style="font-size:0.78rem;margin-top:6px;"></div>
+            </div>`;
+
             document.getElementById('detailBody').innerHTML = html || '<p style="color:#9ca3af;text-align:center;padding:20px;">No details recorded.</p>';
+        }
+
+        let _pwLoaded = false;
+        async function toggleShowPw(truckId) {
+            const inp = document.getElementById('pwDisplay');
+            const btn = document.getElementById('btnShowPw');
+            if (!_pwLoaded) {
+                const r = await fetch('/api/get_password/' + encodeURIComponent(truckId));
+                const d = await r.json();
+                inp.value = d.password || '(not set)';
+                _pwLoaded = true;
+            }
+            if (inp.type === 'password') {
+                inp.type = 'text';
+                btn.innerHTML = '<i class="fas fa-eye-slash"></i> Hide';
+            } else {
+                inp.type = 'password';
+                btn.innerHTML = '<i class="fas fa-eye"></i> Show';
+            }
+        }
+
+        async function changePw(truckId) {
+            const newPw = document.getElementById('pwNew').value.trim();
+            const msg   = document.getElementById('pwMsg');
+            if (!newPw) { msg.style.color='#dc2626'; msg.textContent='Enter a new password.'; return; }
+            const r = await fetch('/api/change_password', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({truck_id: truckId, password: newPw})
+            });
+            const d = await r.json();
+            if (d.ok) {
+                msg.style.color = '#16a34a';
+                msg.textContent = '✓ Password changed.';
+                document.getElementById('pwNew').value = '';
+                _pwLoaded = false;
+            } else {
+                msg.style.color = '#dc2626';
+                msg.textContent = d.error || 'Failed.';
+            }
         }
 
         window.onclick = function(e) {

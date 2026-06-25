@@ -4208,8 +4208,28 @@ def grouping():
     trucks  = list(gps_db["assign_devices"].find({"role": "TRUCK_USER"},  {"_id": 0}))
     groups  = {d["akhada_truck_id"]: d.get("assigned_trucks", [])
                for d in gps_db["akhada_groups"].find({}, {"_id": 0})}
-    return render_template("grouping.html", akhadas=akhadas, trucks=trucks,
+    return render_template_string(get_template("GROUPING_HTML"), akhadas=akhadas, trucks=trucks,
                            groups=groups, logo_url=LOGO_URL)
+
+@app.route("/api/get_password/<truck_id>")
+def get_password(truck_id):
+    if session.get('user_type') != 'admin': return jsonify({"ok": False}), 403
+    from mongodb import mongo_client
+    doc = mongo_client["gps_server_db"]["assign_devices"].find_one({"truck_id": truck_id}, {"password": 1})
+    return jsonify({"ok": bool(doc), "password": doc.get("password", "") if doc else ""})
+
+@app.route("/api/change_password", methods=["POST"])
+def change_password():
+    if session.get('user_type') != 'admin': return jsonify({"ok": False}), 403
+    data = request.get_json(silent=True) or {}
+    truck_id = str(data.get("truck_id", "")).strip()
+    new_pw   = str(data.get("password", "")).strip()
+    if not truck_id or not new_pw: return jsonify({"ok": False, "error": "Missing fields"}), 400
+    from mongodb import mongo_client
+    mongo_client["gps_server_db"]["assign_devices"].update_one(
+        {"truck_id": truck_id}, {"$set": {"password": new_pw}}
+    )
+    return jsonify({"ok": True})
 
 @app.route("/api/grouping/save", methods=["POST"])
 def save_grouping():
@@ -4242,17 +4262,20 @@ def akhada_login():
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
-        from mongodb import mongo_client
-        doc = mongo_client["gps_server_db"]["assign_devices"].find_one(
-            {"username": username, "role": "AKHADA_USER"}
-        )
-        if doc and doc.get("password") == password:
-            session['user_type']      = 'akhada'
-            session['akhada_username'] = username
-            session['akhada_truck_id'] = doc.get("truck_id", "")
-            return redirect(url_for('akhada_dashboard'))
+        try:
+            from mongodb import mongo_client
+            doc = mongo_client["gps_server_db"]["assign_devices"].find_one(
+                {"username": {"$regex": f"^{username}$", "$options": "i"}, "role": "AKHADA_USER"}
+            )
+            if doc and doc.get("password", "") == password:
+                session['user_type']       = 'akhada'
+                session['akhada_username'] = doc.get("username", username)
+                session['akhada_truck_id'] = doc.get("truck_id", "")
+                return redirect(url_for('akhada_dashboard'))
+        except Exception as e:
+            print(f"Akhada login error: {e}")
         flash("Invalid username or password.", "error")
-    return render_template("akhada_login.html", logo_url=LOGO_URL)
+    return render_template_string(get_template("AKHADA_LOGIN_HTML"), logo_url=LOGO_URL)
 
 @app.route("/akhada_dashboard")
 def akhada_dashboard():
@@ -4286,7 +4309,7 @@ def akhada_dashboard():
             "driver": a.get("driver_name", ""),
             "plate": a.get("vehicle_plate", ""),
         })
-    return render_template("akhada_dashboard.html",
+    return render_template_string(get_template("AKHADA_DASHBOARD_HTML"),
                            own=own_doc, trucks=trucks,
                            akhada_truck_id=akhada_truck_id, logo_url=LOGO_URL)
 
