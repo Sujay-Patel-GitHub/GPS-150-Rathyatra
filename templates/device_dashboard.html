@@ -617,7 +617,7 @@
     </style>
 </head>
 
-<body>
+<body class="{% if device_role == 'TRUCK_USER' %}full-map-mode{% elif device_role == 'AKHADA_USER' %}full-cam-mode{% endif %}">
 
     {% include 'sos_overlay.html' %}
 

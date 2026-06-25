@@ -4823,6 +4823,13 @@ def device_info(device_id):
             dr_usr = col_drivers.find_one({"name": dr_name})
             if dr_usr: dr_phone = dr_usr.get("mobile", "N/A")
 
+    try:
+        from mongodb import mongo_client
+        _ad = mongo_client["gps_server_db"]["assign_devices"].find_one({"truck_id": device_id}, {"_id": 0, "role": 1})
+        device_role = _ad.get("role", "") if _ad else ""
+    except Exception:
+        device_role = ""
+
     return render_template_string(
         get_template("DEVICE_DASHBOARD_HTML"),
         device_id=device_id,
@@ -4831,7 +4838,8 @@ def device_info(device_id):
         logo_url=LOGO_URL,
         gd_phone=gd_phone,
         tr_phone=tr_phone,
-        dr_phone=dr_phone
+        dr_phone=dr_phone,
+        device_role=device_role
     )
 
 
