@@ -4371,7 +4371,7 @@ def akhada_dashboard():
 @app.route("/akhada_logout")
 def akhada_logout():
     session.clear()
-    return redirect(url_for('akhada_login'))
+    return redirect(url_for('login'))
 
 
 @app.route("/get_user_details/<role>/<username>")
