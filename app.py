@@ -454,20 +454,7 @@ def unregister_device(truck_id):
 
 
 def get_power_off_threshold():
-    try:
-        data = col_settings.find_one({"_id": "power_off_config"})
-        if data:
-            return int(data.get("minutes", 60))
-    except:
-        pass
-    return 60
-
-def set_power_off_threshold(minutes):
-    col_settings.update_one(
-        {"_id": "power_off_config"},
-        {"$set": {"minutes": int(minutes)}},
-        upsert=True
-    )
+    return 60  # fixed default, time_threshold page removed
 
 
 # --- CAMERA SYSTEM HELPER FUNCTIONS ---
@@ -2448,80 +2435,6 @@ def monitor_rfid_for_auto_recording():
 
 
 # --- TIME THRESHOLD ROUTES ---
-@app.route("/time_threshold")
-def time_threshold():
-    if session.get('user_type') != 'admin':
-        return redirect(url_for('login'))
-    
-    # Check if authenticated in session
-    is_authenticated = session.get('admin_pages_authenticated', False)
-    
-    # Get all vehicles
-    vehicles = list(col_vehicles.find({}))
-    
-    display_list = []
-    for v in vehicles:
-        dev_id = v.get("device_id")
-
-        # Get stored offsets or defaults
-        stored_offsets = v.get("time_offsets", {})
-        if not stored_offsets and v.get("year_offset"):
-            stored_offsets = {'y': v.get("year_offset"), 'm':0, 'd':0, 'h':0, 'min':0}
-
-        # Ensure all keys exist for template
-        final_offsets = {
-            'y': stored_offsets.get('y', 0),
-            'm': stored_offsets.get('m', 0),
-            'd': stored_offsets.get('d', 0),
-            'h': stored_offsets.get('h', 0),
-            'min': stored_offsets.get('min', 0)
-        }
-
-        # Get raw date from MongoDB live GPS
-        raw_date_str = "N/A"
-        raw_time_str = "N/A"
-        try:
-            loc = get_live_gps(dev_id) or {}
-            d = loc.get("date", "") # DD-MM-YYYY
-            t = loc.get("time", "")
-            if d:
-                # Format to DD-MMM-YYYY for consistency
-                dt = datetime.strptime(f"{d} {t}", "%d-%m-%Y %H:%M:%S")
-                # Convert to IST
-                dt_ist = dt + timedelta(hours=5, minutes=30)
-                raw_date_str = dt_ist.strftime("%d-%b-%Y")
-                raw_time_str = dt_ist.strftime("%I:%M:%S %p")
-        except:
-            pass
-            
-        display_list.append({
-            "device_id": dev_id,
-            "rc_number": v.get("rc_number"),
-            "offsets": final_offsets,
-            "raw_date": raw_date_str,
-            "raw_time": raw_time_str
-        })
-        
-    return render_template("time_threshold.html", vehicles=display_list, logo_url=LOGO_URL, is_authenticated=is_authenticated)
-
-
-@app.route("/save_time_threshold", methods=["POST"])
-def save_time_threshold():
-    if session.get('user_type') != 'admin':
-        return jsonify({"error": "Unauthorized"}), 403
-        
-    data = request.json
-    dev_id = data.get("device_id")
-    offsets = data.get("offsets", {})
-    
-    # Validation/Sanitization could go here
-    
-    col_vehicles.update_one(
-        {"device_id": dev_id},
-        {"$set": {"time_offsets": offsets}},
-        upsert=True
-    )
-    return jsonify({"success": True})
 
 
 # --- RTMP LINK MANAGEMENT ROUTES ---
@@ -2644,19 +2557,6 @@ def save_rtmp():
         print(f"Error saving RTMP: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
 
-
-@app.route("/save_power_off_config", methods=["POST"])
-def save_power_off_config():
-    if session.get('user_type') != 'admin':
-        return jsonify({"success": False, "message": "Unauthorized"}), 403
-    try:
-        minutes = request.form.get("minutes")
-        if minutes:
-            set_power_off_threshold(minutes)
-            return jsonify({"success": True, "message": "Power off threshold updated successfully"})
-        return jsonify({"success": False, "message": "Missing minutes"})
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)})
 
 
 def monitor_rfid_for_auto_recording():
