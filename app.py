@@ -1349,7 +1349,7 @@ def gps_monitoring():
 
 @app.route("/get_vehicle_gps/<device_id>")
 def get_vehicle_gps(device_id):
-    if session.get('user_type') != 'admin':
+    if session.get('user_type') not in ('admin', 'truck', 'akhada', 'user'):
         return jsonify({"error": "Unauthorized"}), 403
     
     try:
