@@ -1337,6 +1337,24 @@ def get_vehicle_gps(device_id):
             print(f"Error converting timestamp for {device_id}: {e}")
             pass
         
+        # Fallback: pull timestamp (and GPS) from new_devices if Firebase gave nothing
+        try:
+            from mongodb import mongo_client
+            nd = mongo_client["gps_server_db"]["new_devices"].find_one(
+                {"truck_id": device_id}, sort=[("timestamp", -1)]
+            )
+            if nd and nd.get("timestamp"):
+                ts = nd["timestamp"]
+                threshold_sec = get_power_off_threshold() * 60
+                last_updated_date = ts.strftime("%d-%b-%Y")
+                last_updated_time = ts.strftime("%I:%M:%S %p")
+                is_power_off = (datetime.now() - ts).total_seconds() > threshold_sec
+                if (lat is None or lat == 0) and nd.get("lat"):
+                    lat = nd["lat"]
+                    lon = nd["lng"]
+        except Exception:
+            pass
+
         # Check if we have valid GPS data
         if lat is None or lon is None or (lat == 0 and lon == 0):
             return jsonify({
