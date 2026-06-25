@@ -170,7 +170,6 @@ def get_live_gps(device_id):
 
 @app.route("/api/test_gps", methods=["POST"])
 def test_gps():
-    """ESP test device pushes lat/lng here — stored in 'test' collection."""
     data = request.get_json(silent=True) or request.form.to_dict()
     try:
         col_test.insert_one({
@@ -181,6 +180,59 @@ def test_gps():
         return jsonify({"ok": True}), 200
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/truck_gps/<truck_id>", methods=["POST"])
+def truck_gps(truck_id):
+    """Each ESP truck pushes GPS here. Stored in its own collection named after truck_id."""
+    data = request.get_json(silent=True) or request.form.to_dict()
+    try:
+        from mongodb import mongo_client
+        col = mongo_client["gps_server_db"][truck_id]
+        col.insert_one({
+            "truck_id": truck_id,
+            "lat":   float(data.get("lat", 0)),
+            "lng":   float(data.get("lng", 0)),
+            "speed": float(data.get("speed", 0)),
+            "timestamp": datetime.now()
+        })
+        return jsonify({"ok": True}), 200
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+# ── MongoDB Viewer ──────────────────────────────────────────
+@app.route("/mongo_viewer")
+def mongo_viewer():
+    return render_template("mongo_viewer.html")
+
+
+@app.route("/api/mongo_collections")
+def mongo_collections():
+    from mongodb import mongo_client
+    db = mongo_client["gps_server_db"]
+    result = []
+    for name in sorted(db.list_collection_names()):
+        count = db[name].count_documents({})
+        latest = db[name].find_one(sort=[("timestamp", -1)]) or db[name].find_one()
+        ts = latest.get("timestamp", "") if latest else ""
+        result.append({
+            "name": name,
+            "count": count,
+            "latest_ts": ts.strftime("%d-%b-%Y %I:%M:%S %p") if hasattr(ts, "strftime") else str(ts)
+        })
+    return jsonify(result)
+
+
+@app.route("/api/mongo_data/<collection>")
+def mongo_data(collection):
+    from mongodb import mongo_client
+    db = mongo_client["gps_server_db"]
+    docs = list(db[collection].find({}, {"_id": 0}).sort("timestamp", -1).limit(50))
+    for d in docs:
+        if "timestamp" in d and hasattr(d["timestamp"], "strftime"):
+            d["timestamp"] = d["timestamp"].strftime("%d-%b-%Y %I:%M:%S %p")
+    return jsonify(docs)
 
 
 def get_power_off_threshold():
