@@ -4968,7 +4968,7 @@ def device_info(device_id):
     role = session.get('role')
     user_doc, _ = find_user_in_db(username)
 
-    if not user_doc and role != 'Administrator':
+    if not user_doc and role != 'Administrator' and session.get('user_type') not in ('truck', 'akhada'):
         session.clear()
         return redirect(url_for('login'))
 
