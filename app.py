@@ -353,9 +353,16 @@ def assign_device():
             doc[k] = val
     try:
         from mongodb import mongo_client
-        mongo_client["gps_server_db"]["assign_devices"].update_one(
+        gps_db = mongo_client["gps_server_db"]
+        gps_db["assign_devices"].update_one(
             {"truck_id": truck_id},
             {"$set": doc},
+            upsert=True
+        )
+        # Mark truck as registered so it moves to Registered tab
+        gps_db["registered_trucks"].update_one(
+            {"truck_id": truck_id},
+            {"$set": {"truck_id": truck_id, "registered_at": datetime.now()}},
             upsert=True
         )
         return jsonify({"ok": True})
