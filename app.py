@@ -1021,21 +1021,19 @@ def admin_dashboard():
         gps_db = mongo_client["gps_server_db"]
         registered_truck_ids = set(d["truck_id"] for d in gps_db["registered_trucks"].find({}, {"truck_id": 1}))
         assign_map = {d["truck_id"]: d for d in gps_db["assign_devices"].find()}
-        # Build latest-per-truck map from new_devices for all trucks
+        # Build latest-per-truck map from new_devices (find+sort, avoids aggregate issues on MongoDB 4.4)
         latest_map = {}
-        for doc in gps_db["new_devices"].aggregate([
-            {"$sort": {"timestamp": -1}},
-            {"$group": {"_id": "$truck_id", "lat": {"$first": "$lat"}, "lng": {"$first": "$lng"}, "ts": {"$first": "$timestamp"}}}
-        ]):
-            if doc["_id"]:
-                latest_map[doc["_id"]] = doc
+        for doc in gps_db["new_devices"].find({}, {"truck_id": 1, "lat": 1, "lng": 1, "timestamp": 1}).sort("timestamp", -1):
+            tid = doc.get("truck_id")
+            if tid and tid not in latest_map:
+                latest_map[tid] = doc
 
         # Patch existing devices that got N/A from Firebase with new_devices timestamps
         threshold_sec = get_power_off_threshold() * 60
         for dev in devices_display_list:
             if dev.get("last_updated_date") == "N/A" and dev["device_name"] in latest_map:
                 ndoc = latest_map[dev["device_name"]]
-                ts = ndoc.get("ts")
+                ts = ndoc.get("timestamp")
                 if ts:
                     dev["last_updated_date"] = ts.strftime("%d-%b-%Y")
                     dev["last_updated_time"] = ts.strftime("%I:%M:%S %p")
@@ -1059,7 +1057,7 @@ def admin_dashboard():
         for tid, doc in latest_map.items():
             if tid in existing_ids:
                 continue
-            ts = doc.get("ts")
+            ts = doc.get("timestamp")
             ts_date = ts.strftime("%d-%b-%Y") if ts else "N/A"
             ts_time = ts.strftime("%I:%M:%S %p") if ts else ""
             is_po = (datetime.now() - ts).total_seconds() > threshold_sec if ts else True
