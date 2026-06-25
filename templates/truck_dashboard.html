@@ -52,12 +52,20 @@ let marker=null, firstFix=true;
 function refresh(){
     fetch('/get_vehicle_gps/'+encodeURIComponent(TRUCK_ID))
         .then(r=>r.json()).then(d=>{
-            if(!d.lat||!d.has_gps) return;
-            if(marker){ marker.setLatLng([d.lat,d.lng]); }
-            else{ marker=L.marker([d.lat,d.lng],{icon}).addTo(map).bindPopup(`<b>${TRUCK_ID}</b>`); }
-            if(firstFix){ map.setView([d.lat,d.lng],15); firstFix=false; }
-            if(d.speed!==undefined) document.getElementById('speedBadge').innerHTML=`<i class="fas fa-tachometer-alt"></i> ${d.speed||0} km/h`;
-            if(d.last_updated_time) document.getElementById('timeBadge').innerHTML=`<i class="fas fa-clock"></i> ${d.last_updated_time}`;
+            const lat = d.lat && d.lat != 0 ? d.lat : null;
+            const lng = d.lng && d.lng != 0 ? d.lng : null;
+            if(lat && lng){
+                if(marker){ marker.setLatLng([lat,lng]); }
+                else{ marker=L.marker([lat,lng],{icon}).addTo(map).bindPopup(`<b>${TRUCK_ID}</b>`); }
+                if(firstFix){ map.setView([lat,lng],15); firstFix=false; }
+            }
+            if(d.speed!==undefined && d.speed!==null) document.getElementById('speedBadge').innerHTML=`<i class="fas fa-tachometer-alt"></i> ${d.speed||0} km/h`;
+            if(d.last_updated_time && d.last_updated_time!='N/A') document.getElementById('timeBadge').innerHTML=`<i class="fas fa-clock"></i> ${d.last_updated_time}`;
+        }).catch(()=>{});
+    // fallback: also try truck_last_seen for latest position from new_devices
+    fetch('/api/truck_last_seen/'+encodeURIComponent(TRUCK_ID))
+        .then(r=>r.json()).then(d=>{
+            if(d.ok && d.time) document.getElementById('timeBadge').innerHTML=`<i class="fas fa-clock"></i> ${d.time}`;
         }).catch(()=>{});
 }
 refresh();
