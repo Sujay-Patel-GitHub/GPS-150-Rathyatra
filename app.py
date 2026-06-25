@@ -797,6 +797,21 @@ def login():
             session['role'] = role_name
             return redirect(url_for('user_dashboard'))
 
+        # Check akhada users
+        try:
+            from mongodb import mongo_client
+            for doc in mongo_client["gps_server_db"]["assign_devices"].find({"role": "AKHADA_USER"}):
+                su = str(doc.get("username", "")).strip()
+                sp = str(doc.get("password", "")).strip()
+                if su.lower() == username.strip().lower() and sp == password.strip():
+                    session.clear()
+                    session['user_type'] = 'akhada'
+                    session['akhada_username'] = su
+                    session['akhada_truck_id'] = str(doc.get("truck_id", ""))
+                    return redirect('/akhada_dashboard')
+        except Exception:
+            pass
+
         flash("Invalid username or password.", "error")
         return render_template_string(get_template("LOGIN_HTML"), logo_url=LOGO_URL)
 
