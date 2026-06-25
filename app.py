@@ -1034,17 +1034,48 @@ def admin_dashboard():
         gps_db = mongo_client["gps_server_db"]
         registered_truck_ids = set(d["truck_id"] for d in gps_db["registered_trucks"].find({}, {"truck_id": 1}))
         assign_map = {d["truck_id"]: d for d in gps_db["assign_devices"].find()}
-        existing_ids = set(d["device_name"] for d in devices_display_list)
+        # Build latest-per-truck map from new_devices for all trucks
+        latest_map = {}
         for doc in gps_db["new_devices"].aggregate([
             {"$sort": {"timestamp": -1}},
             {"$group": {"_id": "$truck_id", "lat": {"$first": "$lat"}, "lng": {"$first": "$lng"}, "ts": {"$first": "$timestamp"}}}
         ]):
-            tid = doc["_id"]
-            if not tid or tid in existing_ids:
+            if doc["_id"]:
+                latest_map[doc["_id"]] = doc
+
+        # Patch existing devices that got N/A from Firebase with new_devices timestamps
+        threshold_sec = get_power_off_threshold() * 60
+        for dev in devices_display_list:
+            if dev.get("last_updated_date") == "N/A" and dev["device_name"] in latest_map:
+                ndoc = latest_map[dev["device_name"]]
+                ts = ndoc.get("ts")
+                if ts:
+                    dev["last_updated_date"] = ts.strftime("%d-%b-%Y")
+                    dev["last_updated_time"] = ts.strftime("%I:%M:%S %p")
+                    dev["is_power_off"] = (datetime.now() - ts).total_seconds() > threshold_sec
+                if ndoc.get("lat") and not dev.get("gps_lat"):
+                    dev["gps_lat"] = ndoc.get("lat")
+                    dev["gps_lng"] = ndoc.get("lng")
+            # Merge assign_devices info into existing devices too
+            tid = dev["device_name"]
+            if tid in assign_map:
+                a = assign_map[tid]
+                dev.setdefault("assign_role",       a.get("role", ""))
+                dev.setdefault("assign_username",   a.get("username", ""))
+                dev.setdefault("assign_driver",     a.get("driver_name", ""))
+                dev.setdefault("assign_driver_mob", a.get("driver_mobile", ""))
+                dev.setdefault("assign_contractor", a.get("contractor_name", ""))
+                dev.setdefault("assign_plate",      a.get("vehicle_plate", ""))
+                dev.setdefault("assign_officer",    a.get("officer_pi", ""))
+
+        existing_ids = set(d["device_name"] for d in devices_display_list)
+        for tid, doc in latest_map.items():
+            if tid in existing_ids:
                 continue
             ts = doc.get("ts")
             ts_date = ts.strftime("%d-%b-%Y") if ts else "N/A"
             ts_time = ts.strftime("%I:%M:%S %p") if ts else ""
+            is_po = (datetime.now() - ts).total_seconds() > threshold_sec if ts else True
             a = assign_map.get(tid, {})
             devices_display_list.append({
                 "id": len(devices_display_list) + 1,
@@ -1063,7 +1094,7 @@ def admin_dashboard():
                 "godown_manager": "", "godown_phone": "", "driver_name": a.get("driver_name",""), "driver_phone": "",
                 "gps_lat": doc.get("lat"), "gps_lng": doc.get("lng"),
                 "last_updated_date": ts_date, "last_updated_time": ts_time,
-                "is_power_off": False, "camera_status": "N/A",
+                "is_power_off": is_po, "camera_status": "N/A",
                 "is_recording": False, "trip_number": 0, "trip_status": "N/A"
             })
     except Exception as e:
