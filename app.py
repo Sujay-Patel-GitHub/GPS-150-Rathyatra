@@ -18,7 +18,7 @@ from mongodb import col_godown, col_transporters, col_drivers, col_shopkeepers, 
 from firebase import LOGO_URL
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = "gps_rath_yatra_2026_secret_k3y_x9z"
 
 # Custom logging filter to hide only live status requests
 import logging
