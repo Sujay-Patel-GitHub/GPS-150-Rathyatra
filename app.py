@@ -329,6 +329,27 @@ def reset_status(truck_id):
 
 
 # ── MOSFET Control ───────────────────────────────────────────
+@app.route("/api/truck_last_seen/<truck_id>")
+def truck_last_seen(truck_id):
+    try:
+        from mongodb import mongo_client
+        col = mongo_client["gps_server_db"]["new_devices"]
+        doc = col.find_one({"truck_id": truck_id}, sort=[("timestamp", -1)])
+        if doc and doc.get("timestamp"):
+            ts = doc["timestamp"]
+            threshold_sec = get_power_off_threshold() * 60
+            is_off = (datetime.now() - ts).total_seconds() > threshold_sec
+            return jsonify({
+                "ok": True,
+                "date": ts.strftime("%d-%b-%Y"),
+                "time": ts.strftime("%I:%M:%S %p"),
+                "power_off": is_off
+            })
+        return jsonify({"ok": False})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
 @app.route("/api/assign_device", methods=["POST"])
 def assign_device():
     data     = request.get_json(silent=True) or {}
