@@ -10,10 +10,10 @@
     <style>
         :root {
             --primary-color: #2563eb;
-            --driver-color: #3b82f6;
-            --transporter-color: #10b981;
-            --shop-color: #f59e0b;
-            --godown-color: #8b5cf6;
+            --driver-color: #f97316;
+            --transporter-color: #06b6d4;
+            --shop-color: #8b5cf6;
+            --godown-color: #ef4444;
             --sidebar-width: 240px;
             --sidebar-collapsed-width: 80px;
             --bg-color: #f3f4f6;
@@ -99,24 +99,21 @@
         }
 
         /* Icon Colors */
-        .role-btn-icon.drivers {
-            color: var(--driver-color);
-            background: #eff6ff;
+        .role-btn-icon.superadmin {
+            color: #f97316;
+            background: #fff7ed;
         }
-
-        .role-btn-icon.transporters {
-            color: var(--transporter-color);
-            background: #ecfdf5;
+        .role-btn-icon.rath {
+            color: #06b6d4;
+            background: #ecfeff;
         }
-
-        .role-btn-icon.shopkeepers {
-            color: var(--shop-color);
-            background: #fffbeb;
-        }
-
-        .role-btn-icon.godown {
-            color: var(--godown-color);
+        .role-btn-icon.akhada {
+            color: #8b5cf6;
             background: #f5f3ff;
+        }
+        .role-btn-icon.maintenance {
+            color: #ef4444;
+            background: #fef2f2;
         }
 
         .role-btn-title {
@@ -138,25 +135,10 @@
             transform: translateY(-2px);
         }
 
-        #btn-drivers.active {
-            border-color: var(--driver-color);
-            background-color: #f8fafc;
-        }
-
-        #btn-transporters.active {
-            border-color: var(--transporter-color);
-            background-color: #f0fdf4;
-        }
-
-        #btn-shopkeepers.active {
-            border-color: var(--shop-color);
-            background-color: #fffbeb;
-        }
-
-        #btn-godown.active {
-            border-color: var(--godown-color);
-            background-color: #f5f3ff;
-        }
+        #btn-superadmin.active { border-color: #f97316; background-color: #fff7ed; }
+        #btn-rath.active       { border-color: #06b6d4; background-color: #ecfeff; }
+        #btn-akhada.active     { border-color: #8b5cf6; background-color: #f5f3ff; }
+        #btn-maintenance.active{ border-color: #ef4444; background-color: #fef2f2; }
 
         /* --- Content Sections & Animation --- */
         .users-section {
@@ -479,184 +461,84 @@
             </div>
 
             <div class="role-buttons">
-                <!-- Driver Button -->
-                <button class="role-btn" onclick="showRole('drivers')" id="btn-drivers">
-                    <i class="fas fa-id-card role-btn-icon drivers"></i>
-                    <div class="role-btn-title">Drivers</div>
-                    <div class="role-btn-count">{{ roles_data['Driver']|length }} users</div>
+                <button class="role-btn" onclick="showRole('superadmin')" id="btn-superadmin">
+                    <i class="fas fa-shield-alt role-btn-icon superadmin"></i>
+                    <div class="role-btn-title">Super Admin</div>
+                    <div class="role-btn-count">{{ roles_data['SUPER_ADMIN']|length }} users</div>
                 </button>
-
-                <!-- Transporter Button -->
-                <button class="role-btn" onclick="showRole('transporters')" id="btn-transporters">
-                    <i class="fas fa-truck role-btn-icon transporters"></i>
-                    <div class="role-btn-title">Transporters</div>
-                    <div class="role-btn-count">{{ roles_data['Transporter']|length }} users</div>
+                <button class="role-btn" onclick="showRole('rath')" id="btn-rath">
+                    <i class="fas fa-gopuram role-btn-icon rath"></i>
+                    <div class="role-btn-title">Rath User</div>
+                    <div class="role-btn-count">{{ roles_data['RATH_USER']|length }} users</div>
                 </button>
-
-                <!-- Shop Keeper Button -->
-                <button class="role-btn" onclick="showRole('shopkeepers')" id="btn-shopkeepers">
-                    <i class="fas fa-store role-btn-icon shopkeepers"></i>
-                    <div class="role-btn-title">Shop Keepers</div>
-                    <div class="role-btn-count">{{ roles_data['Shop Keeper']|length }} users</div>
+                <button class="role-btn" onclick="showRole('akhada')" id="btn-akhada">
+                    <i class="fas fa-users role-btn-icon akhada"></i>
+                    <div class="role-btn-title">Akhada User</div>
+                    <div class="role-btn-count">{{ roles_data['AKHADA_USER']|length }} users</div>
                 </button>
-
-                <!-- Godown Manager Button -->
-                <button class="role-btn" onclick="showRole('godown')" id="btn-godown">
-                    <i class="fas fa-warehouse role-btn-icon godown"></i>
-                    <div class="role-btn-title">Godown Managers</div>
-                    <div class="role-btn-count">{{ roles_data['Godown Manager']|length }} users</div>
+                <button class="role-btn" onclick="showRole('maintenance')" id="btn-maintenance">
+                    <i class="fas fa-tools role-btn-icon maintenance"></i>
+                    <div class="role-btn-title">Maintenance User</div>
+                    <div class="role-btn-count">{{ roles_data['MAINTENANCE_USER']|length }} users</div>
                 </button>
             </div>
 
-            <!-- Drivers Section -->
-            <div class="users-section" id="section-drivers">
+            {% set role_configs = [
+                ('superadmin', 'SUPER_ADMIN', 'Super Admin', 'fa-shield-alt', '#f97316', '#fff7ed'),
+                ('rath',       'RATH_USER',   'Rath User',   'fa-gopuram',   '#06b6d4', '#ecfeff'),
+                ('akhada',     'AKHADA_USER', 'Akhada User', 'fa-users',     '#8b5cf6', '#f5f3ff'),
+                ('maintenance','MAINTENANCE_USER','Maintenance User','fa-tools','#ef4444','#fef2f2')
+            ] %}
+
+            {% for key, role_key, label, icon, color, bg in role_configs %}
+            <div class="users-section" id="section-{{ key }}">
                 <div class="section-header">
-                    <h2 class="section-title"><i class="fas fa-id-card" style="color: var(--driver-color);"></i> Drivers
+                    <h2 class="section-title">
+                        <i class="fas {{ icon }}" style="color:{{ color }};"></i> {{ label }}
                     </h2>
-                    <span class="user-count-badge" style="color: var(--driver-color); background: #eff6ff;">{{
-                        roles_data['Driver']|length }} Active</span>
+                    <span class="user-count-badge" style="color:{{ color }};background:{{ bg }};">
+                        {{ roles_data[role_key]|length }} Active
+                    </span>
                 </div>
                 <div class="search-bar">
-                    <input type="text" placeholder="Search drivers by name or username..."
-                        onkeyup="searchUsers('drivers')">
+                    <input type="text" placeholder="Search {{ label|lower }} by username or truck..."
+                        onkeyup="searchUsers('{{ key }}')">
                     <i class="fas fa-search"></i>
                 </div>
-                <div class="users-grid" id="grid-drivers">
-                    {% if roles_data['Driver']|length > 0 %}
-                    {% for user in roles_data['Driver'] %}
-                    <div class="user-card" data-name="{{ user.name|lower }}" data-username="{{ user.username|lower }}"
-                        onclick="showUserDetails('Driver', '{{ user.username }}')">
-                        <div class="user-avatar">{{ user.name[0]|upper }}</div>
-                        <div class="user-name">{{ user.name }}</div>
-                        <div class="user-username"><i class="fas fa-at"></i> {{ user.username }}</div>
+                <div class="users-grid" id="grid-{{ key }}">
+                    {% if roles_data[role_key]|length > 0 %}
+                    {% for user in roles_data[role_key] %}
+                    <div class="user-card"
+                         data-name="{{ user.username|lower }}"
+                         data-username="{{ user.truck_id|lower }}">
+                        <div class="user-avatar" style="background:linear-gradient(135deg,{{ color }},{{ color }}99);">
+                            {{ user.username[0]|upper if user.username else '?' }}
+                        </div>
+                        <div class="user-name">{{ user.username }}</div>
+                        <div class="user-username"><i class="fas fa-truck"></i> {{ user.truck_id }}</div>
                         <div class="user-details">
                             <div class="user-detail-item">
-                                <i class="fas fa-user-tag" style="color: var(--driver-color);"></i> <span>Driver</span>
+                                <i class="fas fa-user-tag" style="color:{{ color }};"></i>
+                                <span>{{ role_key }}</span>
                             </div>
+                            {% if user.assigned_at %}
+                            <div class="user-detail-item" style="margin-top:6px;">
+                                <i class="fas fa-clock" style="color:#9ca3af;"></i>
+                                <span style="font-size:12px;color:#9ca3af;">{{ user.assigned_at[:19] }}</span>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                     {% endfor %}
                     {% else %}
-                    <div class="no-users"><i class="fas fa-users-slash"></i>
-                        <p>No drivers found</p>
+                    <div class="no-users">
+                        <i class="fas fa-users-slash"></i>
+                        <p>No {{ label|lower }} assigned yet</p>
                     </div>
                     {% endif %}
                 </div>
             </div>
-
-            <!-- Transporters Section -->
-            <div class="users-section" id="section-transporters">
-                <div class="section-header">
-                    <h2 class="section-title"><i class="fas fa-truck" style="color: var(--transporter-color);"></i>
-                        Transporters</h2>
-                    <span class="user-count-badge" style="color: var(--transporter-color); background: #ecfdf5;">{{
-                        roles_data['Transporter']|length }} Active</span>
-                </div>
-                <div class="search-bar">
-                    <input type="text" placeholder="Search transporters by name or username..."
-                        onkeyup="searchUsers('transporters')">
-                    <i class="fas fa-search"></i>
-                </div>
-                <div class="users-grid" id="grid-transporters">
-                    {% if roles_data['Transporter']|length > 0 %}
-                    {% for user in roles_data['Transporter'] %}
-                    <div class="user-card" data-name="{{ user.name|lower }}" data-username="{{ user.username|lower }}"
-                        onclick="showUserDetails('Transporter', '{{ user.username }}')">
-                        <div class="user-avatar" style="background: linear-gradient(135deg, #34d399, #10b981);">{{
-                            user.name[0]|upper }}</div>
-                        <div class="user-name">{{ user.name }}</div>
-                        <div class="user-username"><i class="fas fa-at"></i> {{ user.username }}</div>
-                        <div class="user-details">
-                            <div class="user-detail-item">
-                                <i class="fas fa-user-tag" style="color: var(--transporter-color);"></i>
-                                <span>Transporter</span>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                    {% else %}
-                    <div class="no-users"><i class="fas fa-users-slash"></i>
-                        <p>No transporters found</p>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Shop Keepers Section -->
-            <div class="users-section" id="section-shopkeepers">
-                <div class="section-header">
-                    <h2 class="section-title"><i class="fas fa-store" style="color: var(--shop-color);"></i> Shop
-                        Keepers</h2>
-                    <span class="user-count-badge" style="color: var(--shop-color); background: #fffbeb;">{{
-                        roles_data['Shop Keeper']|length }} Active</span>
-                </div>
-                <div class="search-bar">
-                    <input type="text" placeholder="Search shop keepers by name or username..."
-                        onkeyup="searchUsers('shopkeepers')">
-                    <i class="fas fa-search"></i>
-                </div>
-                <div class="users-grid" id="grid-shopkeepers">
-                    {% if roles_data['Shop Keeper']|length > 0 %}
-                    {% for user in roles_data['Shop Keeper'] %}
-                    <div class="user-card" data-name="{{ user.name|lower }}" data-username="{{ user.username|lower }}"
-                        onclick="showUserDetails('Shop Keeper', '{{ user.username }}')">
-                        <div class="user-avatar" style="background: linear-gradient(135deg, #fbbf24, #d97706);">{{
-                            user.name[0]|upper }}</div>
-                        <div class="user-name">{{ user.name }}</div>
-                        <div class="user-username"><i class="fas fa-at"></i> {{ user.username }}</div>
-                        <div class="user-details">
-                            <div class="user-detail-item">
-                                <i class="fas fa-user-tag" style="color: var(--shop-color);"></i> <span>Shop
-                                    Keeper</span>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                    {% else %}
-                    <div class="no-users"><i class="fas fa-users-slash"></i>
-                        <p>No shop keepers found</p>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Godown Managers Section -->
-            <div class="users-section" id="section-godown">
-                <div class="section-header">
-                    <h2 class="section-title"><i class="fas fa-warehouse" style="color: var(--godown-color);"></i>
-                        Godown Managers</h2>
-                    <span class="user-count-badge" style="color: var(--godown-color); background: #f5f3ff;">{{
-                        roles_data['Godown Manager']|length }} Active</span>
-                </div>
-                <div class="search-bar">
-                    <input type="text" placeholder="Search godown managers by name or username..."
-                        onkeyup="searchUsers('godown')">
-                    <i class="fas fa-search"></i>
-                </div>
-                <div class="users-grid" id="grid-godown">
-                    {% if roles_data['Godown Manager']|length > 0 %}
-                    {% for user in roles_data['Godown Manager'] %}
-                    <div class="user-card" data-name="{{ user.name|lower }}" data-username="{{ user.username|lower }}"
-                        onclick="showUserDetails('Godown Manager', '{{ user.username }}')">
-                        <div class="user-avatar" style="background: linear-gradient(135deg, #a78bfa, #7c3aed);">{{
-                            user.name[0]|upper }}</div>
-                        <div class="user-name">{{ user.name }}</div>
-                        <div class="user-username"><i class="fas fa-at"></i> {{ user.username }}</div>
-                        <div class="user-details">
-                            <div class="user-detail-item">
-                                <i class="fas fa-user-tag" style="color: var(--godown-color);"></i> <span>Godown
-                                    Manager</span>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                    {% else %}
-                    <div class="no-users"><i class="fas fa-users-slash"></i>
-                        <p>No godown managers found</p>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
+            {% endfor %}
 
         </div>
     </div>
@@ -991,7 +873,7 @@
         });
 
         window.addEventListener('DOMContentLoaded', () => {
-            showRole('drivers');
+            showRole('superadmin');
         });
 
     </script>

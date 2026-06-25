@@ -4122,14 +4122,17 @@ def delete_recording(file_path):
 @app.route("/list_roles")
 def list_roles():
     if session.get('user_type') != 'admin': return redirect(url_for('login'))
-    roles_data = {
-        "Driver": [{"name": u.get('name', 'Unknown'), "username": u.get('username')} for u in col_drivers.find()],
-        "Transporter": [{"name": u.get('name', 'Unknown'), "username": u.get('username')} for u in
-                        col_transporters.find()],
-        "Shop Keeper": [{"name": u.get('name', 'Unknown'), "username": u.get('username')} for u in
-                        col_shopkeepers.find()],
-        "Godown Manager": [{"name": u.get('name', 'Unknown'), "username": u.get('username')} for u in col_godown.find()]
-    }
+    from mongodb import mongo_client
+    assign_col = mongo_client["gps_server_db"]["assign_devices"]
+    roles_data = {"SUPER_ADMIN": [], "RATH_USER": [], "AKHADA_USER": [], "MAINTENANCE_USER": []}
+    for doc in assign_col.find():
+        role = doc.get("role", "")
+        if role in roles_data:
+            roles_data[role].append({
+                "username": doc.get("username", ""),
+                "truck_id": doc.get("truck_id", ""),
+                "assigned_at": str(doc.get("assigned_at", ""))
+            })
     return render_template_string(get_template("LIST_ROLES_HTML"), roles_data=roles_data, logo_url=LOGO_URL)
 
 
