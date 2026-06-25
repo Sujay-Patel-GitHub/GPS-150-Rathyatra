@@ -256,6 +256,127 @@ def mongo_drop(collection):
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+# ── Device Remote Reset ──────────────────────────────────────
+@app.route("/api/reset_device/<truck_id>", methods=["POST"])
+def reset_device(truck_id):
+    """Admin pushes new config. ESP will pick it up on next poll."""
+    data = request.get_json(silent=True) or request.form.to_dict()
+    try:
+        from mongodb import mongo_client
+        col = mongo_client["gps_server_db"]["device_resets"]
+        col.update_one(
+            {"truck_id": truck_id},
+            {"$set": {
+                "truck_id":  truck_id,
+                "new_name":  data.get("new_name", truck_id),
+                "new_ssid":  data.get("new_ssid", ""),
+                "new_pass":  data.get("new_pass", ""),
+                "status":    "pending",
+                "queued_at": datetime.now(),
+                "done_at":   None
+            }},
+            upsert=True
+        )
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/get_pending_reset/<truck_id>", methods=["GET"])
+def get_pending_reset(truck_id):
+    """ESP polls this. Returns pending config if one is queued."""
+    try:
+        from mongodb import mongo_client
+        col = mongo_client["gps_server_db"]["device_resets"]
+        doc = col.find_one({"truck_id": truck_id, "status": "pending"})
+        if doc:
+            return jsonify({
+                "pending":  True,
+                "new_name": doc.get("new_name", truck_id),
+                "new_ssid": doc.get("new_ssid", ""),
+                "new_pass": doc.get("new_pass", "")
+            })
+        return jsonify({"pending": False})
+    except Exception as e:
+        return jsonify({"pending": False, "error": str(e)})
+
+
+@app.route("/api/reset_confirmed/<truck_id>", methods=["POST"])
+def reset_confirmed(truck_id):
+    """ESP calls this after writing new EEPROM values."""
+    try:
+        from mongodb import mongo_client
+        col = mongo_client["gps_server_db"]["device_resets"]
+        col.update_one(
+            {"truck_id": truck_id},
+            {"$set": {"status": "done", "done_at": datetime.now()}}
+        )
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/reset_status/<truck_id>", methods=["GET"])
+def reset_status(truck_id):
+    """UI polls this to check if ESP has confirmed the reset."""
+    try:
+        from mongodb import mongo_client
+        col = mongo_client["gps_server_db"]["device_resets"]
+        doc = col.find_one({"truck_id": truck_id})
+        if not doc:
+            return jsonify({"status": "none"})
+        done_at = doc.get("done_at")
+        return jsonify({
+            "status":    doc.get("status", "none"),
+            "done_at":   done_at.strftime("%d-%b-%Y %I:%M:%S %p") if done_at else None,
+            "new_name":  doc.get("new_name"),
+            "queued_at": doc["queued_at"].strftime("%d-%b-%Y %I:%M:%S %p") if doc.get("queued_at") else None
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)})
+
+
+# ── Device Registration ──────────────────────────────────────
+@app.route("/api/devices/all", methods=["GET"])
+def devices_all():
+    """Returns all truck IDs seen in new_devices, and which are registered."""
+    try:
+        from mongodb import mongo_client
+        db = mongo_client["gps_server_db"]
+        # All unique truck IDs that have ever pushed data
+        seen = db["new_devices"].distinct("truck_id")
+        # Registered truck IDs
+        registered = [d["truck_id"] for d in db["registered_trucks"].find({}, {"truck_id": 1})]
+        reg_set = set(registered)
+        return jsonify({
+            "registered":   [t for t in seen if t in reg_set],
+            "unregistered": [t for t in seen if t not in reg_set]
+        })
+    except Exception as e:
+        return jsonify({"registered": [], "unregistered": [], "error": str(e)})
+
+
+@app.route("/api/devices/register/<truck_id>", methods=["POST"])
+def register_device(truck_id):
+    try:
+        from mongodb import mongo_client
+        col = mongo_client["gps_server_db"]["registered_trucks"]
+        col.update_one({"truck_id": truck_id}, {"$set": {"truck_id": truck_id, "registered_at": datetime.now()}}, upsert=True)
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/devices/unregister/<truck_id>", methods=["DELETE"])
+def unregister_device(truck_id):
+    try:
+        from mongodb import mongo_client
+        mongo_client["gps_server_db"]["registered_trucks"].delete_one({"truck_id": truck_id})
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 def get_power_off_threshold():
     try:
         data = col_settings.find_one({"_id": "power_off_config"})
