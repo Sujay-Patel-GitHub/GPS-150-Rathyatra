@@ -193,19 +193,10 @@ def truck_gps(truck_id):
         col = mongo_client["gps_server_db"]["new_devices"]
         col.insert_one({
             "truck_id": truck_id,
-            # GPS
-            "lat":   f("lat"),
-            "lng":   f("lng"),
-            "speed": f("speed"),
-            # Accelerometer (g)
-            "ax": f("ax"),
-            "ay": f("ay"),
-            "az": f("az"),
-            # Gyroscope (deg/s)
-            "gx": f("gx"),
-            "gy": f("gy"),
-            "gz": f("gz"),
-            "motion": str(data.get("motion", "unknown")),
+            "lat":      f("lat"),
+            "lng":      f("lng"),
+            "speed":    f("speed"),
+            "motion":   str(data.get("motion", "unknown")),
             "timestamp": datetime.now()
         })
         return jsonify({"ok": True}), 200

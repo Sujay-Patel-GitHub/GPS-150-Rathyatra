@@ -221,10 +221,6 @@ async function loadTruckGrid() {
       <div class="tc-row">Lat: <span class="gv">${n2(latest.lat,6)}</span></div>
       <div class="tc-row">Lng: <span class="gv">${n2(latest.lng,6)}</span></div>
       <div class="tc-row">Speed: <span class="gv">${n2(latest.speed,1)} km/h</span></div>
-      <div class="tc-section">Accelerometer</div>
-      <div class="tc-row">X:<span class="av">${n2(latest.ax,3)}g</span> Y:<span class="av">${n2(latest.ay,3)}g</span> Z:<span class="av">${n2(latest.az,3)}g</span></div>
-      <div class="tc-section">Gyroscope</div>
-      <div class="tc-row">X:<span class="pv">${n2(latest.gx,1)}</span> Y:<span class="pv">${n2(latest.gy,1)}</span> Z:<span class="pv">${n2(latest.gz,1)}&deg;/s</span></div>
       <div style="margin-top:10px">${motionBadge(latest.motion)}</div>
       <div class="tc-foot">${trucks[tid].length} records &nbsp;&middot;&nbsp; ${latest.timestamp||""}</div>
     </div>`;
@@ -259,12 +255,6 @@ async function showTruckDetail(truckId) {
     <td class="gps-val">${n2(d.lat,6)}</td>
     <td class="gps-val">${n2(d.lng,6)}</td>
     <td class="gps-val">${n2(d.speed,1)}</td>
-    <td class="acc-val">${n2(d.ax,3)}</td>
-    <td class="acc-val">${n2(d.ay,3)}</td>
-    <td class="acc-val">${n2(d.az,3)}</td>
-    <td class="gyr-val">${n2(d.gx,1)}</td>
-    <td class="gyr-val">${n2(d.gy,1)}</td>
-    <td class="gyr-val">${n2(d.gz,1)}</td>
     <td>${motionBadge(d.motion)}</td>
     <td class="ts-val">${d.timestamp||""}</td>
   </tr>`).join("");
@@ -281,17 +271,10 @@ async function showTruckDetail(truckId) {
     <div class="table-wrap"><table>
       <thead>
         <tr>
-          <th class="meta-h" rowspan="2">Truck</th>
-          <th class="gps-h" colspan="3" style="text-align:center;border-bottom:1px solid #1e4080;">GPS</th>
-          <th class="acc-h" colspan="3" style="text-align:center;border-bottom:1px solid #1e4080;">Accelerometer (g)</th>
-          <th class="gyr-h" colspan="3" style="text-align:center;border-bottom:1px solid #1e4080;">Gyroscope (deg/s)</th>
-          <th class="meta-h" rowspan="2">Motion</th>
-          <th class="meta-h" rowspan="2">Timestamp</th>
-        </tr>
-        <tr>
+          <th class="meta-h">Truck</th>
           <th class="gps-h">Lat</th><th class="gps-h">Lng</th><th class="gps-h">Speed</th>
-          <th class="acc-h">X</th><th class="acc-h">Y</th><th class="acc-h">Z</th>
-          <th class="gyr-h">X</th><th class="gyr-h">Y</th><th class="gyr-h">Z</th>
+          <th class="meta-h">Motion</th>
+          <th class="meta-h">Timestamp</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
