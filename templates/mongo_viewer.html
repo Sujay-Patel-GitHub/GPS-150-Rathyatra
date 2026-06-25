@@ -20,18 +20,17 @@
 
   .col-item { padding: 8px 10px 8px 16px; cursor: pointer; border-left: 3px solid transparent; transition: all .15s; display: flex; align-items: center; gap: 6px; }
   .col-item:hover { background: #263449; }
-  .col-item:hover .del-btn { opacity: 1; }
+  .col-item:hover .del-btn { opacity: 1 !important; }
   .col-item.active { background: #1d3a5f; border-left-color: #38bdf8; }
   .col-name { font-size: 0.88rem; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .col-badge { background: #334155; color: #94a3b8; font-size: 0.7rem; padding: 2px 7px; border-radius: 999px; flex-shrink: 0; }
   .col-item.active .col-badge { background: #0ea5e9; color: #fff; }
-  .del-btn { opacity: 0; background: none; border: none; color: #f87171; cursor: pointer; font-size: 1rem; line-height: 1; padding: 3px 5px; border-radius: 5px; flex-shrink: 0; transition: opacity .15s, background .15s; }
-  .del-btn:hover { background: #450a0a88; }
+  .del-btn { opacity: 0; background: none; border: none; color: #f87171; cursor: pointer; font-size: 0.95rem; line-height: 1; padding: 3px 6px; border-radius: 5px; flex-shrink: 0; transition: opacity .15s, background .15s; }
+  .del-btn:hover { background: #7f1d1d55 !important; }
 
   .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
   .toolbar { padding: 14px 20px; background: #1e293b; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .toolbar h2 { font-size: 1rem; font-weight: 700; color: #f1f5f9; }
-  .toolbar .info { font-size: 0.78rem; color: #64748b; margin-left: auto; }
   .refresh-btn { background: #0ea5e9; color: #fff; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600; }
   .refresh-btn:hover { background: #0284c7; }
   .auto-label { font-size: 0.78rem; color: #64748b; display: flex; align-items: center; gap: 6px; }
@@ -45,14 +44,29 @@
   tbody td { padding: 9px 14px; color: #cbd5e1; vertical-align: top; }
   .lat-lng { font-family: monospace; color: #34d399; }
   .ts { color: #64748b; font-size: 0.75rem; }
+  .truck-group-header td { background: #0f2744; color: #38bdf8; font-weight: 700; font-size: 0.8rem; padding: 8px 14px; border-top: 2px solid #1e4080; letter-spacing: .05em; }
   .empty { text-align: center; padding: 60px; color: #475569; }
   .empty i { font-size: 2.5rem; margin-bottom: 12px; display: block; }
-  .map-wrap { height: 220px; border-bottom: 1px solid #334155; display: none; }
+  .map-wrap { height: 200px; border-bottom: 1px solid #334155; display: none; }
   .map-wrap iframe { width: 100%; height: 100%; border: none; }
-  .placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #334155; gap: 12px; }
-  .placeholder svg { width: 64px; opacity: .3; }
+  .placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 12px; }
+  .placeholder svg { width: 64px; opacity: .2; }
   .placeholder p { font-size: 1rem; color: #475569; }
 
+  /* Truck cards (new_devices view) */
+  .truck-grid { display: flex; flex-wrap: wrap; gap: 14px; padding: 20px; overflow-y: auto; flex: 1; align-content: flex-start; }
+  .truck-card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 18px; width: 220px; cursor: pointer; transition: border-color .15s, background .15s; }
+  .truck-card:hover { border-color: #38bdf8; background: #1d3a5f; }
+  .truck-card.active-truck { border-color: #38bdf8; background: #1d3a5f; }
+  .truck-card h3 { font-size: 1rem; font-weight: 700; color: #38bdf8; margin-bottom: 8px; }
+  .truck-card .tc-row { font-size: 0.78rem; color: #94a3b8; margin-bottom: 4px; }
+  .truck-card .tc-row span { color: #e2e8f0; }
+  .truck-detail { flex: 1; overflow: auto; padding: 0; display: none; flex-direction: column; }
+  .truck-detail.show { display: flex; }
+  .back-btn { background: #334155; color: #e2e8f0; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600; }
+  .back-btn:hover { background: #475569; }
+
+  /* Modal */
   .modal-bg { display: none; position: fixed; inset: 0; background: #00000099; z-index: 999; align-items: center; justify-content: center; }
   .modal-bg.open { display: flex; }
   .modal { background: #1e293b; border: 1px solid #334155; border-radius: 14px; padding: 28px; width: 360px; box-shadow: 0 20px 60px #0009; }
@@ -75,7 +89,7 @@
 <div class="modal-bg" id="modalBg">
   <div class="modal">
     <h3>Delete Collection</h3>
-    <p>Are you sure you want to permanently delete <strong id="modalColName"></strong>?<br>This will remove <strong id="modalColCount"></strong> documents and cannot be undone.</p>
+    <p>Permanently delete <strong id="modalColName"></strong>?<br>This removes <strong id="modalColCount"></strong> documents and cannot be undone.</p>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
       <button class="btn-delete-confirm" onclick="confirmDelete()">Delete</button>
@@ -99,7 +113,9 @@
   <div class="main" id="mainPanel">
     <div class="placeholder">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/>
+        <ellipse cx="12" cy="5" rx="9" ry="3"/>
+        <path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/>
+        <path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/>
       </svg>
       <p>Select a collection to view data</p>
     </div>
@@ -111,43 +127,136 @@ let activeCol = null;
 let autoRefresh = true;
 let refreshTimer = null;
 let deleteTarget = { name: "", count: 0 };
+let activeTruck = null;
 
-function esc(s) { return s.replace(/\\/g,"\\\\").replace(/'/g,"\\'"); }
+function esc(s) { return (s+"").replace(/\\/g,"\\\\").replace(/'/g,"\\'"); }
 
+// ── Collections sidebar ───────────────────────────────────
 async function loadCollections() {
   const res = await fetch("/api/mongo_collections");
   const cols = await res.json();
   const el = document.getElementById("colList");
-  if (!cols.length) { el.innerHTML = "<div style=\"padding:20px;color:#475569;font-size:.82rem;\">No collections found</div>"; return; }
+  if (!cols.length) { el.innerHTML = "<div style='padding:20px;color:#475569;font-size:.82rem;'>No collections found</div>"; return; }
   el.innerHTML = cols.map(c => `
     <div class="col-item ${c.name === activeCol ? "active" : ""}" onclick="selectCol('${esc(c.name)}')">
-      <span class="col-name">${c.name}</span>
+      <span class="col-name">${c.name === "new_devices" ? "&#128666; new_devices" : c.name}</span>
       <span class="col-badge">${c.count.toLocaleString()}</span>
-      <button class="del-btn" title="Delete collection" onclick="event.stopPropagation();askDelete('${esc(c.name)}',${c.count})">&#128465;</button>
+      <button class="del-btn" title="Delete" onclick="event.stopPropagation();askDelete('${esc(c.name)}',${c.count})">&#128465;</button>
     </div>`).join("");
 }
 
+// ── Select collection ─────────────────────────────────────
 async function selectCol(name) {
   activeCol = name;
-  document.querySelectorAll(".col-item").forEach(el => el.classList.toggle("active", el.querySelector(".col-name").textContent === name));
-  await loadData();
+  activeTruck = null;
+  document.querySelectorAll(".col-item").forEach(el =>
+    el.classList.toggle("active", el.querySelector(".col-name").textContent.replace("&#128666; ","").trim().replace(/^\u{1F6A6}?\s*/u,"") === name || el.querySelector(".col-name").textContent.includes(name)));
   clearInterval(refreshTimer);
-  if (autoRefresh) refreshTimer = setInterval(loadData, 4000);
+  if (name === "new_devices") {
+    await loadTruckGrid();
+    if (autoRefresh) refreshTimer = setInterval(loadTruckGrid, 4000);
+  } else {
+    await loadData();
+    if (autoRefresh) refreshTimer = setInterval(loadData, 4000);
+  }
 }
 
+// ── Truck grid view (new_devices collection) ──────────────
+async function loadTruckGrid() {
+  const res = await fetch("/api/mongo_data/new_devices?limit=500");
+  const docs = await res.json();
+
+  // Group by truck_id
+  const trucks = {};
+  for (const d of docs) {
+    const tid = d.truck_id || "unknown";
+    if (!trucks[tid]) trucks[tid] = [];
+    trucks[tid].push(d);
+  }
+  const truckIds = Object.keys(trucks).sort();
+
+  if (!truckIds.length) {
+    document.getElementById("mainPanel").innerHTML = `
+      <div class="toolbar"><h2>&#128666; new_devices</h2><span style="font-size:.75rem;color:#94a3b8;margin-left:8px;">0 trucks</span>
+        <label class="auto-label" style="margin-left:auto;"><input type="checkbox" ${autoRefresh?"checked":""} onchange="toggleAuto(this)"> Auto-refresh</label>
+        <button class="refresh-btn" onclick="loadTruckGrid()">&#8635; Refresh</button>
+      </div>
+      <div class="empty"><i>&#128666;</i>No trucks connected yet.</div>`;
+    return;
+  }
+
+  const cards = truckIds.map(tid => {
+    const rows = trucks[tid];
+    const latest = rows[0];
+    return `<div class="truck-card ${activeTruck===tid?"active-truck":""}" onclick="showTruckDetail('${esc(tid)}')">
+      <h3>&#128666; ${tid}</h3>
+      <div class="tc-row">Records: <span>${rows.length}</span></div>
+      <div class="tc-row">Lat: <span style="color:#34d399">${latest.lat ?? "-"}</span></div>
+      <div class="tc-row">Lng: <span style="color:#34d399">${latest.lng ?? "-"}</span></div>
+      <div class="tc-row">Speed: <span>${latest.speed ?? 0} km/h</span></div>
+      <div class="tc-row" style="margin-top:6px;font-size:.72rem;color:#475569;">${latest.timestamp ?? ""}</div>
+    </div>`;
+  }).join("");
+
+  document.getElementById("mainPanel").innerHTML = `
+    <div class="toolbar">
+      <h2>&#128666; new_devices</h2>
+      <span style="font-size:.75rem;color:#94a3b8;background:#0f172a;padding:3px 10px;border-radius:999px;">${truckIds.length} truck${truckIds.length!==1?"s":""}</span>
+      <label class="auto-label" style="margin-left:auto;"><input type="checkbox" ${autoRefresh?"checked":""} onchange="toggleAuto(this)"> Auto-refresh (4s)</label>
+      <button class="refresh-btn" onclick="loadTruckGrid()">&#8635; Refresh</button>
+      <span style="font-size:.75rem;color:#475569;" id="lastRefresh"></span>
+    </div>
+    <div class="truck-grid" id="truckGrid">${cards}</div>`;
+  document.getElementById("lastRefresh").textContent = "Updated " + new Date().toLocaleTimeString();
+  await loadCollections();
+}
+
+async function showTruckDetail(truckId) {
+  activeTruck = truckId;
+  const res = await fetch("/api/mongo_data/new_devices?limit=500");
+  const all = await res.json();
+  const docs = all.filter(d => d.truck_id === truckId);
+  const keys = ["truck_id","lat","lng","speed","timestamp"];
+  const rows = docs.map(d => `<tr>${keys.map(k => {
+    let v = d[k] ?? "";
+    if (k==="lat"||k==="lng") return `<td class="lat-lng">${v}</td>`;
+    if (k==="timestamp") return `<td class="ts">${v}</td>`;
+    if (k==="truck_id") return `<td style="color:#38bdf8;font-weight:600;">${v}</td>`;
+    return `<td>${v}</td>`;
+  }).join("")}</tr>`).join("");
+
+  let mapHtml = "";
+  if (docs[0] && docs[0].lat && docs[0].lng)
+    mapHtml = `<div class="map-wrap" style="display:block;"><iframe src="https://maps.google.com/maps?q=${docs[0].lat},${docs[0].lng}&z=15&output=embed"></iframe></div>`;
+
+  document.getElementById("mainPanel").innerHTML = `
+    <div class="toolbar">
+      <button class="back-btn" onclick="selectCol('new_devices')">&#8592; All Trucks</button>
+      <h2>&#128666; ${truckId}</h2>
+      <span style="font-size:.75rem;color:#94a3b8;background:#0f172a;padding:3px 10px;border-radius:999px;">${docs.length} records</span>
+      <label class="auto-label" style="margin-left:auto;"><input type="checkbox" ${autoRefresh?"checked":""} onchange="toggleAuto(this)"> Auto-refresh</label>
+      <button class="refresh-btn" onclick="showTruckDetail('${esc(truckId)}')">&#8635; Refresh</button>
+    </div>
+    ${mapHtml}
+    <div class="table-wrap"><table>
+      <thead><tr>${keys.map(k=>`<th>${k}</th>`).join("")}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+}
+
+// ── Regular collection data ───────────────────────────────
 async function loadData() {
   if (!activeCol) return;
   const res = await fetch("/api/mongo_data/" + activeCol);
   const docs = await res.json();
   if (!docs.length) {
-    document.getElementById("mainPanel").innerHTML = `<div class="toolbar"><h2>${activeCol}</h2><span class="info">0 documents</span></div><div class="empty"><i>&#128205;</i>No data in this collection yet.</div>`;
+    document.getElementById("mainPanel").innerHTML = `<div class="toolbar"><h2>${activeCol}</h2><span style="font-size:.75rem;color:#64748b;margin-left:8px;">0 documents</span></div><div class="empty"><i>&#128205;</i>No data yet.</div>`;
     return;
   }
   const keys = Object.keys(docs[0]);
   let mapHtml = "";
-  if (keys.includes("lat") && keys.includes("lng") && docs[0].lat && docs[0].lng) {
+  if (keys.includes("lat") && keys.includes("lng") && docs[0].lat && docs[0].lng)
     mapHtml = `<div class="map-wrap" style="display:block;"><iframe src="https://maps.google.com/maps?q=${docs[0].lat},${docs[0].lng}&z=15&output=embed"></iframe></div>`;
-  }
   const rows = docs.map(d => `<tr>${keys.map(k => {
     let v = d[k] ?? "";
     if (k==="lat"||k==="lng") return `<td class="lat-lng">${v}</td>`;
@@ -157,10 +266,10 @@ async function loadData() {
   document.getElementById("mainPanel").innerHTML = `
     <div class="toolbar">
       <h2>${activeCol}</h2>
-      <span style="font-size:.75rem;color:#94a3b8;background:#1e293b;padding:3px 10px;border-radius:999px;">${docs.length} latest rows</span>
-      <label class="auto-label"><input type="checkbox" ${autoRefresh?"checked":""} onchange="toggleAuto(this)"> Auto-refresh (4s)</label>
+      <span style="font-size:.75rem;color:#94a3b8;background:#0f172a;padding:3px 10px;border-radius:999px;">${docs.length} latest rows</span>
+      <label class="auto-label" style="margin-left:auto;"><input type="checkbox" ${autoRefresh?"checked":""} onchange="toggleAuto(this)"> Auto-refresh (4s)</label>
       <button class="refresh-btn" onclick="loadData()">&#8635; Refresh</button>
-      <span class="info" id="lastRefresh"></span>
+      <span style="font-size:.75rem;color:#475569;" id="lastRefresh"></span>
     </div>
     ${mapHtml}
     <div class="table-wrap"><table>
@@ -174,18 +283,23 @@ async function loadData() {
 function toggleAuto(cb) {
   autoRefresh = cb.checked;
   clearInterval(refreshTimer);
-  if (autoRefresh && activeCol) refreshTimer = setInterval(loadData, 4000);
+  if (!autoRefresh || !activeCol) return;
+  if (activeCol === "new_devices") {
+    if (activeTruck) refreshTimer = setInterval(() => showTruckDetail(activeTruck), 4000);
+    else refreshTimer = setInterval(loadTruckGrid, 4000);
+  } else {
+    refreshTimer = setInterval(loadData, 4000);
+  }
 }
 
+// ── Delete ────────────────────────────────────────────────
 function askDelete(name, count) {
   deleteTarget = { name, count };
   document.getElementById("modalColName").textContent = name;
   document.getElementById("modalColCount").textContent = count.toLocaleString();
   document.getElementById("modalBg").classList.add("open");
 }
-
 function closeModal() { document.getElementById("modalBg").classList.remove("open"); }
-
 async function confirmDelete() {
   closeModal();
   const name = deleteTarget.name;
@@ -195,7 +309,7 @@ async function confirmDelete() {
     if (data.ok) {
       showToast("Deleted: " + name, false);
       if (activeCol === name) {
-        activeCol = null;
+        activeCol = null; activeTruck = null;
         clearInterval(refreshTimer);
         document.getElementById("mainPanel").innerHTML = `<div class="placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg><p>Select a collection to view data</p></div>`;
       }

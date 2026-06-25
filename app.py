@@ -184,11 +184,10 @@ def test_gps():
 
 @app.route("/api/truck_gps/<truck_id>", methods=["POST"])
 def truck_gps(truck_id):
-    """Each ESP truck pushes GPS here. Stored in its own collection named after truck_id."""
     data = request.get_json(silent=True) or request.form.to_dict()
     try:
         from mongodb import mongo_client
-        col = mongo_client["gps_server_db"][truck_id]
+        col = mongo_client["gps_server_db"]["new_devices"]
         col.insert_one({
             "truck_id": truck_id,
             "lat":   float(data.get("lat", 0)),
