@@ -40,9 +40,13 @@ try:
     # 9. SOS Logs (emergency signals raised from devices)
     col_sos_logs = db["sos_logs"]
 
+    # 10. Live GPS — latest GPS point per device, pushed directly by devices
+    col_gps_live = db["gps_live"]
+
     # Create indexes for optimization
     col_map_recordings.create_index([("device_id", 1), ("timestamp", 1)])
     col_sos_logs.create_index([("started_at", -1)])
+    col_gps_live.create_index([("device_id", 1)], unique=True)
 
     print("✅ Connected to Local MongoDB")
     print("✅ Database Structure & Indexes Initialized.")

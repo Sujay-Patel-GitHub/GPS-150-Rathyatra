@@ -14,8 +14,8 @@ from pathlib import Path
 from datetime import datetime, timedelta
 
 # --- IMPORT DATABASE & FIREBASE CONFIG ---
-from mongodb import col_godown, col_transporters, col_drivers, col_shopkeepers, col_vehicles, col_settings, col_gps_recordings, col_map_recordings, col_sos_logs
-from firebase import FIREBASE_URL, FIREBASE_KEY, LOGO_URL
+from mongodb import col_godown, col_transporters, col_drivers, col_shopkeepers, col_vehicles, col_settings, col_gps_recordings, col_map_recordings, col_sos_logs, col_gps_live
+from firebase import LOGO_URL
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -156,8 +156,16 @@ def save_add_user_format(new_fmt):
 def get_rtmp_source():
     data = col_settings.find_one({"_id": "rtmp_source_pref"})
     if data:
-        return data.get("source", "firebase")
-    return "firebase"
+        return data.get("source", "mongo")
+    return "mongo"
+
+
+def get_live_gps(device_id):
+    """Return latest GPS doc for a device from col_gps_live, or {}."""
+    try:
+        return col_gps_live.find_one({"device_id": device_id}) or {}
+    except:
+        return {}
 
 
 def get_power_off_threshold():
@@ -502,6 +510,35 @@ def login():
     return render_template_string(get_template("LOGIN_HTML"), logo_url=LOGO_URL)
 
 
+@app.route("/api/push_gps/<device_id>", methods=["POST"])
+def push_gps(device_id):
+    """Devices POST their latest GPS here instead of Firebase."""
+    data = request.get_json(silent=True) or request.form.to_dict()
+    if not data:
+        return jsonify({"success": False, "error": "No data"}), 400
+    col_gps_live.update_one(
+        {"device_id": device_id},
+        {"$set": {
+            "device_id": device_id,
+            "lat": data.get("lat"),
+            "lng": data.get("lng") or data.get("lon"),
+            "speed": data.get("speed", 0),
+            "date": data.get("date", ""),
+            "time": data.get("time", ""),
+            "mosfet": data.get("mosfet"),
+            "sos": data.get("sos", 0),
+            "rfid_data": data.get("rfid_data", {}),
+            "rtmp1": data.get("rtmp1", ""),
+            "rtmp2": data.get("rtmp2", ""),
+            "rtmp3": data.get("rtmp3", ""),
+            "rtmp4": data.get("rtmp4", ""),
+            "updated_at": datetime.now()
+        }},
+        upsert=True
+    )
+    return jsonify({"success": True})
+
+
 @app.route("/admin_dashboard")
 def admin_dashboard():
     if session.get('user_type') != 'admin':
@@ -519,32 +556,29 @@ def admin_dashboard():
     godown_phone_map = {g.get("name"): g.get("mobile", "N/A") for g in col_godown.find()}
 
 
-    try:
-        devices_url = f"{FIREBASE_URL}/data.json?auth={FIREBASE_KEY}"
-        raw_firebase_data = requests.get(devices_url).json() or {}
-        all_hardware_ids = list(raw_firebase_data.keys())
-    except:
-        all_hardware_ids = []
+    registered_map_local = {v.get("device_id"): v for v in col_vehicles.find() if v.get("device_id")}
+    all_hardware_ids = list(registered_map_local.keys())
+    raw_firebase_data = {}
 
-    registered_map = {v.get("device_id"): v for v in col_vehicles.find() if v.get("device_id")}
+    registered_map = registered_map_local
 
     devices_display_list = []
     for i, dev_id in enumerate(all_hardware_ids, start=1):
-        # Get GPS data from Firebase
+        # Get GPS data from MongoDB
         gps_lat = None
         gps_lng = None
         last_updated = "N/A"
-        
+
         location = {}
         try:
-            device_firebase_data = raw_firebase_data.get(dev_id, {})
+            device_firebase_data = get_live_gps(dev_id) or {}
             if device_firebase_data:
-                location = device_firebase_data.get("location", {})
+                location = device_firebase_data
                 if location:
                     # Get coordinates
                     try:
                         lat_val = float(location.get("lat", 0))
-                        lng_val = float(location.get("lon", 0))
+                        lng_val = float(location.get("lng") or location.get("lon", 0))
                         if is_valid_gps_coordinate(lat_val, lng_val):
                             gps_lat = lat_val
                             gps_lng = lng_val
@@ -591,9 +625,9 @@ def admin_dashboard():
             transporter_name = info.get("transporter_name", "N/A") or "N/A"
             godown_name = info.get("godown_manager", "N/A") or "N/A"
             rc_number = info.get("rc_number", "N/A") or "Not Set"
-            
-            # Get device raw data from Firebase
-            device_raw = raw_firebase_data.get(dev_id, {})
+
+            # Get device raw data from MongoDB live GPS
+            device_raw = get_live_gps(dev_id) or {}
             
             # Get camera status (mosfet)
             if "mosfet" in device_raw:
@@ -653,8 +687,8 @@ def admin_dashboard():
                 "trip_status": "Ongoing" if raw_trip_status == "1" else "Stop"
             })
         else:
-            # Get device raw data from Firebase
-            device_raw = raw_firebase_data.get(dev_id, {})
+            # Get device raw data from MongoDB live GPS
+            device_raw = get_live_gps(dev_id) or {}
             
             # Get camera status (mosfet)
             if "mosfet" in device_raw:
@@ -721,39 +755,32 @@ def admin_dashboard():
 
 
 def get_processed_vehicles_list():
-    # Get all devices from Firebase
-    try:
-        devices_url = f"{FIREBASE_URL}/data.json?auth={FIREBASE_KEY}"
-        raw_firebase_data = requests.get(devices_url).json() or {}
-        all_device_ids = list(raw_firebase_data.keys())
-    except:
-        all_device_ids = []
-    
-    # Get all vehicles from MongoDB
+    # Get all devices from MongoDB
     vehicles_dict = {}
     for vehicle in col_vehicles.find({}):
         vehicles_dict[vehicle.get("device_id")] = vehicle
-    
-    # Combine Firebase devices with MongoDB data and GPS coordinates
+    all_device_ids = [did for did in vehicles_dict.keys() if did]
+
+    # Combine MongoDB vehicles with live GPS data
     vehicles_list = []
     for device_id in all_device_ids:
         vehicle_data = vehicles_dict.get(device_id, {})
-        
-        # Get GPS coordinates from Firebase location object
+
+        # Get GPS coordinates from MongoDB live GPS
         lat = None
         lng = None
         has_gps = False
         speed = 0
-        
+
         location = {}
         try:
-            device_firebase_data = raw_firebase_data.get(device_id, {})
+            device_firebase_data = get_live_gps(device_id) or {}
             if device_firebase_data:
-                location = device_firebase_data.get("location", {})
+                location = device_firebase_data
                 if location:
                     try:
                         lat_val = float(location.get("lat", 0))
-                        lng_val = float(location.get("lon", 0))
+                        lng_val = float(location.get("lng") or location.get("lon", 0))
                         # Only consider it valid GPS if it is within bounds
                         if is_valid_gps_coordinate(lat_val, lng_val):
                             lat = lat_val
@@ -761,7 +788,7 @@ def get_processed_vehicles_list():
                             has_gps = True
                     except:
                         pass
-                    
+
                     # Get Speed
                     speed = location.get("speed", 0)
                 
@@ -810,13 +837,13 @@ def get_processed_vehicles_list():
             lng = 72.5714
         
         # Get camera status (mosfet)
-        device_raw = raw_firebase_data.get(device_id, {})
+        device_raw = get_live_gps(device_id) or {}
         if "mosfet" in device_raw:
             mosfet_val = device_raw.get("mosfet")
             camera_status = "On" if str(mosfet_val) == "1" else "Off"
         else:
             camera_status = "No Data"
-        
+
         # Get RFID / Trip Status
         rfid_data = device_raw.get("rfid_data", {})
         raw_trip_status = str(rfid_data.get("status", "0"))
@@ -890,32 +917,28 @@ def get_vehicle_gps(device_id):
         return jsonify({"error": "Unauthorized"}), 403
     
     try:
-        # Fetch device data from Firebase
-        device_url = f"{FIREBASE_URL}/data/{device_id}.json?auth={FIREBASE_KEY}"
-        device_data = requests.get(device_url).json() or {}
-        
-        # Debug: Print available fields
-        print(f"Firebase data for {device_id}: {list(device_data.keys())}")
-        
-        # Get location object
-        location = device_data.get("location", {})
-        
-        # Try to get lat and lon from location object
+        # Fetch device data from MongoDB
+        device_data = get_live_gps(device_id) or {}
+
+        # Flat structure — use device_data directly as location
+        location = device_data
+
+        # Try to get lat and lon
         lat = None
         lon = None
-        
+
         if location:
             try:
                 lat_val = float(location.get("lat", 0))
-                lon_val = float(location.get("lon", 0))
+                lon_val = float(location.get("lng") or location.get("lon", 0))
                 if is_valid_gps_coordinate(lat_val, lon_val):
                     lat = lat_val
                     lon = lon_val
             except:
                 pass
-        
+
         # Get Speed
-        speed = device_data.get("speed", location.get("speed", "0"))
+        speed = device_data.get("speed", "0")
 
         # Get date and time from location and convert to IST
         last_updated_date = "N/A"
@@ -1063,16 +1086,10 @@ def get_devices_list():
         return jsonify([])
     
     try:
-        # User wants to see ALL vehicles from Firebase (scanned/available)
-        r = requests.get(f"{FIREBASE_URL}/data.json?auth={FIREBASE_KEY}&shallow=true", timeout=5)
-        if r.status_code == 200:
-            firebase_keys = list(r.json().keys())
-            return jsonify(sorted(firebase_keys))
-        else:
-            # Fallback to DB if firebase fails? or empty
-            return jsonify([])
+        device_ids = sorted([v["device_id"] for v in col_vehicles.find({}, {"device_id": 1}) if v.get("device_id")])
+        return jsonify(device_ids)
     except Exception as e:
-        print(f"Error fetching device list from Firebase: {e}")
+        print(f"Error fetching device list: {e}")
         return jsonify([])
 
 @app.route("/api/get_map_recordings_data")
@@ -1136,15 +1153,9 @@ def recordings():
     if session.get('user_type') != 'admin':
         return redirect(url_for('login'))
 
-    try:
-        devices_url = f"{FIREBASE_URL}/data.json?auth={FIREBASE_KEY}"
-        raw_firebase_data = requests.get(devices_url).json() or {}
-        all_hardware_ids = list(raw_firebase_data.keys())
-    except:
-        all_hardware_ids = []
-
     registered_map = {v.get("device_id"): v for v in col_vehicles.find() if v.get("device_id")}
-    
+    all_hardware_ids = list(registered_map.keys())
+
     # Status mapping: 1=Start, 2=Stop, 3=Load, 4=Unload
     status_map = {
         "1": "Start",
@@ -1155,12 +1166,12 @@ def recordings():
 
     devices_display_list = []
     for i, dev_id in enumerate(all_hardware_ids, start=1):
-        # Get RFID data from Firebase
+        # Get RFID data from MongoDB live GPS
         rfid_status = "N/A"
         current_uid = "N/A"
-        
+
         try:
-            device_data = raw_firebase_data.get(dev_id, {})
+            device_data = get_live_gps(dev_id) or {}
             rfid_data = device_data.get("rfid_data", {})
             
             if rfid_data:
@@ -1264,19 +1275,13 @@ def get_vehicle_cameras(device_id):
                         "name": camera_name
                     })
         else:
-            # Use Firebase camera links
-            try:
-                r = requests.get(f"{FIREBASE_URL}/data/{device_id}.json?auth={FIREBASE_KEY}", timeout=5)
-                device_data = r.json() or {}
-                
-                for i in range(1, 5):
-                    url = device_data.get(f"rtmp{i}")
-                    if url:
-                        name = extract_stream_name(url, i)
-                        cameras.append({"id": str(i), "name": name})
-            except Exception as e:
-                print(f"Error fetching Firebase data: {e}")
-                return jsonify({"success": False, "error": f"Error fetching camera data from Firebase: {str(e)}"}), 500
+            # Fallback: use mongo_rtmp from vehicle info
+            mongo_rtmp = vehicle_info.get("mongo_rtmp", {}) if vehicle_info else {}
+            for i in range(1, 5):
+                url = mongo_rtmp.get(f"rtmp{i}")
+                if url:
+                    name = extract_stream_name(url, i)
+                    cameras.append({"id": str(i), "name": name})
         
         return jsonify({"success": True, "cameras": cameras, "source": source_pref})
         
@@ -2097,22 +2102,15 @@ def time_threshold():
     # Get all vehicles
     vehicles = list(col_vehicles.find({}))
     
-    # Get live data for raw dates
-    try:
-        devices_url = f"{FIREBASE_URL}/data.json?auth={FIREBASE_KEY}"
-        raw_data = requests.get(devices_url).json() or {}
-    except:
-        raw_data = {}
-        
     display_list = []
     for v in vehicles:
         dev_id = v.get("device_id")
-        
+
         # Get stored offsets or defaults
         stored_offsets = v.get("time_offsets", {})
         if not stored_offsets and v.get("year_offset"):
             stored_offsets = {'y': v.get("year_offset"), 'm':0, 'd':0, 'h':0, 'min':0}
-        
+
         # Ensure all keys exist for template
         final_offsets = {
             'y': stored_offsets.get('y', 0),
@@ -2122,11 +2120,11 @@ def time_threshold():
             'min': stored_offsets.get('min', 0)
         }
 
-        # Get raw date
+        # Get raw date from MongoDB live GPS
         raw_date_str = "N/A"
         raw_time_str = "N/A"
         try:
-            loc = raw_data.get(dev_id, {}).get("location", {})
+            loc = get_live_gps(dev_id) or {}
             d = loc.get("date", "") # DD-MM-YYYY
             t = loc.get("time", "")
             if d:
@@ -2183,26 +2181,24 @@ def manage_rtmp():
 
         # Get all registered vehicles from DB
         registered_vehicles = list(col_vehicles.find({}))
-        
-        # Get all device IDs from Firebase
-        devices_url = f"{FIREBASE_URL}/data.json?auth={FIREBASE_KEY}"
-        raw_firebase_data = requests.get(devices_url).json() or {}
-        
+
         vehicles_display = []
-        
-        # We want to show all devices that exist in Firebase
-        for device_id, device_data in raw_firebase_data.items():
-            # Find matching registered info if any
-            reg_info = next((v for v in registered_vehicles if v.get("device_id") == device_id), {})
-            
+
+        # Show all registered devices
+        for reg_info in registered_vehicles:
+            device_id = reg_info.get("device_id")
+            if not device_id:
+                continue
+
             # Use per-vehicle source preference if set, otherwise use global source
             vehicle_source = reg_info.get("rtmp_source", source)
-            
-            # Get location and status
-            location = device_data.get("location", {})
+
+            # Get location and status from MongoDB live GPS
+            live_gps = get_live_gps(device_id) or {}
+            location = live_gps
             last_updated_str = "N/A"
             is_power_off = True
-            
+
             try:
                 date_str = location.get("date", "")
                 time_str = location.get("time", "")
@@ -2224,12 +2220,7 @@ def manage_rtmp():
                 pass
 
             # Get both sets of data for the frontend to switch easily
-            firebase_links = {
-                "rtmp1": device_data.get("rtmp1", ""),
-                "rtmp2": device_data.get("rtmp2", ""),
-                "rtmp3": device_data.get("rtmp3", ""),
-                "rtmp4": device_data.get("rtmp4", "")
-            }
+            firebase_links = {}
             mongo_links = reg_info.get("mongo_rtmp", {})
 
             # Decide which data to show as primary
@@ -2284,33 +2275,13 @@ def save_rtmp():
             "rtmp4": rtmp4
         }
 
-        if source == 'firebase':
-            # Update Firebase
-            url = f"{FIREBASE_URL}/data/{device_id}.json?auth={FIREBASE_KEY}"
-            response = requests.patch(url, json=payload)
-            
-            # Also store preference in Mongo
-            col_vehicles.update_one(
-                {"device_id": device_id},
-                {"$set": {"rtmp_source": "firebase"}},
-                upsert=True
-            )
-            
-            if response.status_code == 200:
-                return jsonify({"success": True, "message": "RTMP links updated successfully in Firebase"})
-            else:
-                return jsonify({"success": False, "message": "Failed to update Firebase"})
-        else:
-            # Update MongoDB
-            col_vehicles.update_one(
-                {"device_id": device_id},
-                {"$set": {
-                    "mongo_rtmp": payload,
-                    "rtmp_source": "mongo"
-                }},
-                upsert=True
-            )
-            return jsonify({"success": True, "message": "RTMP links updated successfully in MongoDB"})
+        # Always save to MongoDB
+        col_vehicles.update_one(
+            {"device_id": device_id},
+            {"$set": {"mongo_rtmp": payload, "rtmp_source": "mongo"}},
+            upsert=True
+        )
+        return jsonify({"success": True, "message": "RTMP links updated successfully"})
             
     except Exception as e:
         print(f"Error saving RTMP: {e}")
@@ -2335,11 +2306,10 @@ def monitor_rfid_for_auto_recording():
     print("🚀 RFID Monitor Thread Started")
     while RFID_MONITOR_ACTIVE:
         try:
-            # Fetch all devices from Firebase
-            devices_url = f"{FIREBASE_URL}/data.json?auth={FIREBASE_KEY}"
-            response = requests.get(devices_url, timeout=5)
-            all_devices = response.json() or {}
-            
+            # Fetch all devices from MongoDB
+            all_device_ids = [v.get("device_id") for v in col_vehicles.find({}, {"device_id": 1}) if v.get("device_id")]
+            all_devices = {did: get_live_gps(did) for did in all_device_ids}
+
             for device_name, device_data in all_devices.items():
                 if not isinstance(device_data, dict):
                     continue
@@ -2412,27 +2382,26 @@ def monitor_all_vehicles_gps():
     
     while True:
         try:
-            # 1. Fetch all devices from Firebase
-            # optimized: fetch entire data.json once
+            # 1. Fetch all devices from MongoDB
             try:
-                r = requests.get(f"{FIREBASE_URL}/data.json?auth={FIREBASE_KEY}", timeout=10)
-                all_devices = r.json() or {}
+                all_device_ids = [v.get("device_id") for v in col_vehicles.find({}, {"device_id": 1}) if v.get("device_id")]
+                all_devices = {did: get_live_gps(did) for did in all_device_ids}
             except Exception as e:
                 print(f"Global GPS Monitor Fetch Error: {e}")
                 time.sleep(10)
                 continue
 
             current_time = datetime.now()
-            
+
             for device_id, device_data in all_devices.items():
                 if not isinstance(device_data, dict): continue
-                
-                # Check for location data
-                loc = device_data.get('location', {})
+
+                # Flat structure — use device_data directly
+                loc = device_data
                 if not loc: continue
-                
+
                 lat = loc.get('lat')
-                lng = loc.get('lon') 
+                lng = loc.get('lng') or loc.get('lon')
                 speed = loc.get('speed', 0)
                 
                 if lat is None or lng is None: continue
@@ -2486,19 +2455,16 @@ def record_gps_data(device_name, date_str, session_number):
                     break
                     
             try:
-                # Fetch GPS data from Firebase
-                device_url = f"{FIREBASE_URL}/data/{device_name}.json?auth={FIREBASE_KEY}"
-                response = requests.get(device_url, timeout=5)
-                device_data = response.json() or {}
-                
+                # Fetch GPS data from MongoDB
+                device_data = get_live_gps(device_name) or {}
+
                 if device_data:
                     # Extract GPS and device information
-                    location = device_data.get('location', {})
                     rfid_data = device_data.get('rfid_data', {})
-                    
+
                     # Validate GPS coordinates before recording
-                    lat_val = location.get('lat', 0)
-                    lng_val = location.get('lon', 0)
+                    lat_val = device_data.get('lat', 0)
+                    lng_val = device_data.get('lng', 0) or device_data.get('lon', 0)
                     if not is_valid_gps_coordinate(lat_val, lng_val):
                         # Skip this ping if it is invalid/out-of-bounds
                         stop_flag.wait(3)
@@ -2511,14 +2477,14 @@ def record_gps_data(device_name, date_str, session_number):
                         'session_number': session_number,
                         'timestamp': datetime.now().isoformat(),
                         'location': {
-                            'latitude': location.get('lat', 0),
-                            'longitude': location.get('lon', 0),
-                            'altitude': location.get('alt', 0),
-                            'speed': location.get('speed', 0),
-                            'satellites': location.get('sat', 0),
-                            'gps_date': location.get('date', ''),
-                            'gps_time': location.get('time', ''),
-                            'uid': location.get('UID', '')
+                            'latitude': device_data.get('lat', 0),
+                            'longitude': device_data.get('lng', 0) or device_data.get('lon', 0),
+                            'altitude': device_data.get('alt', 0),
+                            'speed': device_data.get('speed', 0),
+                            'satellites': device_data.get('sat', 0),
+                            'gps_date': device_data.get('date', ''),
+                            'gps_time': device_data.get('time', ''),
+                            'uid': device_data.get('UID', '')
                         },
                         'rfid': {
                             'current': rfid_data.get('current', ''),
@@ -2616,10 +2582,11 @@ def auto_start_recording(device_name):
         # Get current date
         current_date = datetime.now().strftime("%Y-%m-%d")
         
-        # Get camera URLs from Firebase
-        r = requests.get(f"{FIREBASE_URL}/data/{device_name}.json?auth={FIREBASE_KEY}", timeout=5)
-        device_data = r.json() or {}
-        
+        # Get camera URLs from MongoDB
+        vehicle_doc = col_vehicles.find_one({"device_id": device_name}) or {}
+        mongo_rtmp = vehicle_doc.get("mongo_rtmp", {})
+        device_data = mongo_rtmp
+
         # Create base folder structure
         base_path = Path(__file__).parent / "RECORDINGS"
         vehicle_folder = base_path / current_date / device_name
@@ -2685,8 +2652,8 @@ def auto_start_recording(device_name):
             
             # Check RFID status - if changed to Stop (2), abort retry
             try:
-                status_check = requests.get(f"{FIREBASE_URL}/data/{device_name}/rfid_data/status.json?auth={FIREBASE_KEY}", timeout=3)
-                current_status = str(status_check.json() or '')
+                live_doc = get_live_gps(device_name) or {}
+                current_status = str(live_doc.get('rfid_data', {}).get('status', ''))
                 if current_status == '2':
                     print(f"\n⚠️  RFID STATUS CHANGED TO 'STOP' - Aborting retry loop")
                     print(f"   Cancelling camera startup attempts...")
@@ -3025,14 +2992,14 @@ def start_recording():
         # Get current date
         current_date = datetime.now().strftime("%Y-%m-%d")
         
-        # Get camera URLs from Firebase
-        print(f"📡 Fetching camera data from Firebase...")
+        # Get camera URLs from MongoDB
+        print(f"📡 Fetching camera data from MongoDB...")
         try:
-            r = requests.get(f"{FIREBASE_URL}/data/{device_name}.json?auth={FIREBASE_KEY}", timeout=5)
-            device_data = r.json() or {}
-            print(f"✅ Firebase data retrieved")
+            vehicle_doc_rec = col_vehicles.find_one({"device_id": device_name}) or {}
+            device_data = vehicle_doc_rec.get("mongo_rtmp", {})
+            print(f"✅ MongoDB data retrieved")
         except Exception as e:
-            print(f"❌ Firebase error: {str(e)}")
+            print(f"❌ MongoDB error: {str(e)}")
             return jsonify({"success": False, "message": f"Failed to fetch device data: {str(e)}"}), 500
         
         # Only create folder "1" for recordings (Start to Stop)
@@ -3385,10 +3352,9 @@ def get_live_status(device_name):
         return jsonify({"success": False, "message": "Unauthorized"}), 403
     
     try:
-        # Fetch current RFID status from Firebase
-        r = requests.get(f"{FIREBASE_URL}/data/{device_name}.json?auth={FIREBASE_KEY}", timeout=3)
-        device_data = r.json() or {}
-        
+        # Fetch current RFID status from MongoDB
+        device_data = get_live_gps(device_name) or {}
+
         # Get RFID data
         rfid_data = device_data.get('rfid_data', {})
         status_num = str(rfid_data.get('status', ''))
@@ -4479,22 +4445,13 @@ def device_info(device_id):
             return redirect(url_for('user_dashboard'))
 
     try:
-        r = requests.get(f"{FIREBASE_URL}/data/{device_id}.json?auth={FIREBASE_KEY}")
-        device_data = r.json() or {}
-        if not device_data:
-            # If not in Firebase directly, try searching keys case-insensitively
-            all_r = requests.get(f"{FIREBASE_URL}/data.json?auth={FIREBASE_KEY}")
-            all_data = all_r.json() or {}
-            # Find the true key that matches our device_id case-insensitively
-            match_key = next((k for k in all_data if k.lower() == device_id.lower()), None)
-            if match_key:
-                device_data = all_data[match_key]
-            else:
-                return "Device not found", 404
-        
+        device_data = get_live_gps(device_id) or {}
+        vehicle_info_local = col_vehicles.find_one({"device_id": device_id})
+        if not vehicle_info_local:
+            return "Device not found", 404
         device_data = sanitize_data(device_data)
-    except:
-        return "Firebase Connection Error", 500
+    except Exception as e:
+        return f"Connection Error: {e}", 500
 
     def extract_stream_name(url, default_num):
         if not url: return f"Camera {default_num}"
@@ -4507,21 +4464,14 @@ def device_info(device_id):
     # Determine RTMP source preference
     source_pref = vehicle_info.get("rtmp_source", get_rtmp_source()) if vehicle_info else get_rtmp_source()
     
-    if source_pref == 'mongo':
-        mongo_rtmp = vehicle_info.get("mongo_rtmp", {}) if vehicle_info else {}
-        rtmp_streams = {
-            "1": {"name": extract_stream_name(mongo_rtmp.get("rtmp1"), 1), "url": mongo_rtmp.get("rtmp1", "")},
-            "2": {"name": extract_stream_name(mongo_rtmp.get("rtmp2"), 2), "url": mongo_rtmp.get("rtmp2", "")},
-            "3": {"name": extract_stream_name(mongo_rtmp.get("rtmp3"), 3), "url": mongo_rtmp.get("rtmp3", "")},
-            "4": {"name": extract_stream_name(mongo_rtmp.get("rtmp4"), 4), "url": mongo_rtmp.get("rtmp4", "")}
-        }
-    else:
-        rtmp_streams = {
-            "1": {"name": extract_stream_name(device_data.get("rtmp1"), 1), "url": device_data.get("rtmp1", "")},
-            "2": {"name": extract_stream_name(device_data.get("rtmp2"), 2), "url": device_data.get("rtmp2", "")},
-            "3": {"name": extract_stream_name(device_data.get("rtmp3"), 3), "url": device_data.get("rtmp3", "")},
-            "4": {"name": extract_stream_name(device_data.get("rtmp4"), 4), "url": device_data.get("rtmp4", "")}
-        }
+    # Always use mongo_rtmp for streams
+    mongo_rtmp = vehicle_info.get("mongo_rtmp", {}) if vehicle_info else {}
+    rtmp_streams = {
+        "1": {"name": extract_stream_name(mongo_rtmp.get("rtmp1"), 1), "url": mongo_rtmp.get("rtmp1", "")},
+        "2": {"name": extract_stream_name(mongo_rtmp.get("rtmp2"), 2), "url": mongo_rtmp.get("rtmp2", "")},
+        "3": {"name": extract_stream_name(mongo_rtmp.get("rtmp3"), 3), "url": mongo_rtmp.get("rtmp3", "")},
+        "4": {"name": extract_stream_name(mongo_rtmp.get("rtmp4"), 4), "url": mongo_rtmp.get("rtmp4", "")}
+    }
 
     # --- FETCH ASSIGNED USER CONTACT DETAILS ---
     gd_phone = "N/A"
@@ -4563,12 +4513,10 @@ def device_info(device_id):
 @app.route('/api/vehicle/<vehicle_id>')
 def api_vehicle(vehicle_id):
     try:
-        r = requests.get(f"{FIREBASE_URL}/data/{vehicle_id}.json?auth={FIREBASE_KEY}")
-        if r.status_code == 200:
-            data = r.json()
-            if data:
-                clean_data = sanitize_data(data)
-                return jsonify(clean_data)
+        data = get_live_gps(vehicle_id)
+        if data:
+            clean_data = sanitize_data(data)
+            return jsonify(clean_data)
     except Exception as e:
         return jsonify({'error': str(e)})
     return jsonify({'error': 'Not found'})
@@ -4580,8 +4528,7 @@ def save_config():
         req_data = request.json
         v_id = req_data.get('vehicle_id')
         config = req_data.get('config')
-        url = f"{FIREBASE_URL}/data/{v_id}/record_config.json?auth={FIREBASE_KEY}"
-        requests.patch(url, json=config)
+        col_vehicles.update_one({"device_id": v_id}, {"$set": {"record_config": config}}, upsert=True)
         return jsonify({'status': 'success'})
     except Exception as e:
         return jsonify({'error': str(e)})
@@ -4661,14 +4608,8 @@ def toggle_camera():
         else:
             return jsonify({"success": False, "message": "Invalid action"}), 400
         
-        # Update Firebase
-        url = f"{FIREBASE_URL}/data/{device_id}.json?auth={FIREBASE_KEY}"
-        response = requests.patch(url, json={"mosfet": new_val})
-        
-        if response.status_code == 200:
-            return jsonify({"success": True, "message": f"Camera turned {action} successfuly"})
-        else:
-            return jsonify({"success": False, "message": "Failed to update Firebase"}), 500
+        col_gps_live.update_one({"device_id": device_id}, {"$set": {"mosfet": new_val}}, upsert=True)
+        return jsonify({"success": True, "message": f"Camera turned {action} successfully"})
             
     except Exception as e:
         print(f"Error toggling camera: {e}")
@@ -4692,19 +4633,12 @@ def reset_eeprom():
         if not device_id:
             return jsonify({"success": False, "message": "Device ID missing"}), 400
 
-        # Signal the ESP (via Firebase) to wipe its EEPROM config and reboot
-        # into the AP setup portal. The device polls data/<veh>/reset_eeprom,
-        # clears the flag back to 0, then restarts into setup (AP) mode.
-        url = f"{FIREBASE_URL}/data/{device_id}.json?auth={FIREBASE_KEY}"
-        response = requests.patch(url, json={"reset_eeprom": 1})
-
-        if response.status_code == 200:
-            return jsonify({
-                "success": True,
-                "message": f"Reset sent to {device_id}. It will reboot into setup (AP) mode shortly. Connect to the 'PILAB-GPS' WiFi to reconfigure."
-            })
-        else:
-            return jsonify({"success": False, "message": "Failed to send command to Firebase"}), 500
+        # Signal the device to wipe its EEPROM config via MongoDB
+        col_gps_live.update_one({"device_id": device_id}, {"$set": {"reset_eeprom": 1}}, upsert=True)
+        return jsonify({
+            "success": True,
+            "message": f"Reset sent to {device_id}. It will reboot into setup (AP) mode shortly. Connect to the 'PILAB-GPS' WiFi to reconfigure."
+        })
 
     except Exception as e:
         print(f"Error sending EEPROM reset: {e}")
@@ -4718,15 +4652,9 @@ def check_sos():
         return jsonify({"active": []})
 
     try:
-        r = requests.get(f"{FIREBASE_URL}/sos.json?auth={FIREBASE_KEY}", timeout=8)
-        sos_map = r.json() or {}
+        active_devices = {doc["device_id"] for doc in col_gps_live.find({"sos": 1}, {"device_id": 1}) if doc.get("device_id")}
     except Exception:
-        sos_map = {}
-
-    if not isinstance(sos_map, dict):
-        sos_map = {}
-
-    active_devices = {dev for dev, val in sos_map.items() if str(val) == "1"}
+        active_devices = set()
 
     now = datetime.now()
     active = []
@@ -4765,8 +4693,7 @@ def reset_sos():
     if not device_id:
         return jsonify({"ok": False, "error": "no device_id"}), 400
     try:
-        url = f"{FIREBASE_URL}/sos/{requests.utils.quote(device_id, safe='')}.json?auth={FIREBASE_KEY}"
-        requests.put(url, json=0, timeout=8)
+        col_gps_live.update_one({"device_id": device_id}, {"$set": {"sos": 0}}, upsert=True)
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
     return jsonify({"ok": True})
@@ -5260,12 +5187,7 @@ def _sos_background_poller():
     events in MongoDB regardless of whether any browser is open."""
     while True:
         try:
-            r = requests.get(f"{FIREBASE_URL}/sos.json?auth={FIREBASE_KEY}", timeout=8)
-            sos_map = r.json() or {}
-            if not isinstance(sos_map, dict):
-                sos_map = {}
-
-            active_devices = {dev for dev, val in sos_map.items() if str(val) == "1"}
+            active_devices = {doc["device_id"] for doc in col_gps_live.find({"sos": 1}, {"device_id": 1}) if doc.get("device_id")}
             now = datetime.now()
 
             for device_id in active_devices:
