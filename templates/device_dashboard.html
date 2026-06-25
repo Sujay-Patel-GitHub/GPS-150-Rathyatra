@@ -193,6 +193,11 @@
             display: block !important;
         }
 
+        /* TRUCK_USER: hide camera controls permanently */
+        body.truck-role .cam-card { display: none !important; }
+        body.truck-role #view-cam-btn { display: none !important; }
+        body.truck-role .btn-restart { display: none !important; }
+
         /* --- Camera Cards --- */
         .cam-card {
             background: white;
@@ -617,7 +622,7 @@
     </style>
 </head>
 
-<body class="{% if device_role == 'TRUCK_USER' %}full-map-mode{% elif device_role == 'AKHADA_USER' %}full-cam-mode{% endif %}">
+<body class="{% if device_role == 'TRUCK_USER' %}full-map-mode truck-role{% elif device_role == 'AKHADA_USER' %}full-cam-mode{% endif %}">
 
     {% include 'sos_overlay.html' %}
 
@@ -826,11 +831,24 @@
         const endIcon = L.divIcon({ className: 'text-red-600 font-bold', html: '<i class="fas fa-flag-checkered text-2xl"></i>', iconSize: [20, 20], iconAnchor: [2, 20] });
 
         document.addEventListener("DOMContentLoaded", () => {
-            const initData = {{ initial_data | tojson
-        }};
-        initMap();
-        initStreams();
-        initGPS(initData);
+            const initData = {{ initial_data | tojson }};
+            initMap();
+            initStreams();
+            initGPS(initData);
+
+            // Sync button labels with initial body class
+            const inMapMode = document.body.classList.contains('full-map-mode');
+            const inCamMode = document.body.classList.contains('full-cam-mode');
+            const mapBtn = document.getElementById('view-map-btn');
+            const camBtn = document.getElementById('view-cam-btn');
+            if (inMapMode && mapBtn) {
+                mapBtn.innerHTML = '<i class="fas fa-th-large"></i> Dashboard';
+                mapBtn.classList.remove('btn-map-full'); mapBtn.classList.add('btn-back');
+            }
+            if (inCamMode && camBtn) {
+                camBtn.innerHTML = '<i class="fas fa-th-large"></i> Dashboard';
+                camBtn.classList.add('bg-blue-100');
+            }
         });
 
         // --- STREAM CONTROL FUNCTIONS ---
