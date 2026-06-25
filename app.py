@@ -808,6 +808,7 @@ def login():
                     role = doc.get("role")
                     if role == "TRUCK_USER":
                         session['user_type'] = 'truck'
+                        session['username'] = su
                         session['truck_username'] = su
                         session['truck_id'] = str(doc.get("truck_id", ""))
                         return redirect('/device_info/' + doc.get("truck_id", ""))
