@@ -4198,6 +4198,104 @@ def list_roles():
     return render_template_string(get_template("LIST_ROLES_HTML"), roles_data=roles_data, logo_url=LOGO_URL)
 
 
+# ── GROUPING ROUTES ────────────────────────────────────────────────────────────
+@app.route("/grouping")
+def grouping():
+    if session.get('user_type') != 'admin': return redirect(url_for('login'))
+    from mongodb import mongo_client
+    gps_db = mongo_client["gps_server_db"]
+    akhadas = list(gps_db["assign_devices"].find({"role": "AKHADA_USER"}, {"_id": 0}))
+    trucks  = list(gps_db["assign_devices"].find({"role": "TRUCK_USER"},  {"_id": 0}))
+    groups  = {d["akhada_truck_id"]: d.get("assigned_trucks", [])
+               for d in gps_db["akhada_groups"].find({}, {"_id": 0})}
+    return render_template("grouping.html", akhadas=akhadas, trucks=trucks,
+                           groups=groups, logo_url=LOGO_URL)
+
+@app.route("/api/grouping/save", methods=["POST"])
+def save_grouping():
+    if session.get('user_type') != 'admin': return jsonify({"ok": False}), 403
+    data = request.get_json(silent=True) or {}
+    akhada_id      = str(data.get("akhada_truck_id", "")).strip()
+    assigned_trucks = data.get("assigned_trucks", [])
+    if not akhada_id: return jsonify({"ok": False, "error": "akhada_truck_id required"}), 400
+    from mongodb import mongo_client
+    mongo_client["gps_server_db"]["akhada_groups"].update_one(
+        {"akhada_truck_id": akhada_id},
+        {"$set": {"akhada_truck_id": akhada_id, "assigned_trucks": assigned_trucks, "updated_at": datetime.now()}},
+        upsert=True
+    )
+    return jsonify({"ok": True})
+
+@app.route("/api/grouping/<akhada_id>")
+def get_grouping(akhada_id):
+    from mongodb import mongo_client
+    doc = mongo_client["gps_server_db"]["akhada_groups"].find_one(
+        {"akhada_truck_id": akhada_id}, {"_id": 0}
+    )
+    return jsonify({"ok": bool(doc), "assigned_trucks": doc.get("assigned_trucks", []) if doc else []})
+
+# ── AKHADA LOGIN & DASHBOARD ───────────────────────────────────────────────────
+@app.route("/akhada_login", methods=["GET", "POST"])
+def akhada_login():
+    if session.get('user_type') == 'akhada':
+        return redirect(url_for('akhada_dashboard'))
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+        from mongodb import mongo_client
+        doc = mongo_client["gps_server_db"]["assign_devices"].find_one(
+            {"username": username, "role": "AKHADA_USER"}
+        )
+        if doc and doc.get("password") == password:
+            session['user_type']      = 'akhada'
+            session['akhada_username'] = username
+            session['akhada_truck_id'] = doc.get("truck_id", "")
+            return redirect(url_for('akhada_dashboard'))
+        flash("Invalid username or password.", "error")
+    return render_template("akhada_login.html", logo_url=LOGO_URL)
+
+@app.route("/akhada_dashboard")
+def akhada_dashboard():
+    if session.get('user_type') != 'akhada':
+        return redirect(url_for('akhada_login'))
+    akhada_truck_id = session.get('akhada_truck_id', '')
+    from mongodb import mongo_client
+    gps_db = mongo_client["gps_server_db"]
+    # Own info
+    own_doc = gps_db["assign_devices"].find_one({"truck_id": akhada_truck_id}, {"_id": 0, "password": 0}) or {}
+    # Grouped trucks
+    group_doc = gps_db["akhada_groups"].find_one({"akhada_truck_id": akhada_truck_id}) or {}
+    truck_ids = group_doc.get("assigned_trucks", [])
+    trucks = []
+    latest_map = {}
+    for nd in gps_db["new_devices"].find({"truck_id": {"$in": truck_ids}}).sort("timestamp", -1):
+        tid = nd.get("truck_id")
+        if tid and tid not in latest_map:
+            latest_map[tid] = nd
+    assign_map = {d["truck_id"]: d for d in gps_db["assign_devices"].find({"truck_id": {"$in": truck_ids}}, {"_id": 0, "password": 0})}
+    for tid in truck_ids:
+        nd = latest_map.get(tid, {})
+        a  = assign_map.get(tid, {})
+        ts = nd.get("timestamp")
+        trucks.append({
+            "truck_id": tid,
+            "lat": nd.get("lat"), "lng": nd.get("lng"),
+            "speed": nd.get("speed", 0),
+            "motion": nd.get("motion", "unknown"),
+            "last_seen": ts.strftime("%d-%b-%Y %I:%M %p") if ts else "N/A",
+            "driver": a.get("driver_name", ""),
+            "plate": a.get("vehicle_plate", ""),
+        })
+    return render_template("akhada_dashboard.html",
+                           own=own_doc, trucks=trucks,
+                           akhada_truck_id=akhada_truck_id, logo_url=LOGO_URL)
+
+@app.route("/akhada_logout")
+def akhada_logout():
+    session.clear()
+    return redirect(url_for('akhada_login'))
+
+
 @app.route("/get_user_details/<role>/<username>")
 def get_user_details(role, username):
     if session.get('user_type') != 'admin': return jsonify({"error": "Unauthorized"}), 403

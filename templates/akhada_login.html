@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Akhada Login</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Poppins',sans-serif;background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#4c1d95 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;}
+.card{background:#fff;border-radius:20px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 25px 60px rgba(0,0,0,.35);}
+.logo-wrap{text-align:center;margin-bottom:28px;}
+.logo-wrap .shield{width:64px;height:64px;background:linear-gradient(135deg,#8b5cf6,#7c3aed);border-radius:16px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;}
+.logo-wrap .shield i{font-size:1.8rem;color:#fff;}
+.logo-wrap h2{font-size:1.25rem;font-weight:700;color:#111827;}
+.logo-wrap p{font-size:0.8rem;color:#9ca3af;margin-top:3px;}
+.field{margin-bottom:16px;}
+.field label{display:block;font-size:0.78rem;font-weight:600;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;}
+.field .inp-wrap{position:relative;}
+.field .inp-wrap i{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:0.9rem;}
+.field input{width:100%;padding:11px 12px 11px 36px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:0.9rem;font-family:'Poppins',sans-serif;outline:none;transition:border .2s;}
+.field input:focus{border-color:#8b5cf6;}
+.btn{width:100%;padding:13px;background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff;border:none;border-radius:10px;font-size:0.95rem;font-weight:700;cursor:pointer;font-family:'Poppins',sans-serif;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .2s;}
+.btn:hover{opacity:.9;}
+.flash{background:#fef2f2;border:1px solid #fecaca;color:#dc2626;padding:10px 14px;border-radius:8px;font-size:0.82rem;margin-bottom:16px;}
+.admin-link{text-align:center;margin-top:20px;font-size:0.78rem;color:#9ca3af;}
+.admin-link a{color:#8b5cf6;font-weight:600;text-decoration:none;}
+</style>
+</head>
+<body>
+<div class="card">
+    <div class="logo-wrap">
+        <div class="shield"><i class="fas fa-shield-alt"></i></div>
+        <h2>Akhada Portal</h2>
+        <p>Sign in to view your convoy</p>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <div class="flash"><i class="fas fa-exclamation-circle"></i> {{ messages[0] }}</div>
+    {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+        <div class="field">
+            <label>Username</label>
+            <div class="inp-wrap">
+                <i class="fas fa-user"></i>
+                <input type="text" name="username" placeholder="Enter username" required autofocus>
+            </div>
+        </div>
+        <div class="field">
+            <label>Password</label>
+            <div class="inp-wrap">
+                <i class="fas fa-lock"></i>
+                <input type="password" name="password" placeholder="Enter password" required>
+            </div>
+        </div>
+        <button type="submit" class="btn"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+    </form>
+
+    <div class="admin-link"><a href="/login">← Admin Login</a></div>
+</div>
+</body>
+</html>

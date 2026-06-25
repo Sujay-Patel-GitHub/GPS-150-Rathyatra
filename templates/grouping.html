@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grouping — Admin</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Poppins',sans-serif;background:#f3f4f6;padding-top:70px;}
+.main-content{margin-left:240px;padding:28px 28px 40px;}
+.page-header{margin-bottom:24px;}
+.page-header h1{font-size:1.3rem;font-weight:700;color:#111827;display:flex;align-items:center;gap:10px;}
+.page-header p{color:#6b7280;font-size:0.85rem;margin-top:3px;}
+
+.akhada-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:20px;}
+
+.akhada-card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:20px;box-shadow:0 1px 4px #0001;}
+.akhada-head{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+.akhada-avatar{width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,#8b5cf6,#7c3aed);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1rem;flex-shrink:0;}
+.akhada-name{font-weight:700;font-size:0.95rem;color:#111827;}
+.akhada-sub{font-size:0.75rem;color:#9ca3af;}
+
+.trucks-label{font-size:0.72rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
+.truck-checkboxes{display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto;padding-right:4px;}
+.truck-check-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;cursor:pointer;transition:all .15s;}
+.truck-check-item:hover{background:#fafafa;border-color:#d1d5db;}
+.truck-check-item.selected{background:#fff7ed;border-color:#f97316;}
+.truck-check-item input[type=checkbox]{accent-color:#f97316;width:15px;height:15px;flex-shrink:0;}
+.truck-check-label{flex:1;}
+.truck-check-label .tid{font-size:0.85rem;font-weight:600;color:#111827;}
+.truck-check-label .tsub{font-size:0.72rem;color:#9ca3af;}
+
+.save-btn{margin-top:14px;width:100%;padding:10px;background:#f97316;color:#fff;border:none;border-radius:8px;font-size:0.88rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .2s;}
+.save-btn:hover{background:#ea6500;}
+.save-btn.saved{background:#16a34a;}
+
+.empty-trucks{text-align:center;padding:20px;color:#9ca3af;font-size:0.82rem;}
+</style>
+</head>
+<body>
+{% include 'navbar.html' %}
+{% include 'sidebar.html' %}
+
+<div class="main-content">
+    <div class="page-header">
+        <h1><i class="fas fa-object-group" style="color:#8b5cf6;"></i> Akhada Grouping</h1>
+        <p>Assign trucks to each Akhada. The Akhada user will see these trucks on their dashboard.</p>
+    </div>
+
+    {% if not akhadas %}
+    <div style="text-align:center;padding:60px;color:#9ca3af;">
+        <i class="fas fa-shield-alt" style="font-size:2.5rem;opacity:.3;display:block;margin-bottom:12px;"></i>
+        <p style="font-weight:600;">No Akhada users found.</p>
+        <p style="font-size:0.82rem;margin-top:4px;">Go to <a href="/admin_dashboard" style="color:#8b5cf6;">Show Devices</a> and assign an AKHADA_USER role first.</p>
+    </div>
+    {% else %}
+    <div class="akhada-grid">
+        {% for akhada in akhadas %}
+        {% set aid = akhada.truck_id %}
+        {% set saved_trucks = groups.get(aid, []) %}
+        <div class="akhada-card">
+            <div class="akhada-head">
+                <div class="akhada-avatar"><i class="fas fa-shield-alt"></i></div>
+                <div>
+                    <div class="akhada-name">{{ akhada.username }}</div>
+                    <div class="akhada-sub"><i class="fas fa-truck" style="font-size:.65rem;"></i> {{ aid }}</div>
+                </div>
+            </div>
+
+            <div class="trucks-label">Assign Trucks</div>
+            <div class="truck-checkboxes" id="trucks-{{ aid }}">
+                {% if not trucks %}
+                <div class="empty-trucks">No TRUCK_USER devices found.</div>
+                {% else %}
+                {% for truck in trucks %}
+                <label class="truck-check-item {% if truck.truck_id in saved_trucks %}selected{% endif %}" id="item-{{ aid }}-{{ truck.truck_id }}">
+                    <input type="checkbox" value="{{ truck.truck_id }}"
+                        {% if truck.truck_id in saved_trucks %}checked{% endif %}
+                        onchange="onCheck('{{ aid }}', this)">
+                    <div class="truck-check-label">
+                        <div class="tid">{{ truck.truck_id }}</div>
+                        <div class="tsub">{{ truck.username }} {% if truck.vehicle_plate %}· {{ truck.vehicle_plate }}{% endif %} {% if truck.driver_name %}· {{ truck.driver_name }}{% endif %}</div>
+                    </div>
+                </label>
+                {% endfor %}
+                {% endif %}
+            </div>
+
+            <button class="save-btn" id="btn-{{ aid }}" onclick="saveGroup('{{ aid }}')">
+                <i class="fas fa-save"></i> Save Group
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function onCheck(akhada_id, cb) {
+    const item = cb.closest('.truck-check-item');
+    if (cb.checked) item.classList.add('selected');
+    else item.classList.remove('selected');
+}
+
+async function saveGroup(akhada_id) {
+    const container = document.getElementById('trucks-' + akhada_id);
+    const checked = [...container.querySelectorAll('input[type=checkbox]:checked')].map(c => c.value);
+    const btn = document.getElementById('btn-' + akhada_id);
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
+    btn.disabled = true;
+
+    const res = await fetch('/api/grouping/save', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ akhada_truck_id: akhada_id, assigned_trucks: checked })
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+        btn.classList.add('saved');
+        btn.innerHTML = '<i class="fas fa-check"></i> Saved!';
+        setTimeout(() => {
+            btn.classList.remove('saved');
+            btn.innerHTML = '<i class="fas fa-save"></i> Save Group';
+            btn.disabled = false;
+        }, 2000);
+    } else {
+        btn.innerHTML = '<i class="fas fa-times"></i> Failed';
+        btn.disabled = false;
+    }
+}
+</script>
+</body>
+</html>
