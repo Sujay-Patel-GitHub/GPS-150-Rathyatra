@@ -897,13 +897,13 @@
                     <div class="card-footer">
                         {% if device.is_registered %}
                         <button class="action-btn btn-edit"
-                            onclick="openModal('{{ device.device_name }}', '{{ device.rc_number }}', '{{ device.transporter }}', '{{ device.godown_manager }}', '{{ device.driver_name }}')">
+                            onclick="openModal('{{ device.device_name }}')">
                             <i class="fas fa-edit"></i>
                             <span>Edit</span>
                         </button>
                         {% else %}
                         <button class="action-btn btn-assign"
-                            onclick="openModal('{{ device.device_name }}', '', '', '', '')">
+                            onclick="openModal('{{ device.device_name }}')">
                             <i class="fas fa-plus-circle"></i>
                             <span>Assign</span>
                         </button>
@@ -915,65 +915,66 @@
         </div>
     </div>
 
-    <!-- Modal -->
+    <!-- Assign / Operator Modal -->
     <div id="assignModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width:420px;">
             <span class="close" onclick="closeModal()">×</span>
-            <h3><i class="fas fa-tasks"></i> Assign Vehicle</h3>
+            <h3 style="display:flex;align-items:center;gap:8px;margin-bottom:20px;">
+                <i class="fas fa-user-cog" style="color:#f97316;"></i>
+                <span style="font-size:0.95rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;">Create Operator Profile</span>
+            </h3>
+
             <p id="modalDeviceName"
-                style="font-weight:bold; color:#2563eb; margin-bottom:16px; background:#eff6ff; padding:8px 12px; border-radius:6px;">
+               style="font-weight:700;color:#f97316;margin-bottom:18px;background:#fff7ed;
+                      padding:8px 12px;border-radius:6px;border:1px solid #fed7aa;font-size:0.85rem;">
             </p>
 
-            <form action="/save_vehicle_details" method="POST">
-                <input type="hidden" id="formDeviceId" name="device_id">
+            <div id="assignMsg" style="display:none;margin-bottom:12px;padding:8px 12px;border-radius:6px;font-size:0.84rem;"></div>
 
-                <div class="form-group">
-                    <label>Godown Manager</label>
-                    <select id="formGodown" name="godown_manager" required>
-                        <option value="" disabled selected>-- Select --</option>
-                        {% for g in godown_managers %}
-                        <option value="{{ g.name }}">{{ g.name }} ({{ g.username }})</option>
-                        {% endfor %}
-                    </select>
+            <div class="form-group">
+                <label style="font-size:0.75rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b7280;margin-bottom:6px;display:block;">Username</label>
+                <div style="position:relative;">
+                    <i class="fas fa-user" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:0.85rem;"></i>
+                    <input type="text" id="operatorUsername" placeholder="Enter login username"
+                           style="width:100%;padding:10px 12px 10px 34px;border:1.5px solid #e5e7eb;border-radius:8px;
+                                  font-size:0.9rem;box-sizing:border-box;outline:none;"
+                           onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#e5e7eb'">
                 </div>
-
-                <div class="form-group">
-                    <label>Transporter</label>
-                    <select id="formTransporter" name="transporter_name" required>
-                        <option value="" disabled selected>-- Select --</option>
-                        {% for t in transporters %}
-                        <option value="{{ t.name }}">{{ t.name }} ({{ t.username }})</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <button type="submit" class="action-btn btn-primary">
-                    <i class="fas fa-save"></i> Save & Assign
-                </button>
-            </form>
-
-            <div id="deregisterSection" style="display:none;">
-                <div class="separator"></div>
-                <form action="/deregister_vehicle" method="POST"
-                    onsubmit="return confirm('Are you sure you want to deregister this device?');">
-                    <input type="hidden" id="deregisterDeviceId" name="device_id">
-                    <button type="submit" class="action-btn btn-danger">
-                        <i class="fas fa-trash-alt"></i> Deregister
-                    </button>
-                </form>
             </div>
+
+            <div class="form-group" style="margin-top:14px;">
+                <label style="font-size:0.75rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b7280;margin-bottom:6px;display:block;">System Role</label>
+                <select id="operatorRole"
+                        style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:8px;
+                               font-size:0.9rem;background:#fff;outline:none;cursor:pointer;"
+                        onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#e5e7eb'">
+                    <option value="AKHADA_USER">AKHADA_USER</option>
+                    <option value="SUPER_ADMIN">SUPER_ADMIN</option>
+                    <option value="RATH_USER">RATH_USER</option>
+                    <option value="MAINTENANCE_USER">MAINTENANCE_USER</option>
+                </select>
+            </div>
+
+            <button onclick="saveOperatorProfile()"
+                    style="width:100%;margin-top:20px;padding:13px;background:#f97316;color:#fff;
+                           border:none;border-radius:8px;font-size:0.95rem;font-weight:700;
+                           letter-spacing:.05em;text-transform:uppercase;cursor:pointer;">
+                CREATE ACCOUNT
+            </button>
         </div>
     </div>
 
     <script>
-        function openModal(deviceId, rc, transporter, godown, driver) {
+        let currentTruckId = "";
+
+        function openModal(deviceId) {
+            currentTruckId = deviceId;
             document.getElementById('assignModal').style.display = "block";
-            document.getElementById('modalDeviceName').innerText = "Device: " + deviceId;
-            document.getElementById('formDeviceId').value = deviceId;
-            document.getElementById('deregisterDeviceId').value = deviceId;
-            document.getElementById('formTransporter').value = transporter || "";
-            document.getElementById('formGodown').value = godown || "";
-            document.getElementById('deregisterSection').style.display = transporter ? 'block' : 'none';
+            document.getElementById('modalDeviceName').innerText = "Truck: " + deviceId;
+            document.getElementById('operatorUsername').value = "";
+            document.getElementById('operatorRole').value = "AKHADA_USER";
+            const msg = document.getElementById('assignMsg');
+            msg.style.display = "none";
         }
 
         function closeModal() {
@@ -981,8 +982,43 @@
         }
 
         window.onclick = function (event) {
-            if (event.target == document.getElementById('assignModal')) {
-                closeModal();
+            if (event.target == document.getElementById('assignModal')) closeModal();
+        }
+
+        async function saveOperatorProfile() {
+            const username = document.getElementById('operatorUsername').value.trim();
+            const role     = document.getElementById('operatorRole').value;
+            const msg      = document.getElementById('assignMsg');
+
+            if (!username) {
+                msg.style.display = "block";
+                msg.style.background = "#fef2f2";
+                msg.style.color = "#dc2626";
+                msg.style.border = "1px solid #fca5a5";
+                msg.innerText = "Username is required.";
+                return;
+            }
+
+            const res = await fetch('/api/assign_device', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ truck_id: currentTruckId, username, role })
+            });
+            const data = await res.json();
+
+            if (data.ok) {
+                msg.style.display = "block";
+                msg.style.background = "#f0fdf4";
+                msg.style.color = "#16a34a";
+                msg.style.border = "1px solid #86efac";
+                msg.innerText = "Operator profile saved successfully!";
+                setTimeout(closeModal, 1200);
+            } else {
+                msg.style.display = "block";
+                msg.style.background = "#fef2f2";
+                msg.style.color = "#dc2626";
+                msg.style.border = "1px solid #fca5a5";
+                msg.innerText = data.error || "Failed to save.";
             }
         }
 
