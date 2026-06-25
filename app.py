@@ -1028,17 +1028,17 @@ def admin_dashboard():
             if tid and tid not in latest_map:
                 latest_map[tid] = doc
 
-        # Patch existing devices that got N/A from Firebase with new_devices timestamps
+        # Always override timestamp from new_devices for any device that has ESP data
         threshold_sec = get_power_off_threshold() * 60
         for dev in devices_display_list:
-            if dev.get("last_updated_date") == "N/A" and dev["device_name"] in latest_map:
-                ndoc = latest_map[dev["device_name"]]
+            ndoc = latest_map.get(dev["device_name"])
+            if ndoc:
                 ts = ndoc.get("timestamp")
                 if ts:
                     dev["last_updated_date"] = ts.strftime("%d-%b-%Y")
                     dev["last_updated_time"] = ts.strftime("%I:%M:%S %p")
                     dev["is_power_off"] = (datetime.now() - ts).total_seconds() > threshold_sec
-                if ndoc.get("lat") and not dev.get("gps_lat"):
+                if ndoc.get("lat"):
                     dev["gps_lat"] = ndoc.get("lat")
                     dev["gps_lng"] = ndoc.get("lng")
             # Merge assign_devices info into existing devices too
