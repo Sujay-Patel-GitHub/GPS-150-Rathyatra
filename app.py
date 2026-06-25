@@ -810,7 +810,7 @@ def login():
                         session['user_type'] = 'truck'
                         session['truck_username'] = su
                         session['truck_id'] = str(doc.get("truck_id", ""))
-                        return redirect('/truck_dashboard')
+                        return redirect('/device_info/' + doc.get("truck_id", ""))
                     else:
                         session['user_type'] = 'akhada'
                         session['akhada_username'] = su
