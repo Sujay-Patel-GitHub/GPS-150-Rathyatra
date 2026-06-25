@@ -3,253 +3,330 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Akhada Dashboard</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<title>Akhada Dashboard — {{ own.get('username','') }}</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
-html,body{height:100%;font-family:'Poppins',sans-serif;background:#0f172a;color:#f1f5f9;overflow:hidden;}
+html,body{height:100%;font-family:'Inter',sans-serif;background:#f1f5f9;color:#0f172a;overflow:hidden;}
 
 /* NAVBAR */
-.navbar{height:56px;background:#1e293b;border-bottom:1px solid #334155;display:flex;align-items:center;padding:0 20px;gap:14px;position:fixed;top:0;left:0;right:0;z-index:1000;}
-.navbar .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1rem;}
-.navbar .brand .dot{width:10px;height:10px;background:#8b5cf6;border-radius:50%;}
-.navbar .badge{background:#8b5cf6;color:#fff;font-size:0.68rem;font-weight:700;padding:2px 10px;border-radius:999px;text-transform:uppercase;}
-.navbar .spacer{flex:1;}
-.navbar .user-chip{display:flex;align-items:center;gap:8px;background:#334155;padding:6px 14px;border-radius:999px;font-size:0.82rem;font-weight:600;}
-.navbar .logout{background:none;border:1px solid #475569;color:#94a3b8;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:0.8rem;font-family:'Poppins',sans-serif;transition:all .2s;}
-.navbar .logout:hover{background:#ef4444;border-color:#ef4444;color:#fff;}
+.navbar{height:60px;background:#fff;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;padding:0 24px;gap:14px;position:fixed;top:0;left:0;right:0;z-index:1000;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+.nav-logo{font-weight:700;font-size:1.05rem;color:#0f172a;display:flex;align-items:center;gap:10px;}
+.nav-logo i{color:#2563eb;}
+.nav-badge{background:#dbeafe;color:#1e40af;padding:3px 10px;border-radius:6px;font-size:0.75rem;font-weight:600;}
+.nav-spacer{flex:1;}
+.nav-user{display:flex;align-items:center;gap:8px;font-size:0.85rem;font-weight:600;color:#374151;}
+.nav-user i{color:#2563eb;}
+.btn-logout{background:none;border:1px solid #e2e8f0;color:#64748b;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:0.8rem;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:6px;transition:all .2s;}
+.btn-logout:hover{background:#fee2e2;border-color:#fca5a5;color:#dc2626;}
 
-/* LAYOUT: 3 columns */
-.layout{display:grid;grid-template-columns:300px 1fr 300px;grid-template-rows:calc(100vh - 56px);margin-top:56px;overflow:hidden;}
+/* PAGE WRAPPER */
+.page{margin-top:60px;height:calc(100vh - 60px);overflow:hidden;}
 
-/* LEFT PANEL — own akhada device */
-.left-panel{background:#1e293b;border-right:1px solid #334155;display:flex;flex-direction:column;overflow:hidden;}
-.panel-header{padding:14px 16px;border-bottom:1px solid #334155;display:flex;align-items:center;gap:10px;flex-shrink:0;}
-.panel-header .ph-icon{width:32px;height:32px;background:#8b5cf620;border-radius:8px;display:flex;align-items:center;justify-content:center;}
-.panel-header .ph-title{font-size:0.82rem;font-weight:700;color:#e2e8f0;}
-.panel-header .ph-sub{font-size:0.7rem;color:#64748b;}
+/* ===== WELCOME VIEW ===== */
+#view-welcome{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;background:#f1f5f9;}
+.welcome-banner{text-align:center;margin-bottom:48px;}
+.welcome-banner h1{font-size:2rem;font-weight:700;color:#0f172a;}
+.welcome-banner h1 span{color:#2563eb;}
+.welcome-banner p{color:#64748b;margin-top:6px;font-size:0.95rem;}
+.welcome-cards{display:flex;gap:24px;flex-wrap:wrap;justify-content:center;}
+.welcome-card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:36px 40px;width:260px;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.05);text-align:center;}
+.welcome-card:hover{border-color:#2563eb;box-shadow:0 4px 20px rgba(37,99,235,.12);transform:translateY(-2px);}
+.welcome-card .wc-icon{width:60px;height:60px;border-radius:14px;background:#dbeafe;display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;}
+.welcome-card .wc-icon i{font-size:1.5rem;color:#2563eb;}
+.welcome-card h3{font-size:1rem;font-weight:700;color:#0f172a;margin-bottom:6px;}
+.welcome-card p{font-size:0.8rem;color:#64748b;line-height:1.5;}
+.welcome-card .wc-count{margin-top:12px;background:#f0f9ff;color:#0369a1;font-size:0.75rem;font-weight:700;padding:4px 12px;border-radius:999px;display:inline-block;}
 
-/* Camera feeds */
-.cam-area{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;}
-.cam-slot{background:#0f172a;border-radius:10px;overflow:hidden;border:1px solid #334155;}
-.cam-slot-label{padding:6px 10px;font-size:0.68rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #1e293b;}
-.cam-slot-body{aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;color:#475569;font-size:0.78rem;flex-direction:column;gap:6px;}
-.cam-slot-body i{font-size:1.4rem;opacity:.4;}
-.cam-slot iframe{width:100%;aspect-ratio:16/9;border:none;display:block;}
+/* ===== VEHICLE VIEW (left: 4 cams, right: map) ===== */
+#view-vehicle{height:100%;display:none;grid-template-columns:480px 1fr;}
+.cam-panel{background:#fff;border-right:1px solid #e2e8f0;display:flex;flex-direction:column;overflow:hidden;}
+.panel-topbar{padding:12px 16px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.panel-topbar .back-btn{background:none;border:1px solid #e2e8f0;border-radius:8px;padding:5px 12px;cursor:pointer;font-size:0.78rem;color:#64748b;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:5px;transition:all .15s;}
+.panel-topbar .back-btn:hover{background:#f8fafc;color:#374151;}
+.panel-topbar .pt-title{font-weight:700;font-size:0.9rem;color:#0f172a;}
+.panel-topbar .pt-sub{font-size:0.72rem;color:#94a3b8;}
+.cam-grid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;flex:1;gap:0;overflow:hidden;}
+.cam-slot{border:1px solid #e2e8f0;border-radius:0;display:flex;flex-direction:column;overflow:hidden;background:#0f172a;position:relative;}
+.cam-slot:nth-child(1){border-top:none;border-left:none;}
+.cam-slot:nth-child(2){border-top:none;border-right:none;}
+.cam-slot:nth-child(3){border-bottom:none;border-left:none;}
+.cam-slot:nth-child(4){border-bottom:none;border-right:none;}
+.cam-label{padding:5px 9px;font-size:0.65rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;background:#1e293b;flex-shrink:0;display:flex;align-items:center;gap:5px;}
+.cam-label i{font-size:0.65rem;color:#64748b;}
+.cam-body{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.cam-body iframe{width:100%;height:100%;border:none;display:block;}
+.cam-no-feed{display:flex;flex-direction:column;align-items:center;gap:6px;color:#475569;}
+.cam-no-feed i{font-size:1.6rem;opacity:.3;}
+.cam-no-feed span{font-size:0.72rem;opacity:.5;}
 
-.own-info{padding:12px 14px;border-top:1px solid #334155;flex-shrink:0;}
-.info-row{display:flex;align-items:center;gap:8px;font-size:0.78rem;color:#94a3b8;margin-bottom:6px;}
-.info-row i{width:14px;color:#8b5cf6;font-size:0.7rem;}
-.info-row span{color:#e2e8f0;font-weight:500;}
+.map-panel-right{position:relative;background:#e2e8f0;}
+#map-vehicle{width:100%;height:100%;}
 
-/* CENTER — map */
-.map-panel{position:relative;}
-#map{width:100%;height:100%;}
-.map-legend{position:absolute;bottom:16px;left:16px;background:#1e293b;border:1px solid #334155;border-radius:10px;padding:10px 14px;z-index:500;display:flex;flex-direction:column;gap:6px;}
-.legend-item{display:flex;align-items:center;gap:8px;font-size:0.72rem;color:#94a3b8;}
-.legend-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;}
+/* vehicle info strip */
+.vinfo-strip{padding:8px 16px;background:#fff;border-top:1px solid #e2e8f0;display:flex;gap:16px;flex-shrink:0;}
+.vi-item{display:flex;align-items:center;gap:6px;font-size:0.75rem;color:#64748b;}
+.vi-item i{color:#2563eb;font-size:0.7rem;}
+.vi-item span{color:#0f172a;font-weight:600;}
 
-/* RIGHT PANEL — truck list */
-.right-panel{background:#1e293b;border-left:1px solid #334155;display:flex;flex-direction:column;overflow:hidden;}
-.truck-list{flex:1;overflow-y:auto;padding:10px;}
-.truck-item{background:#0f172a;border:1px solid #334155;border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:all .2s;}
-.truck-item:hover{border-color:#f97316;background:#1c1917;}
-.truck-item.active{border-color:#f97316;background:#1c1917;}
-.truck-item .ti-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
-.truck-item .ti-id{font-size:0.88rem;font-weight:700;color:#f1f5f9;display:flex;align-items:center;gap:7px;}
-.truck-item .ti-id i{color:#f97316;font-size:0.75rem;}
-.motion-badge{font-size:0.6rem;font-weight:700;padding:2px 7px;border-radius:999px;text-transform:uppercase;}
-.m-still{background:#1e293b;color:#64748b;}
-.m-idle{background:#fef9c3;color:#854d0e;}
+/* ===== TRUCKS VIEW ===== */
+#view-trucks{height:100%;display:none;grid-template-columns:340px 1fr;}
+.trucks-panel{background:#fff;border-right:1px solid #e2e8f0;display:flex;flex-direction:column;overflow:hidden;}
+.truck-list-scroll{flex:1;overflow-y:auto;padding:10px;}
+.truck-card{border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:all .2s;background:#fff;}
+.truck-card:hover{border-color:#2563eb;background:#f0f9ff;}
+.truck-card.active{border-color:#2563eb;background:#eff6ff;}
+.tc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.tc-id{font-weight:700;font-size:0.9rem;color:#0f172a;display:flex;align-items:center;gap:7px;}
+.tc-id i{color:#2563eb;font-size:0.75rem;}
+.motion-badge{font-size:0.6rem;font-weight:700;padding:2px 8px;border-radius:999px;text-transform:uppercase;}
 .m-moving{background:#dcfce7;color:#166534;}
+.m-idle{background:#fef9c3;color:#854d0e;}
+.m-still{background:#f1f5f9;color:#64748b;}
 .m-rough{background:#fce7f3;color:#9d174d;}
-.m-unknown{background:#1e293b;color:#64748b;}
-.truck-item .ti-row{font-size:0.72rem;color:#64748b;display:flex;align-items:center;gap:6px;margin-top:3px;}
-.truck-item .ti-row i{width:12px;color:#475569;}
-.truck-item .ti-row span{color:#94a3b8;}
-.no-trucks{text-align:center;padding:40px 20px;color:#475569;}
-.no-trucks i{font-size:2rem;display:block;margin-bottom:10px;opacity:.3;}
+.m-unknown{background:#f1f5f9;color:#64748b;}
+.tc-row{font-size:0.72rem;color:#64748b;display:flex;align-items:center;gap:6px;margin-top:3px;}
+.tc-row i{width:12px;color:#94a3b8;}
+.map-panel-right2{position:relative;}
+#map-trucks{width:100%;height:100%;}
+.no-trucks-msg{padding:40px;text-align:center;color:#94a3b8;}
+.no-trucks-msg i{font-size:2rem;display:block;margin-bottom:10px;opacity:.3;}
 </style>
 </head>
 <body>
 
 <!-- NAVBAR -->
-<div class="navbar">
-    <div class="brand"><div class="dot"></div> Akhada Portal</div>
-    <span class="badge">{{ own.get('username','') }}</span>
-    <div class="spacer"></div>
-    <div class="user-chip"><i class="fas fa-shield-alt" style="color:#8b5cf6;"></i> {{ akhada_truck_id }}</div>
-    <button class="logout" onclick="location.href='/akhada_logout'"><i class="fas fa-sign-out-alt"></i> Logout</button>
+<nav class="navbar">
+    <div class="nav-logo"><i class="fas fa-map-marked-alt"></i> GPS Dashboard</div>
+    <span class="nav-badge">Akhada</span>
+    <div class="nav-spacer"></div>
+    <div class="nav-user"><i class="fas fa-user-circle"></i> {{ own.get('username', akhada_truck_id) }}</div>
+    <button class="btn-logout" onclick="location.href='/akhada_logout'"><i class="fas fa-sign-out-alt"></i> Logout</button>
+</nav>
+
+<div class="page">
+
+<!-- ===== WELCOME ===== -->
+<div id="view-welcome">
+    <div class="welcome-banner">
+        <h1>Welcome, <span>{{ own.get('username', akhada_truck_id) }}</span></h1>
+        <p>Select what you would like to view</p>
+    </div>
+    <div class="welcome-cards">
+        <div class="welcome-card" onclick="showView('vehicle')">
+            <div class="wc-icon"><i class="fas fa-video"></i></div>
+            <h3>My Vehicle</h3>
+            <p>View live camera feeds and GPS location for your assigned vehicle</p>
+            <span class="wc-count"><i class="fas fa-truck"></i> {{ akhada_truck_id }}</span>
+        </div>
+        <div class="welcome-card" onclick="showView('trucks')">
+            <div class="wc-icon"><i class="fas fa-route"></i></div>
+            <h3>My Assigned Trucks</h3>
+            <p>Track and monitor all trucks grouped under your Akhada</p>
+            <span class="wc-count"><i class="fas fa-truck"></i> {{ trucks|length }} truck{{ 's' if trucks|length != 1 else '' }}</span>
+        </div>
+    </div>
 </div>
 
-<div class="layout">
-
-    <!-- LEFT: own akhada cams + info -->
-    <div class="left-panel">
-        <div class="panel-header">
-            <div class="ph-icon"><i class="fas fa-shield-alt" style="color:#8b5cf6;font-size:.85rem;"></i></div>
+<!-- ===== MY VEHICLE ===== -->
+<div id="view-vehicle">
+    <div class="cam-panel">
+        <div class="panel-topbar">
+            <button class="back-btn" onclick="showView('welcome')"><i class="fas fa-arrow-left"></i> Back</button>
             <div>
-                <div class="ph-title">My Device</div>
-                <div class="ph-sub">{{ akhada_truck_id }}</div>
+                <div class="pt-title"><i class="fas fa-video" style="color:#2563eb;font-size:.8rem;"></i> My Vehicle Cameras</div>
+                <div class="pt-sub">{{ akhada_truck_id }}{% if own.get('vehicle_plate') %} · {{ own.vehicle_plate }}{% endif %}</div>
             </div>
         </div>
-        <div class="cam-area">
-            {% if own.get('front_rtmp') %}
+        <div class="cam-grid">
+            <!-- Cam 1: Front -->
             <div class="cam-slot">
-                <div class="cam-slot-label"><i class="fas fa-video"></i> Front Camera</div>
-                <iframe src="{{ own.front_rtmp }}" allowfullscreen></iframe>
+                <div class="cam-label"><i class="fas fa-video"></i> Front Camera</div>
+                <div class="cam-body">
+                    {% if own.get('front_rtmp') and own.front_rtmp != 'ADD_LATER' and own.front_rtmp != '' %}
+                    <iframe src="{{ own.front_rtmp }}" allowfullscreen></iframe>
+                    {% else %}
+                    <div class="cam-no-feed"><i class="fas fa-video-slash"></i><span>No Feed Configured</span></div>
+                    {% endif %}
+                </div>
             </div>
-            {% else %}
+            <!-- Cam 2: Rear -->
             <div class="cam-slot">
-                <div class="cam-slot-label"><i class="fas fa-video"></i> Front Camera</div>
-                <div class="cam-slot-body"><i class="fas fa-video-slash"></i> Not configured</div>
+                <div class="cam-label"><i class="fas fa-video"></i> Rear Camera</div>
+                <div class="cam-body">
+                    {% if own.get('rear_rtmp') and own.rear_rtmp != 'ADD_LATER' and own.rear_rtmp != '' %}
+                    <iframe src="{{ own.rear_rtmp }}" allowfullscreen></iframe>
+                    {% else %}
+                    <div class="cam-no-feed"><i class="fas fa-video-slash"></i><span>No Feed Configured</span></div>
+                    {% endif %}
+                </div>
             </div>
-            {% endif %}
-            {% if own.get('rear_rtmp') %}
+            <!-- Cam 3 & 4: spare slots -->
             <div class="cam-slot">
-                <div class="cam-slot-label"><i class="fas fa-video"></i> Rear Camera</div>
-                <iframe src="{{ own.rear_rtmp }}" allowfullscreen></iframe>
+                <div class="cam-label"><i class="fas fa-video"></i> Camera 3</div>
+                <div class="cam-body"><div class="cam-no-feed"><i class="fas fa-video-slash"></i><span>No Feed Configured</span></div></div>
             </div>
-            {% else %}
             <div class="cam-slot">
-                <div class="cam-slot-label"><i class="fas fa-video"></i> Rear Camera</div>
-                <div class="cam-slot-body"><i class="fas fa-video-slash"></i> Not configured</div>
+                <div class="cam-label"><i class="fas fa-video"></i> Camera 4</div>
+                <div class="cam-body"><div class="cam-no-feed"><i class="fas fa-video-slash"></i><span>No Feed Configured</span></div></div>
             </div>
-            {% endif %}
         </div>
-        <div class="own-info">
-            {% if own.get('officer_pi') %}
-            <div class="info-row"><i class="fas fa-user-shield"></i> <span>{{ own.officer_pi }}</span></div>
-            {% endif %}
-            {% if own.get('police_station') %}
-            <div class="info-row"><i class="fas fa-building"></i> <span>{{ own.police_station }}</span></div>
-            {% endif %}
-            {% if own.get('vehicle_plate') %}
-            <div class="info-row"><i class="fas fa-id-card"></i> <span>{{ own.vehicle_plate }}</span></div>
-            {% endif %}
+        <div class="vinfo-strip">
+            {% if own.get('driver_name') %}<div class="vi-item"><i class="fas fa-id-badge"></i> Driver: <span>{{ own.driver_name }}</span></div>{% endif %}
+            {% if own.get('officer_pi') %}<div class="vi-item"><i class="fas fa-user-shield"></i> Officer: <span>{{ own.officer_pi }}</span></div>{% endif %}
+            {% if own.get('police_station') %}<div class="vi-item"><i class="fas fa-building"></i> <span>{{ own.police_station }}</span></div>{% endif %}
         </div>
     </div>
-
-    <!-- CENTER: map -->
-    <div class="map-panel">
-        <div id="map"></div>
-        <div class="map-legend">
-            <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6;"></div> My Akhada</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#f97316;"></div> Assigned Truck</div>
-        </div>
+    <div class="map-panel-right">
+        <div id="map-vehicle"></div>
     </div>
+</div>
 
-    <!-- RIGHT: truck list -->
-    <div class="right-panel">
-        <div class="panel-header">
-            <div class="ph-icon"><i class="fas fa-truck" style="color:#f97316;font-size:.85rem;"></i></div>
+<!-- ===== MY TRUCKS ===== -->
+<div id="view-trucks">
+    <div class="trucks-panel">
+        <div class="panel-topbar">
+            <button class="back-btn" onclick="showView('welcome')"><i class="fas fa-arrow-left"></i> Back</button>
             <div>
-                <div class="ph-title">Assigned Trucks</div>
-                <div class="ph-sub">{{ trucks|length }} truck{{ 's' if trucks|length != 1 else '' }}</div>
+                <div class="pt-title"><i class="fas fa-route" style="color:#2563eb;font-size:.8rem;"></i> Assigned Trucks</div>
+                <div class="pt-sub">{{ trucks|length }} truck{{ 's' if trucks|length != 1 else '' }} in your group</div>
             </div>
         </div>
-        <div class="truck-list">
+        <div class="truck-list-scroll">
             {% if trucks %}
             {% for t in trucks %}
-            <div class="truck-item" id="ti-{{ t.truck_id }}" onclick="focusTruck('{{ t.truck_id }}', {{ t.lat or 'null' }}, {{ t.lng or 'null' }})">
-                <div class="ti-head">
-                    <div class="ti-id"><i class="fas fa-truck"></i> {{ t.truck_id }}</div>
-                    <span class="motion-badge m-{{ t.motion }}">{{ t.motion }}</span>
+            <div class="truck-card" id="tc-{{ t.truck_id }}" onclick="focusTruck('{{ t.truck_id }}', {{ t.lat or 'null' }}, {{ t.lng or 'null' }})">
+                <div class="tc-head">
+                    <div class="tc-id"><i class="fas fa-truck"></i> {{ t.truck_id }}</div>
+                    <span class="motion-badge m-{{ t.motion or 'unknown' }}">{{ t.motion or 'unknown' }}</span>
                 </div>
-                {% if t.driver %}
-                <div class="ti-row"><i class="fas fa-user"></i> <span>{{ t.driver }}</span></div>
-                {% endif %}
-                {% if t.plate %}
-                <div class="ti-row"><i class="fas fa-id-card"></i> <span>{{ t.plate }}</span></div>
-                {% endif %}
-                <div class="ti-row"><i class="fas fa-tachometer-alt"></i> <span>{{ t.speed }} km/h</span></div>
-                <div class="ti-row"><i class="fas fa-clock"></i> <span>{{ t.last_seen }}</span></div>
+                {% if t.driver %}<div class="tc-row"><i class="fas fa-id-badge"></i> {{ t.driver }}</div>{% endif %}
+                {% if t.plate %}<div class="tc-row"><i class="fas fa-id-card"></i> {{ t.plate }}</div>{% endif %}
+                <div class="tc-row"><i class="fas fa-tachometer-alt"></i> {{ t.speed or 0 }} km/h &nbsp;·&nbsp; <i class="fas fa-clock"></i> {{ t.last_seen }}</div>
             </div>
             {% endfor %}
             {% else %}
-            <div class="no-trucks"><i class="fas fa-truck"></i><p>No trucks assigned yet.</p><p style="font-size:.72rem;margin-top:4px;">Ask admin to group trucks under your Akhada.</p></div>
+            <div class="no-trucks-msg"><i class="fas fa-truck"></i><p style="font-weight:600;">No trucks assigned</p><p style="font-size:.78rem;margin-top:4px;">Ask admin to group trucks under your Akhada from the Grouping page.</p></div>
             {% endif %}
         </div>
     </div>
+    <div class="map-panel-right2">
+        <div id="map-trucks"></div>
+    </div>
 </div>
 
-<!-- Data -->
+</div><!-- .page -->
+
 <script>
-const AKHADA_ID = "{{ akhada_truck_id }}";
+const AKHADA_ID   = "{{ akhada_truck_id }}";
 const TRUCKS_DATA = {{ trucks | tojson | safe }};
 
-// Map init
-const map = L.map('map', { center: [23.0225, 72.5714], zoom: 12 });
-L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-    maxZoom: 20, subdomains: ['mt0','mt1','mt2','mt3']
-}).addTo(map);
+// ---- View switching ----
+let mapV = null, mapT = null;
 
-function makePin(color, faClass) {
+function showView(which) {
+    document.getElementById('view-welcome').style.display  = which === 'welcome'  ? 'flex'   : 'none';
+    document.getElementById('view-vehicle').style.display  = which === 'vehicle'  ? 'grid'   : 'none';
+    document.getElementById('view-trucks').style.display   = which === 'trucks'   ? 'grid'   : 'none';
+
+    if (which === 'vehicle' && !mapV) initVehicleMap();
+    if (which === 'trucks'  && !mapT) initTrucksMap();
+    if (which === 'vehicle' && mapV) mapV.invalidateSize();
+    if (which === 'trucks'  && mapT) mapT.invalidateSize();
+}
+
+// ---- Tile layer helper ----
+function tileLayer() {
+    return L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        maxZoom: 20, subdomains: ['mt0','mt1','mt2','mt3']
+    });
+}
+
+// ---- Marker icon ----
+function makeIcon(color, icon, zOffset) {
     return L.divIcon({
         className: '',
         html: `<div style="position:relative;width:36px;height:44px;display:flex;justify-content:center;">
-            <i class="fas fa-map-marker" style="color:${color};font-size:2.2rem;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));"></i>
+            <i class="fas fa-map-marker" style="color:${color};font-size:2.2rem;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4));"></i>
             <div style="position:absolute;top:5px;width:20px;height:20px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;">
-                <i class="fas ${faClass}" style="color:${color};font-size:9px;"></i>
+                <i class="fas ${icon}" style="color:${color};font-size:9px;"></i>
             </div></div>`,
-        iconSize: [36,44], iconAnchor: [18,44], popupAnchor: [0,-44]
+        iconSize:[36,44], iconAnchor:[18,44], popupAnchor:[0,-44],
+        zIndexOffset: zOffset || 0
     });
 }
 
-const markers = {};
-
-// Place own akhada marker (refreshed via API)
-function refreshOwn() {
+// ---- Vehicle map ----
+let ownMarker = null;
+function initVehicleMap() {
+    mapV = L.map('map-vehicle', { center:[23.0225,72.5714], zoom:12 });
+    tileLayer().addTo(mapV);
+    refreshOwnGPS();
+    setInterval(refreshOwnGPS, 10000);
+}
+function refreshOwnGPS() {
     fetch('/get_vehicle_gps/' + encodeURIComponent(AKHADA_ID))
         .then(r => r.json()).then(d => {
-            if (d.lat && d.lng && d.has_gps) {
-                if (markers['__own__']) {
-                    markers['__own__'].setLatLng([d.lat, d.lng]);
-                } else {
-                    markers['__own__'] = L.marker([d.lat, d.lng], { icon: makePin('#8b5cf6','fa-shield-alt'), zIndexOffset: 1000 })
-                        .addTo(map)
-                        .bindPopup(`<b>My Akhada</b><br>${AKHADA_ID}`);
-                    map.setView([d.lat, d.lng], 14);
-                }
+            if (!d.lat || !d.has_gps) return;
+            if (ownMarker) {
+                ownMarker.setLatLng([d.lat, d.lng]);
+            } else {
+                ownMarker = L.marker([d.lat, d.lng], { icon: makeIcon('#2563eb','fa-shield-alt',1000) })
+                    .addTo(mapV)
+                    .bindPopup(`<b>${AKHADA_ID}</b>`);
+                mapV.setView([d.lat, d.lng], 15);
             }
-        }).catch(() => {});
+        }).catch(()=>{});
 }
 
-// Place truck markers
-function refreshTrucks() {
+// ---- Trucks map ----
+const truckMarkers = {};
+function initTrucksMap() {
+    mapT = L.map('map-trucks', { center:[23.0225,72.5714], zoom:12 });
+    tileLayer().addTo(mapT);
     TRUCKS_DATA.forEach(t => {
-        fetch('/api/truck_last_seen/' + encodeURIComponent(t.truck_id))
-            .then(r => r.json()).catch(() => ({}));
+        if (t.lat && t.lng) {
+            truckMarkers[t.truck_id] = L.marker([t.lat, t.lng], { icon: makeIcon('#f97316','fa-truck') })
+                .addTo(mapT)
+                .bindPopup(`<b>${t.truck_id}</b>${t.driver ? '<br>'+t.driver : ''}${t.plate ? '<br>'+t.plate : ''}`);
+        }
+    });
+    if (Object.keys(truckMarkers).length) {
+        const group = new L.featureGroup(Object.values(truckMarkers));
+        mapT.fitBounds(group.getBounds().pad(0.2));
+    }
+    refreshTruckGPS();
+    setInterval(refreshTruckGPS, 10000);
+}
+function refreshTruckGPS() {
+    TRUCKS_DATA.forEach(t => {
         fetch('/get_vehicle_gps/' + encodeURIComponent(t.truck_id))
             .then(r => r.json()).then(d => {
-                const lat = d.lat && d.has_gps ? d.lat : t.lat;
-                const lng = d.lng && d.has_gps ? d.lng : t.lng;
-                if (!lat || !lng) return;
-                if (markers[t.truck_id]) {
-                    markers[t.truck_id].setLatLng([lat, lng]);
+                if (!d.lat || !d.has_gps) return;
+                if (truckMarkers[t.truck_id]) {
+                    truckMarkers[t.truck_id].setLatLng([d.lat, d.lng]);
                 } else {
-                    markers[t.truck_id] = L.marker([lat, lng], { icon: makePin('#f97316','fa-truck') })
-                        .addTo(map)
-                        .bindPopup(`<b>${t.truck_id}</b><br>${t.driver || ''} ${t.plate ? '· '+t.plate : ''}`);
+                    truckMarkers[t.truck_id] = L.marker([d.lat, d.lng], { icon: makeIcon('#f97316','fa-truck') })
+                        .addTo(mapT)
+                        .bindPopup(`<b>${t.truck_id}</b>`);
                 }
-            }).catch(() => {});
+            }).catch(()=>{});
     });
 }
-
 function focusTruck(tid, lat, lng) {
-    document.querySelectorAll('.truck-item').forEach(e => e.classList.remove('active'));
-    document.getElementById('ti-' + tid)?.classList.add('active');
-    if (markers[tid]) { map.flyTo(markers[tid].getLatLng(), 16, {duration:1}); markers[tid].openPopup(); }
-    else if (lat && lng) map.flyTo([lat, lng], 16, {duration:1});
+    document.querySelectorAll('.truck-card').forEach(e => e.classList.remove('active'));
+    const el = document.getElementById('tc-' + tid);
+    if (el) el.classList.add('active');
+    if (truckMarkers[tid]) {
+        mapT.flyTo(truckMarkers[tid].getLatLng(), 16, {duration:1});
+        truckMarkers[tid].openPopup();
+    } else if (lat && lng) {
+        mapT.flyTo([lat, lng], 16, {duration:1});
+    }
 }
-
-refreshOwn();
-refreshTrucks();
-setInterval(refreshOwn, 10000);
-setInterval(refreshTrucks, 10000);
 </script>
 </body>
 </html>
