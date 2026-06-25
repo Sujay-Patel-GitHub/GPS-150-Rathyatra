@@ -4217,11 +4217,11 @@ def debug_akhada_users():
     from mongodb import mongo_client
     users = []
     for doc in mongo_client["gps_server_db"]["assign_devices"].find({"role": "AKHADA_USER"}):
+        pw = doc.get("password", "")
         users.append({
             "truck_id": doc.get("truck_id"),
             "username": doc.get("username"),
-            "has_password": bool(doc.get("password")),
-            "password_len": len(str(doc.get("password", ""))),
+            "password_repr": repr(str(pw)),
         })
     return jsonify(users)
 
