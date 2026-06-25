@@ -43,6 +43,9 @@ try:
     # 10. Live GPS — latest GPS point per device, pushed directly by devices
     col_gps_live = db["gps_live"]
 
+    # 11. Test collection — lat/lng from ESP test device
+    col_test = db["test"]
+
     # Create indexes for optimization
     col_map_recordings.create_index([("device_id", 1), ("timestamp", 1)])
     col_sos_logs.create_index([("started_at", -1)])

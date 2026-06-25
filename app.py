@@ -14,7 +14,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 
 # --- IMPORT DATABASE & FIREBASE CONFIG ---
-from mongodb import col_godown, col_transporters, col_drivers, col_shopkeepers, col_vehicles, col_settings, col_gps_recordings, col_map_recordings, col_sos_logs, col_gps_live
+from mongodb import col_godown, col_transporters, col_drivers, col_shopkeepers, col_vehicles, col_settings, col_gps_recordings, col_map_recordings, col_sos_logs, col_gps_live, col_test
 from firebase import LOGO_URL
 
 app = Flask(__name__)
@@ -166,6 +166,21 @@ def get_live_gps(device_id):
         return col_gps_live.find_one({"device_id": device_id}) or {}
     except:
         return {}
+
+
+@app.route("/api/test_gps", methods=["POST"])
+def test_gps():
+    """ESP test device pushes lat/lng here — stored in 'test' collection."""
+    data = request.get_json(silent=True) or request.form.to_dict()
+    try:
+        col_test.insert_one({
+            "lat": float(data.get("lat", 0)),
+            "lng": float(data.get("lng", 0)),
+            "timestamp": datetime.now()
+        })
+        return jsonify({"ok": True}), 200
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 def get_power_off_threshold():
