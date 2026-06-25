@@ -782,37 +782,37 @@
                         {% if device.is_registered %}
                         <div class="info-grid">
                             <div class="info-item">
-                                <i class="fas fa-warehouse"></i>
+                                <i class="fas fa-tag" style="color:#f97316;background:#fff7ed;"></i>
                                 <div class="info-content">
-                                    <span class="info-label">Godown</span>
-                                    <span class="info-value">{{ device.godown_manager }}</span>
-                                    <span class="info-phone">📞 {{ device.godown_phone }}</span>
+                                    <span class="info-label">Role</span>
+                                    <span class="info-value">{{ device.assign_role or '—' }}</span>
+                                    <span class="info-phone" style="color:#6b7280;">{{ device.assign_username }}</span>
                                 </div>
                             </div>
 
                             <div class="info-item">
-                                <i class="fas fa-truck"></i>
+                                <i class="fas fa-id-card" style="color:#f97316;background:#fff7ed;"></i>
                                 <div class="info-content">
-                                    <span class="info-label">Transporter</span>
-                                    <span class="info-value">{{ device.transporter }}</span>
-                                    <span class="info-phone">📞 {{ device.transporter_phone }}</span>
+                                    <span class="info-label">Plate / Officer</span>
+                                    <span class="info-value rc-highlight">{{ device.assign_plate or '—' }}</span>
+                                    <span class="info-phone" style="color:#6b7280;">{{ device.assign_officer }}</span>
                                 </div>
                             </div>
 
                             <div class="info-item">
-                                <i class="fas fa-user-tie"></i>
+                                <i class="fas fa-user-tie" style="color:#f97316;background:#fff7ed;"></i>
                                 <div class="info-content">
                                     <span class="info-label">Driver</span>
-                                    <span class="info-value">{{ device.driver_name }}</span>
-                                    <span class="info-phone">📞 {{ device.driver_phone }}</span>
+                                    <span class="info-value">{{ device.assign_driver or '—' }}</span>
+                                    <span class="info-phone">📞 {{ device.assign_driver_mob }}</span>
                                 </div>
                             </div>
 
                             <div class="info-item">
-                                <i class="fas fa-id-card"></i>
+                                <i class="fas fa-hard-hat" style="color:#f97316;background:#fff7ed;"></i>
                                 <div class="info-content">
-                                    <span class="info-label">RC Number</span>
-                                    <span class="info-value rc-highlight">{{ device.rc_number }}</span>
+                                    <span class="info-label">Contractor</span>
+                                    <span class="info-value">{{ device.assign_contractor or '—' }}</span>
                                 </div>
                             </div>
 

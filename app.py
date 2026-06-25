@@ -1028,13 +1028,13 @@ def admin_dashboard():
                 "trip_status": "Ongoing" if raw_trip_status == "1" else "Stop"
             })
 
-    # ── Append ESP trucks from new_devices as unregistered ──
+    # ── Append ESP trucks from new_devices + merge assign_devices info ──
     try:
         from mongodb import mongo_client
         gps_db = mongo_client["gps_server_db"]
         registered_truck_ids = set(d["truck_id"] for d in gps_db["registered_trucks"].find({}, {"truck_id": 1}))
+        assign_map = {d["truck_id"]: d for d in gps_db["assign_devices"].find()}
         existing_ids = set(d["device_name"] for d in devices_display_list)
-        # Get latest record per truck_id from new_devices
         for doc in gps_db["new_devices"].aggregate([
             {"$sort": {"timestamp": -1}},
             {"$group": {"_id": "$truck_id", "lat": {"$first": "$lat"}, "lng": {"$first": "$lng"}, "ts": {"$first": "$timestamp"}}}
@@ -1043,15 +1043,26 @@ def admin_dashboard():
             if not tid or tid in existing_ids:
                 continue
             ts = doc.get("ts")
-            ts_str = ts.strftime("%d-%b-%Y %I:%M:%S %p") if ts else "N/A"
+            ts_date = ts.strftime("%d-%b-%Y") if ts else "N/A"
+            ts_time = ts.strftime("%I:%M:%S %p") if ts else ""
+            a = assign_map.get(tid, {})
             devices_display_list.append({
                 "id": len(devices_display_list) + 1,
                 "device_name": tid,
                 "is_registered": tid in registered_truck_ids,
+                # assign_devices fields
+                "assign_role":        a.get("role", ""),
+                "assign_username":    a.get("username", ""),
+                "assign_driver":      a.get("driver_name", ""),
+                "assign_driver_mob":  a.get("driver_mobile", ""),
+                "assign_contractor":  a.get("contractor_name", ""),
+                "assign_plate":       a.get("vehicle_plate", ""),
+                "assign_officer":     a.get("officer_pi", ""),
+                # legacy fields (kept blank)
                 "rc_number": "", "transporter": "", "transporter_phone": "",
-                "godown_manager": "", "godown_phone": "", "driver_name": "", "driver_phone": "",
+                "godown_manager": "", "godown_phone": "", "driver_name": a.get("driver_name",""), "driver_phone": "",
                 "gps_lat": doc.get("lat"), "gps_lng": doc.get("lng"),
-                "last_updated_date": ts_str, "last_updated_time": "",
+                "last_updated_date": ts_date, "last_updated_time": ts_time,
                 "is_power_off": False, "camera_status": "N/A",
                 "is_recording": False, "trip_number": 0, "trip_status": "N/A"
             })
@@ -4150,28 +4161,6 @@ def delete_recording(file_path):
         print(f"Error deleting recording: {str(e)}")
         return jsonify({"success": False, "message": str(e)}), 500
 
-
-@app.route("/truck_dashboard")
-def truck_dashboard():
-    if session.get('user_type') != 'admin': return redirect(url_for('login'))
-    from mongodb import mongo_client
-    gps_db = mongo_client["gps_server_db"]
-    # All trucks that have sent GPS data
-    all_truck_ids = gps_db["new_devices"].distinct("truck_id")
-    registered_ids = set(d["truck_id"] for d in gps_db["registered_trucks"].find({}, {"truck_id": 1}))
-    assign_map = {d["truck_id"]: d for d in gps_db["assign_devices"].find()}
-    trucks = []
-    for tid in sorted(all_truck_ids):
-        if not tid: continue
-        assign = assign_map.get(tid, {})
-        trucks.append({
-            "truck_id":    tid,
-            "is_registered": tid in registered_ids,
-            "username":    assign.get("username", ""),
-            "role":        assign.get("role", ""),
-            "assigned_at": str(assign.get("assigned_at", ""))[:19],
-        })
-    return render_template_string(get_template("TRUCK_DASHBOARD_HTML"), trucks=trucks, logo_url=LOGO_URL)
 
 
 @app.route("/list_roles")
