@@ -185,14 +185,28 @@ def test_gps():
 @app.route("/api/truck_gps/<truck_id>", methods=["POST"])
 def truck_gps(truck_id):
     data = request.get_json(silent=True) or request.form.to_dict()
+    def f(key, default=0.0):
+        try: return float(data.get(key, default))
+        except: return default
     try:
         from mongodb import mongo_client
         col = mongo_client["gps_server_db"]["new_devices"]
         col.insert_one({
             "truck_id": truck_id,
-            "lat":   float(data.get("lat", 0)),
-            "lng":   float(data.get("lng", 0)),
-            "speed": float(data.get("speed", 0)),
+            # GPS
+            "lat":   f("lat"),
+            "lng":   f("lng"),
+            "speed": f("speed"),
+            # Accelerometer (g)
+            "ax": f("ax"),
+            "ay": f("ay"),
+            "az": f("az"),
+            # Gyroscope (deg/s)
+            "gx": f("gx"),
+            "gy": f("gy"),
+            "gz": f("gz"),
+            # Temperature
+            "temp_c": f("temp_c"),
             "timestamp": datetime.now()
         })
         return jsonify({"ok": True}), 200
