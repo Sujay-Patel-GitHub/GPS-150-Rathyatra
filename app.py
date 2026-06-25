@@ -797,18 +797,25 @@ def login():
             session['role'] = role_name
             return redirect(url_for('user_dashboard'))
 
-        # Check akhada users
+        # Check akhada / truck users
         try:
             from mongodb import mongo_client
-            for doc in mongo_client["gps_server_db"]["assign_devices"].find({"role": "AKHADA_USER"}):
+            for doc in mongo_client["gps_server_db"]["assign_devices"].find({"role": {"$in": ["AKHADA_USER", "TRUCK_USER"]}}):
                 su = str(doc.get("username", "")).strip()
                 sp = str(doc.get("password", "")).strip()
                 if su.lower() == username.strip().lower() and sp == password.strip():
                     session.clear()
-                    session['user_type'] = 'akhada'
-                    session['akhada_username'] = su
-                    session['akhada_truck_id'] = str(doc.get("truck_id", ""))
-                    return redirect('/akhada_dashboard')
+                    role = doc.get("role")
+                    if role == "TRUCK_USER":
+                        session['user_type'] = 'truck'
+                        session['truck_username'] = su
+                        session['truck_id'] = str(doc.get("truck_id", ""))
+                        return redirect('/truck_dashboard')
+                    else:
+                        session['user_type'] = 'akhada'
+                        session['akhada_username'] = su
+                        session['akhada_truck_id'] = str(doc.get("truck_id", ""))
+                        return redirect('/akhada_dashboard')
         except Exception:
             pass
 
@@ -4370,6 +4377,23 @@ def akhada_dashboard():
 
 @app.route("/akhada_logout")
 def akhada_logout():
+    session.clear()
+    return redirect(url_for('login'))
+
+@app.route("/truck_dashboard")
+def truck_dashboard():
+    if session.get('user_type') != 'truck':
+        return redirect(url_for('login'))
+    truck_id = session.get('truck_id', '')
+    try:
+        from mongodb import mongo_client
+        doc = mongo_client["gps_server_db"]["assign_devices"].find_one({"truck_id": truck_id}, {"_id": 0, "password": 0})
+    except Exception:
+        doc = {}
+    return render_template_string(get_template("TRUCK_DASHBOARD_HTML"), truck_id=truck_id, doc=doc or {}, logo_url=LOGO_URL)
+
+@app.route("/truck_logout")
+def truck_logout():
     session.clear()
     return redirect(url_for('login'))
 

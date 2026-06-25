@@ -1,241 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Truck Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family:'Poppins',sans-serif; background:#f3f4f6; min-height:100vh; color:#111827; }
-        .main-content { padding:30px; width:100%; }
-        .page-header { margin-bottom:28px; }
-        .page-header h1 { font-size:22px; color:#111827; display:flex; align-items:center; gap:10px; margin-bottom:4px; }
-        .page-header p  { color:#6b7280; font-size:13px; }
-
-        /* ── Summary cards ── */
-        .summary-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:16px; margin-bottom:28px; }
-        .sum-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:18px 20px; }
-        .sum-card .num  { font-size:1.8rem; font-weight:700; line-height:1; }
-        .sum-card .lbl  { font-size:0.75rem; color:#6b7280; margin-top:4px; }
-
-        /* ── Search + filter ── */
-        .toolbar { display:flex; align-items:center; gap:12px; margin-bottom:22px; flex-wrap:wrap; }
-        .search-wrap { position:relative; flex:1; min-width:220px; }
-        .search-wrap i { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#9ca3af; }
-        .search-wrap input { width:100%; padding:10px 12px 10px 36px; border:1px solid #e5e7eb; border-radius:8px; font-size:0.88rem; outline:none; background:#fff; }
-        .search-wrap input:focus { border-color:#f97316; }
-        .filter-btn { padding:9px 16px; border:1px solid #e5e7eb; border-radius:8px; background:#fff; font-size:0.83rem; font-weight:600; cursor:pointer; color:#374151; transition:all .2s; }
-        .filter-btn.active { background:#f97316; color:#fff; border-color:#f97316; }
-
-        /* ── Grid ── */
-        .trucks-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:18px; }
-
-        .truck-card {
-            background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:20px;
-            cursor:pointer; transition:all .25s; position:relative; overflow:hidden;
-        }
-        .truck-card:hover { transform:translateY(-3px); box-shadow:0 10px 24px #0000001a; border-color:#d1d5db; }
-        .truck-card::before { content:''; position:absolute; top:0; left:0; width:4px; height:100%; background:#f97316; opacity:0; transition:opacity .2s; }
-        .truck-card:hover::before { opacity:1; }
-
-        .tc-head { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
-        .tc-avatar { width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; font-weight:700; color:#fff; flex-shrink:0; }
-        .tc-name  { font-size:1rem; font-weight:700; color:#111827; }
-        .tc-sub   { font-size:0.76rem; color:#9ca3af; margin-top:1px; }
-
-        .status-badge { display:inline-flex; align-items:center; gap:5px; font-size:0.7rem; font-weight:700; padding:3px 10px; border-radius:999px; text-transform:uppercase; letter-spacing:.05em; }
-        .badge-reg   { background:#dcfce7; color:#16a34a; }
-        .badge-unreg { background:#fef2f2; color:#dc2626; }
-
-        .tc-row { display:flex; align-items:center; gap:8px; font-size:0.8rem; color:#4b5563; margin-top:8px; }
-        .tc-row i { width:14px; color:#f97316; }
-
-        .no-trucks { text-align:center; padding:60px 20px; color:#9ca3af; grid-column:1/-1; }
-        .no-trucks i { font-size:3rem; margin-bottom:12px; display:block; opacity:.4; }
-
-        /* ── Detail modal ── */
-        .det-overlay { display:none; position:fixed; inset:0; background:#00000066; z-index:1000; align-items:center; justify-content:center; padding:20px; }
-        .det-overlay.open { display:flex; }
-        .det-modal { background:#fff; border-radius:16px; width:100%; max-width:460px; max-height:88vh; overflow-y:auto; box-shadow:0 20px 60px #0003; }
-        .det-header { display:flex; align-items:center; justify-content:space-between; padding:18px 22px; border-bottom:1px solid #f1f5f9; position:sticky; top:0; background:#fff; z-index:1; }
-        .det-body   { padding:18px 22px 24px; }
-        .det-row    { display:flex; align-items:flex-start; gap:12px; padding:10px; background:#f9fafb; border-radius:8px; margin-bottom:8px; }
-        .det-icon   { width:32px; height:32px; background:#fff7ed; border-radius:7px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-        .det-lbl    { font-size:0.67rem; color:#9ca3af; margin-bottom:2px; text-transform:uppercase; letter-spacing:.06em; }
-        .det-val    { font-size:0.88rem; color:#111827; font-weight:600; word-break:break-all; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ truck_id }} — Live Map</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;}
+#map{width:100%;height:100%;}
+.topbar{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:1000;
+    background:#fff;border:1px solid #e2e8f0;border-radius:12px;
+    padding:8px 18px;display:flex;align-items:center;gap:14px;
+    box-shadow:0 4px 16px rgba(0,0,0,.12);}
+.tb-title{font-weight:700;font-size:0.9rem;color:#0f172a;display:flex;align-items:center;gap:8px;}
+.tb-title i{color:#2563eb;}
+.tb-badge{background:#dbeafe;color:#1e40af;padding:3px 10px;border-radius:6px;font-size:0.72rem;font-weight:700;}
+.tb-speed{background:#f0fdf4;color:#166534;padding:3px 10px;border-radius:6px;font-size:0.72rem;font-weight:700;}
+.tb-time{font-size:0.72rem;color:#64748b;}
+.btn-logout{background:none;border:1px solid #e2e8f0;color:#64748b;padding:5px 12px;border-radius:8px;cursor:pointer;font-size:0.78rem;display:flex;align-items:center;gap:5px;transition:all .2s;}
+.btn-logout:hover{background:#fee2e2;border-color:#fca5a5;color:#dc2626;}
+</style>
 </head>
 <body>
-    {% include 'navbar.html' %}
-    {% include 'sidebar.html' %}
-
-    <!-- Detail Modal -->
-    <div class="det-overlay" id="detModal" onclick="if(event.target===this)closeDetail()">
-        <div class="det-modal">
-            <div class="det-header">
-                <div>
-                    <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#f97316;">Truck Details</div>
-                    <div id="detTitle" style="font-size:1rem;font-weight:700;color:#111827;margin-top:2px;"></div>
-                </div>
-                <button onclick="closeDetail()" style="background:none;border:none;font-size:1.3rem;color:#9ca3af;cursor:pointer;">×</button>
-            </div>
-            <div class="det-body" id="detBody"></div>
-        </div>
-    </div>
-
-    <div class="container">
-        <div class="main-content">
-            <div class="page-header">
-                <h1><i class="fas fa-truck" style="color:#f97316;"></i> Truck Dashboard</h1>
-                <p>All trucks seen by the GPS server. Click a card for full details.</p>
-            </div>
-
-            <!-- Summary -->
-            <div class="summary-row">
-                <div class="sum-card">
-                    <div class="num" style="color:#f97316;">{{ trucks|length }}</div>
-                    <div class="lbl">Total Trucks</div>
-                </div>
-                <div class="sum-card">
-                    <div class="num" style="color:#16a34a;">{{ trucks|selectattr('is_registered')|list|length }}</div>
-                    <div class="lbl">Registered</div>
-                </div>
-                <div class="sum-card">
-                    <div class="num" style="color:#dc2626;">{{ trucks|rejectattr('is_registered')|list|length }}</div>
-                    <div class="lbl">Unregistered</div>
-                </div>
-                <div class="sum-card">
-                    <div class="num" style="color:#8b5cf6;">{{ trucks|selectattr('role')|list|length }}</div>
-                    <div class="lbl">Assigned</div>
-                </div>
-            </div>
-
-            <!-- Toolbar -->
-            <div class="toolbar">
-                <div class="search-wrap">
-                    <i class="fas fa-search"></i>
-                    <input type="text" id="searchInput" placeholder="Search truck ID, username, role…" oninput="filterTrucks()">
-                </div>
-                <button class="filter-btn active" id="f-all"  onclick="setFilter('all')">All</button>
-                <button class="filter-btn"         id="f-reg"  onclick="setFilter('registered')">Registered</button>
-                <button class="filter-btn"         id="f-unreg" onclick="setFilter('unregistered')">Unregistered</button>
-            </div>
-
-            <!-- Grid -->
-            <div class="trucks-grid" id="trucksGrid">
-                {% if trucks %}
-                {% for t in trucks %}
-                {% set colors = {'SUPER_ADMIN':'#f97316','AKHADA_USER':'#8b5cf6','RATH_USER':'#06b6d4','TRUCK_USER':'#0ea5e9','MAINTENANCE_USER':'#ef4444'} %}
-                {% set c = colors.get(t.role, '#64748b') %}
-                <div class="truck-card"
-                     data-id="{{ t.truck_id|lower }}"
-                     data-user="{{ t.username|lower }}"
-                     data-role="{{ t.role|lower }}"
-                     data-reg="{{ 'registered' if t.is_registered else 'unregistered' }}"
-                     onclick="showDetail('{{ t.truck_id }}')">
-                    <div class="tc-head">
-                        <div class="tc-avatar" style="background:linear-gradient(135deg,{{ c }},{{ c }}bb);">
-                            <i class="fas fa-truck" style="font-size:1rem;"></i>
-                        </div>
-                        <div>
-                            <div class="tc-name">{{ t.truck_id }}</div>
-                            <div class="tc-sub">
-                                <span class="status-badge {{ 'badge-reg' if t.is_registered else 'badge-unreg' }}">
-                                    <i class="fas {{ 'fa-check-circle' if t.is_registered else 'fa-times-circle' }}"></i>
-                                    {{ 'Registered' if t.is_registered else 'Unregistered' }}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                    {% if t.username %}
-                    <div class="tc-row"><i class="fas fa-user"></i> {{ t.username }}</div>
-                    {% endif %}
-                    {% if t.role %}
-                    <div class="tc-row"><i class="fas fa-tag"></i>
-                        <span style="background:{{ c }}22;color:{{ c }};padding:2px 8px;border-radius:999px;font-size:0.7rem;font-weight:700;">{{ t.role }}</span>
-                    </div>
-                    {% endif %}
-                    {% if t.assigned_at and t.assigned_at != 'None' %}
-                    <div class="tc-row"><i class="fas fa-clock"></i> <span style="color:#9ca3af;font-size:0.75rem;">{{ t.assigned_at }}</span></div>
-                    {% endif %}
-                    {% if not t.username %}
-                    <div class="tc-row" style="color:#9ca3af;font-size:0.78rem;"><i class="fas fa-info-circle"></i> No operator assigned</div>
-                    {% endif %}
-                </div>
-                {% endfor %}
-                {% else %}
-                <div class="no-trucks">
-                    <i class="fas fa-truck"></i>
-                    <p style="font-size:1rem;font-weight:600;">No trucks found</p>
-                    <p style="font-size:0.85rem;margin-top:4px;">Trucks appear here once they send GPS data to the server.</p>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <script>
-        let currentFilter = 'all';
-
-        function setFilter(f) {
-            currentFilter = f;
-            ['all','reg','unreg'].forEach(k => document.getElementById('f-'+k).classList.remove('active'));
-            document.getElementById('f-' + (f === 'registered' ? 'reg' : f === 'unregistered' ? 'unreg' : 'all')).classList.add('active');
-            filterTrucks();
-        }
-
-        function filterTrucks() {
-            const q = document.getElementById('searchInput').value.toLowerCase();
-            document.querySelectorAll('.truck-card').forEach(c => {
-                const matchSearch = !q || c.dataset.id.includes(q) || c.dataset.user.includes(q) || c.dataset.role.includes(q);
-                const matchFilter = currentFilter === 'all' || c.dataset.reg === currentFilter;
-                c.style.display = (matchSearch && matchFilter) ? '' : 'none';
-            });
-        }
-
-        async function showDetail(truckId) {
-            document.getElementById('detTitle').innerText = truckId;
-            document.getElementById('detBody').innerHTML = '<div style="text-align:center;padding:30px;color:#9ca3af;"><i class="fas fa-spinner fa-spin" style="font-size:1.5rem;"></i></div>';
-            document.getElementById('detModal').classList.add('open');
-
-            const res  = await fetch('/api/assign_device/' + encodeURIComponent(truckId));
-            const data = await res.json();
-
-            const row = (icon, lbl, val) => val ? `
-                <div class="det-row">
-                    <div class="det-icon"><i class="fas ${icon}" style="color:#f97316;font-size:0.78rem;"></i></div>
-                    <div><div class="det-lbl">${lbl}</div><div class="det-val">${val}</div></div>
-                </div>` : '';
-
-            if (!data.ok) {
-                document.getElementById('detBody').innerHTML =
-                    row('fa-truck','Truck ID', truckId) +
-                    '<div style="text-align:center;padding:20px;color:#9ca3af;font-size:0.85rem;">No operator assigned yet.</div>';
-                return;
-            }
-            const d = data.doc;
-            document.getElementById('detBody').innerHTML =
-                row('fa-truck',        'Truck ID',          d.truck_id)
-              + row('fa-user',         'Username',          d.username)
-              + row('fa-tag',          'Role',              d.role)
-              + row('fa-calendar',     'Assigned At',       d.assigned_at ? d.assigned_at.slice(0,19) : '')
-              + row('fa-user-shield',  'Officer in Charge', d.officer_pi)
-              + row('fa-phone',        'PI Contact',        d.pi_contact)
-              + row('fa-building',     'Police Station',    d.police_station)
-              + row('fa-id-card',      'Vehicle Plate',     d.vehicle_plate)
-              + row('fa-id-badge',     'Driver Name',       d.driver_name)
-              + row('fa-mobile-alt',   'Driver Mobile',     d.driver_mobile)
-              + row('fa-hard-hat',     'Contractor Name',   d.contractor_name)
-              + row('fa-phone-alt',    'Contractor Mobile', d.contractor_mobile)
-              + row('fa-video',        'Front RTMP',        d.front_rtmp)
-              + row('fa-video',        'Rear RTMP',         d.rear_rtmp)
-              || '<div style="text-align:center;padding:20px;color:#9ca3af;">No details found.</div>';
-        }
-
-        function closeDetail() { document.getElementById('detModal').classList.remove('open'); }
-        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(); });
-    </script>
+<div class="topbar">
+    <div class="tb-title"><i class="fas fa-truck"></i> {{ truck_id }}</div>
+    <span class="tb-badge">Live GPS</span>
+    <span class="tb-speed" id="speedBadge"><i class="fas fa-tachometer-alt"></i> — km/h</span>
+    <span class="tb-time" id="timeBadge"><i class="fas fa-clock"></i> —</span>
+    <button class="btn-logout" onclick="location.href='/truck_logout'"><i class="fas fa-sign-out-alt"></i> Logout</button>
+</div>
+<div id="map"></div>
+<script>
+const TRUCK_ID = "{{ truck_id }}";
+const map = L.map('map', { center:[23.0225,72.5714], zoom:13 });
+L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+    maxZoom:20, subdomains:['mt0','mt1','mt2','mt3']
+}).addTo(map);
+const icon = L.divIcon({
+    className:'',
+    html:`<div style="position:relative;width:40px;height:48px;display:flex;justify-content:center;">
+        <i class="fas fa-map-marker" style="color:#2563eb;font-size:2.5rem;filter:drop-shadow(0 2px 6px rgba(0,0,0,.4));"></i>
+        <div style="position:absolute;top:6px;width:22px;height:22px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+            <i class="fas fa-truck" style="color:#2563eb;font-size:9px;"></i>
+        </div></div>`,
+    iconSize:[40,48], iconAnchor:[20,48], popupAnchor:[0,-48]
+});
+let marker=null, firstFix=true;
+function refresh(){
+    fetch('/get_vehicle_gps/'+encodeURIComponent(TRUCK_ID))
+        .then(r=>r.json()).then(d=>{
+            if(!d.lat||!d.has_gps) return;
+            if(marker){ marker.setLatLng([d.lat,d.lng]); }
+            else{ marker=L.marker([d.lat,d.lng],{icon}).addTo(map).bindPopup(`<b>${TRUCK_ID}</b>`); }
+            if(firstFix){ map.setView([d.lat,d.lng],15); firstFix=false; }
+            if(d.speed!==undefined) document.getElementById('speedBadge').innerHTML=`<i class="fas fa-tachometer-alt"></i> ${d.speed||0} km/h`;
+            if(d.last_updated_time) document.getElementById('timeBadge').innerHTML=`<i class="fas fa-clock"></i> ${d.last_updated_time}`;
+        }).catch(()=>{});
+}
+refresh();
+setInterval(refresh,10000);
+</script>
 </body>
 </html>
