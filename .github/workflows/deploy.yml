@@ -17,7 +17,7 @@ jobs:
         with:
           host: 150.129.165.162
           username: lenovo1
-          password: ${{ secrets.SERVER_PASSWORD }}
+          password: "P@Ss!23"
           script: |
             cd /home/lenovo1/LatestGPS
             git fetch https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git main
