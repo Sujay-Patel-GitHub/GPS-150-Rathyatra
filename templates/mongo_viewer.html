@@ -227,8 +227,6 @@ async function loadTruckGrid() {
       <div class="tc-row">X:<span class="av">${n2(latest.ax,3)}g</span> Y:<span class="av">${n2(latest.ay,3)}g</span> Z:<span class="av">${n2(latest.az,3)}g</span></div>
       <div class="tc-section">Gyroscope</div>
       <div class="tc-row">X:<span class="pv">${n2(latest.gx,1)}</span> Y:<span class="pv">${n2(latest.gy,1)}</span> Z:<span class="pv">${n2(latest.gz,1)}&deg;/s</span></div>
-      <div class="tc-section">Temperature</div>
-      <div class="tc-row"><span class="tv">${n2(latest.temp_c,1)} &deg;C</span></div>
       <div class="tc-foot">${trucks[tid].length} records &nbsp;&middot;&nbsp; ${latest.timestamp||""}</div>
     </div>`;
   }).join("");
@@ -268,7 +266,6 @@ async function showTruckDetail(truckId) {
     <td class="gyr-val">${n2(d.gx,1)}</td>
     <td class="gyr-val">${n2(d.gy,1)}</td>
     <td class="gyr-val">${n2(d.gz,1)}</td>
-    <td class="tmp-val">${n2(d.temp_c,1)}</td>
     <td class="ts-val">${d.timestamp||""}</td>
   </tr>`).join("");
 
@@ -288,7 +285,6 @@ async function showTruckDetail(truckId) {
           <th class="gps-h" colspan="3" style="text-align:center;border-bottom:1px solid #1e4080;">GPS</th>
           <th class="acc-h" colspan="3" style="text-align:center;border-bottom:1px solid #1e4080;">Accelerometer (g)</th>
           <th class="gyr-h" colspan="3" style="text-align:center;border-bottom:1px solid #1e4080;">Gyroscope (deg/s)</th>
-          <th class="tmp-h" rowspan="2">Temp &deg;C</th>
           <th class="meta-h" rowspan="2">Timestamp</th>
         </tr>
         <tr>
