@@ -1265,12 +1265,18 @@ def get_processed_vehicles_list():
 def gps_monitoring():
     if session.get('user_type') != 'admin':
         return redirect(url_for('login'))
-    
+
     vehicles_list = get_processed_vehicles_list()
-    
+    try:
+        from mongodb import mongo_client
+        assign_map = {d["truck_id"]: d for d in mongo_client["gps_server_db"]["assign_devices"].find()}
+    except Exception:
+        assign_map = {}
+
     return render_template_string(
         get_template("GPS_MONITORING_HTML"),
-        vehicles=vehicles_list
+        vehicles=vehicles_list,
+        assign_map=assign_map
     )
 
 

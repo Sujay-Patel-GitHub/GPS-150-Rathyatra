@@ -269,12 +269,42 @@
             flex: 1;
             position: relative;
             background: #e5e7eb;
+            display: flex;
         }
 
         #map {
             width: 100%;
             height: 100%;
+            flex: 1;
         }
+
+        /* Akhada split: camera left, map right */
+        .camera-panel {
+            display: none;
+            width: 50%;
+            height: 100%;
+            background: #000;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .camera-panel iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .camera-panel .cam-label {
+            position: absolute;
+            top: 10px;
+            left: 12px;
+            background: rgba(0,0,0,.55);
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 20px;
+        }
+        .map-container.akhada-mode .camera-panel { display: flex; flex-direction: column; }
+        .map-container.akhada-mode #map { width: 50%; }
 
         /* Floating Vehicle List */
         .vehicle-list-overlay {
@@ -474,7 +504,12 @@
             </div>
 
             <!-- Full Screen Map Area -->
-            <div class="map-container">
+            <div class="map-container" id="mapContainer">
+                <!-- Camera panel (shown for AKHADA role) -->
+                <div class="camera-panel" id="cameraPanel">
+                    <span class="cam-label"><i class="fas fa-video"></i> Live Camera</span>
+                    <iframe id="cameraFrame" src="about:blank" allowfullscreen></iframe>
+                </div>
                 <div id="map"></div>
 
                 <!-- Toggle Button (Visible when overlay hidden) -->
@@ -500,6 +535,9 @@
     <script id="vehicles-data" type="application/json">
         {{ vehicles|tojson|safe }}
     </script>
+    <script id="assign-data" type="application/json">
+        {{ assign_map|tojson|safe }}
+    </script>
 
     <script>
         // --- Map Initialization ---
@@ -523,7 +561,27 @@
 
         // --- Data & State ---
         let vehicles = JSON.parse(document.getElementById('vehicles-data').textContent);
+        const assignMap = JSON.parse(document.getElementById('assign-data').textContent);
         let markers = {};
+
+        function applyRoleLayout(truckId) {
+            const info = assignMap[truckId] || {};
+            const role = (info.role || '').toUpperCase();
+            const container = document.getElementById('mapContainer');
+            const cameraPanel = document.getElementById('cameraPanel');
+            const cameraFrame = document.getElementById('cameraFrame');
+
+            if (role === 'AKHADA_USER') {
+                const rtmp = info.front_rtmp || '';
+                cameraFrame.src = rtmp || 'about:blank';
+                container.classList.add('akhada-mode');
+            } else {
+                // TRUCK_USER or anything else → full screen map
+                container.classList.remove('akhada-mode');
+                cameraFrame.src = 'about:blank';
+            }
+            setTimeout(() => map.invalidateSize(), 320);
+        }
 
         // --- Helper Functions ---
         function updateStats() {
@@ -692,6 +750,7 @@
 
         function focusVehicle(id, lat, lng) {
             if (!lat || !lng) return;
+            applyRoleLayout(id);
             map.flyTo([lat, lng], 15, { duration: 1.5 });
 
             // Highlight card
