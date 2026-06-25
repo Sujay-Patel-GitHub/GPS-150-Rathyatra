@@ -331,22 +331,30 @@ def reset_status(truck_id):
 # ── MOSFET Control ───────────────────────────────────────────
 @app.route("/api/assign_device", methods=["POST"])
 def assign_device():
-    data = request.get_json(silent=True) or {}
+    data     = request.get_json(silent=True) or {}
     truck_id = str(data.get("truck_id", "")).strip()
     username = str(data.get("username", "")).strip()
     role     = str(data.get("role", "")).strip()
     if not truck_id or not username or not role:
         return jsonify({"ok": False, "error": "truck_id, username and role are required"}), 400
+    doc = {
+        "truck_id":      truck_id,
+        "username":      username,
+        "role":          role,
+        "assigned_at":   datetime.now(),
+    }
+    # Role-specific detail fields (AKHADA for now; extendable for RATH etc.)
+    detail_keys = ["officer_pi", "pi_contact", "police_station", "vehicle_plate",
+                   "driver_name", "driver_mobile", "front_rtmp", "rear_rtmp"]
+    for k in detail_keys:
+        val = str(data.get(k, "")).strip()
+        if val:
+            doc[k] = val
     try:
         from mongodb import mongo_client
         mongo_client["gps_server_db"]["assign_devices"].update_one(
             {"truck_id": truck_id},
-            {"$set": {
-                "truck_id": truck_id,
-                "username": username,
-                "role":     role,
-                "assigned_at": datetime.now()
-            }},
+            {"$set": doc},
             upsert=True
         )
         return jsonify({"ok": True})

@@ -916,109 +916,230 @@
     </div>
 
     <!-- Assign / Operator Modal -->
-    <div id="assignModal" class="modal">
-        <div class="modal-content" style="max-width:420px;">
-            <span class="close" onclick="closeModal()">×</span>
-            <h3 style="display:flex;align-items:center;gap:8px;margin-bottom:20px;">
-                <i class="fas fa-user-cog" style="color:#f97316;"></i>
-                <span style="font-size:0.95rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;">Create Operator Profile</span>
-            </h3>
+    <!-- Assign Modal -->
+    <div id="assignModal" class="modal" style="display:none;position:fixed;inset:0;background:#00000066;z-index:9999;align-items:center;justify-content:center;">
+        <div style="background:#fff;border-radius:16px;width:92%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px #0003;position:relative;">
 
-            <p id="modalDeviceName"
-               style="font-weight:700;color:#f97316;margin-bottom:18px;background:#fff7ed;
-                      padding:8px 12px;border-radius:6px;border:1px solid #fed7aa;font-size:0.85rem;">
-            </p>
+            <!-- Header -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #f1f5f9;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:34px;height:34px;background:#fff7ed;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-user-cog" style="color:#f97316;font-size:0.9rem;"></i>
+                    </div>
+                    <div>
+                        <div style="font-size:0.78rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#f97316;">Create Operator Profile</div>
+                        <div id="modalStepLabel" style="font-size:0.72rem;color:#9ca3af;">Step 1 of 2 — Select Role</div>
+                    </div>
+                </div>
+                <button onclick="closeModal()" style="background:none;border:none;font-size:1.2rem;color:#9ca3af;cursor:pointer;line-height:1;">×</button>
+            </div>
 
-            <div id="assignMsg" style="display:none;margin-bottom:12px;padding:8px 12px;border-radius:6px;font-size:0.84rem;"></div>
+            <!-- Truck badge -->
+            <div style="margin:16px 22px 0;">
+                <div id="modalDeviceName" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:8px 14px;font-size:0.83rem;font-weight:700;color:#f97316;"></div>
+            </div>
 
-            <div class="form-group">
-                <label style="font-size:0.75rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b7280;margin-bottom:6px;display:block;">Username</label>
-                <div style="position:relative;">
-                    <i class="fas fa-user" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:0.85rem;"></i>
-                    <input type="text" id="operatorUsername" placeholder="Enter login username"
-                           style="width:100%;padding:10px 12px 10px 34px;border:1.5px solid #e5e7eb;border-radius:8px;
-                                  font-size:0.9rem;box-sizing:border-box;outline:none;"
-                           onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#e5e7eb'">
+            <!-- Step dots -->
+            <div style="display:flex;align-items:center;gap:6px;margin:14px 22px 0;">
+                <div id="dot1" style="width:28px;height:5px;border-radius:3px;background:#f97316;"></div>
+                <div id="dot2" style="width:28px;height:5px;border-radius:3px;background:#e5e7eb;"></div>
+            </div>
+
+            <!-- Message -->
+            <div id="assignMsg" style="display:none;margin:12px 22px 0;padding:9px 13px;border-radius:8px;font-size:0.83rem;"></div>
+
+            <!-- ── STEP 1 ── -->
+            <div id="step1" style="padding:18px 22px 22px;">
+                <div style="margin-bottom:14px;">
+                    <label style="font-size:0.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b7280;display:block;margin-bottom:6px;">Username</label>
+                    <div style="position:relative;">
+                        <i class="fas fa-user" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#cbd5e1;font-size:0.82rem;"></i>
+                        <input id="operatorUsername" type="text" placeholder="Enter login username"
+                               style="width:100%;padding:10px 12px 10px 34px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.9rem;box-sizing:border-box;outline:none;"
+                               onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#e5e7eb'">
+                    </div>
+                </div>
+                <div style="margin-bottom:20px;">
+                    <label style="font-size:0.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b7280;display:block;margin-bottom:6px;">System Role</label>
+                    <select id="operatorRole"
+                            style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.9rem;background:#fff;outline:none;cursor:pointer;color:#374151;"
+                            onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#e5e7eb'">
+                        <option value="" disabled selected>— Select a role —</option>
+                        <option value="SUPER_ADMIN">SUPER_ADMIN</option>
+                        <option value="AKHADA_USER">AKHADA_USER</option>
+                        <option value="RATH_USER">RATH_USER</option>
+                        <option value="MAINTENANCE_USER">MAINTENANCE_USER</option>
+                    </select>
+                </div>
+                <button onclick="goStep2()"
+                        style="width:100%;padding:12px;background:#f97316;color:#fff;border:none;border-radius:8px;font-size:0.95rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;">
+                    Next <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+
+            <!-- ── STEP 2 (AKHADA) ── -->
+            <div id="step2" style="display:none;padding:18px 22px 22px;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                    <div>
+                        <label style="font-size:0.68rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b7280;display:block;margin-bottom:5px;">Officer in Charge (PI)</label>
+                        <input id="f_officer" type="text" placeholder="Inspector PI Name"
+                               style="width:100%;padding:9px 11px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.85rem;box-sizing:border-box;outline:none;"
+                               onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#e5e7eb'">
+                    </div>
+                    <div>
+                        <label style="font-size:0.68rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b7280;display:block;margin-bottom:5px;">PI Contact Number</label>
+                        <input id="f_pi_contact" type="text" placeholder="+919876543210"
+                               style="width:100%;padding:9px 11px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.85rem;box-sizing:border-box;outline:none;"
+                               onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#e5e7eb'">
+                    </div>
+                    <div>
+                        <label style="font-size:0.68rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b7280;display:block;margin-bottom:5px;">Police Station</label>
+                        <input id="f_station" type="text" placeholder="Ahmedabad City Station"
+                               style="width:100%;padding:9px 11px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.85rem;box-sizing:border-box;outline:none;"
+                               onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#e5e7eb'">
+                    </div>
+                    <div>
+                        <label style="font-size:0.68rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b7280;display:block;margin-bottom:5px;">Vehicle Plate Number</label>
+                        <input id="f_plate" type="text" placeholder="GJ-01-Y-2026"
+                               style="width:100%;padding:9px 11px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.85rem;box-sizing:border-box;outline:none;"
+                               onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#e5e7eb'">
+                    </div>
+                    <div>
+                        <label style="font-size:0.68rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b7280;display:block;margin-bottom:5px;">Driver Name</label>
+                        <input id="f_driver" type="text" placeholder="Driver Name"
+                               style="width:100%;padding:9px 11px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.85rem;box-sizing:border-box;outline:none;"
+                               onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#e5e7eb'">
+                    </div>
+                    <div>
+                        <label style="font-size:0.68rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b7280;display:block;margin-bottom:5px;">Driver Mobile Number</label>
+                        <input id="f_driver_mobile" type="text" placeholder="+919937001122"
+                               style="width:100%;padding:9px 11px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.85rem;box-sizing:border-box;outline:none;"
+                               onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#e5e7eb'">
+                    </div>
+                </div>
+                <div style="margin-bottom:10px;">
+                    <label style="font-size:0.68rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b7280;display:block;margin-bottom:5px;">Front Camera RTMP/RTSP URL</label>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input id="f_front_rtmp" type="text" placeholder="rtmp://localhost:1935/live/front"
+                               style="flex:1;padding:9px 11px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.82rem;box-sizing:border-box;outline:none;"
+                               onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#e5e7eb'">
+                        <button type="button" onclick="document.getElementById('f_front_rtmp').value='ADD_LATER';this.style.background='#fef3c7';"
+                                style="white-space:nowrap;padding:9px 11px;background:#f9fafb;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.75rem;font-weight:600;color:#6b7280;cursor:pointer;">
+                            Add Later
+                        </button>
+                    </div>
+                </div>
+                <div style="margin-bottom:20px;">
+                    <label style="font-size:0.68rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b7280;display:block;margin-bottom:5px;">Rear Camera RTMP/RTSP URL</label>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input id="f_rear_rtmp" type="text" placeholder="rtmp://localhost:1935/live/rear"
+                               style="flex:1;padding:9px 11px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.82rem;box-sizing:border-box;outline:none;"
+                               onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#e5e7eb'">
+                        <button type="button" onclick="document.getElementById('f_rear_rtmp').value='ADD_LATER';this.style.background='#fef3c7';"
+                                style="white-space:nowrap;padding:9px 11px;background:#f9fafb;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.75rem;font-weight:600;color:#6b7280;cursor:pointer;">
+                            Add Later
+                        </button>
+                    </div>
+                </div>
+                <div style="display:flex;gap:10px;">
+                    <button onclick="backStep1()"
+                            style="flex:1;padding:12px;background:#f9fafb;color:#374151;border:1.5px solid #e5e7eb;border-radius:8px;font-size:0.9rem;font-weight:600;cursor:pointer;">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <button onclick="saveOperatorProfile()"
+                            style="flex:2;padding:12px;background:#f97316;color:#fff;border:none;border-radius:8px;font-size:0.9rem;font-weight:700;cursor:pointer;letter-spacing:.04em;text-transform:uppercase;">
+                        Save Device Details
+                    </button>
                 </div>
             </div>
 
-            <div class="form-group" style="margin-top:14px;">
-                <label style="font-size:0.75rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b7280;margin-bottom:6px;display:block;">System Role</label>
-                <select id="operatorRole"
-                        style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:8px;
-                               font-size:0.9rem;background:#fff;outline:none;cursor:pointer;"
-                        onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#e5e7eb'">
-                    <option value="AKHADA_USER">AKHADA_USER</option>
-                    <option value="SUPER_ADMIN">SUPER_ADMIN</option>
-                    <option value="RATH_USER">RATH_USER</option>
-                    <option value="MAINTENANCE_USER">MAINTENANCE_USER</option>
-                </select>
-            </div>
-
-            <button onclick="saveOperatorProfile()"
-                    style="width:100%;margin-top:20px;padding:13px;background:#f97316;color:#fff;
-                           border:none;border-radius:8px;font-size:0.95rem;font-weight:700;
-                           letter-spacing:.05em;text-transform:uppercase;cursor:pointer;">
-                CREATE ACCOUNT
-            </button>
         </div>
     </div>
 
     <script>
         let currentTruckId = "";
 
+        function showMsg(text, ok) {
+            const msg = document.getElementById('assignMsg');
+            msg.style.display = "block";
+            msg.style.background = ok ? "#f0fdf4" : "#fef2f2";
+            msg.style.color      = ok ? "#16a34a"  : "#dc2626";
+            msg.style.border     = ok ? "1px solid #86efac" : "1px solid #fca5a5";
+            msg.innerText = text;
+        }
+
         function openModal(deviceId) {
             currentTruckId = deviceId;
-            document.getElementById('assignModal').style.display = "block";
+            document.getElementById('assignModal').style.display = "flex";
             document.getElementById('modalDeviceName').innerText = "Truck: " + deviceId;
             document.getElementById('operatorUsername').value = "";
-            document.getElementById('operatorRole').value = "AKHADA_USER";
-            const msg = document.getElementById('assignMsg');
-            msg.style.display = "none";
+            document.getElementById('operatorRole').value = "";
+            document.getElementById('assignMsg').style.display = "none";
+            document.getElementById('step1').style.display = "block";
+            document.getElementById('step2').style.display = "none";
+            document.getElementById('dot1').style.background = "#f97316";
+            document.getElementById('dot2').style.background = "#e5e7eb";
+            document.getElementById('modalStepLabel').innerText = "Step 1 of 2 — Select Role";
         }
 
         function closeModal() {
             document.getElementById('assignModal').style.display = "none";
         }
 
-        window.onclick = function (event) {
-            if (event.target == document.getElementById('assignModal')) closeModal();
+        window.onclick = function(e) {
+            if (e.target === document.getElementById('assignModal')) closeModal();
+        }
+
+        function goStep2() {
+            const username = document.getElementById('operatorUsername').value.trim();
+            const role     = document.getElementById('operatorRole').value;
+            if (!username) { showMsg("Username is required.", false); return; }
+            if (!role)     { showMsg("Please select a role.", false); return; }
+            document.getElementById('assignMsg').style.display = "none";
+            document.getElementById('step1').style.display = "none";
+            document.getElementById('step2').style.display = "block";
+            document.getElementById('dot2').style.background = "#f97316";
+            document.getElementById('modalStepLabel').innerText = "Step 2 of 2 — Device Details";
+            // Clear step2 fields
+            ['f_officer','f_pi_contact','f_station','f_plate','f_driver','f_driver_mobile','f_front_rtmp','f_rear_rtmp']
+              .forEach(id => document.getElementById(id).value = "");
+        }
+
+        function backStep1() {
+            document.getElementById('assignMsg').style.display = "none";
+            document.getElementById('step2').style.display = "none";
+            document.getElementById('step1').style.display = "block";
+            document.getElementById('dot2').style.background = "#e5e7eb";
+            document.getElementById('modalStepLabel').innerText = "Step 1 of 2 — Select Role";
         }
 
         async function saveOperatorProfile() {
             const username = document.getElementById('operatorUsername').value.trim();
             const role     = document.getElementById('operatorRole').value;
-            const msg      = document.getElementById('assignMsg');
-
-            if (!username) {
-                msg.style.display = "block";
-                msg.style.background = "#fef2f2";
-                msg.style.color = "#dc2626";
-                msg.style.border = "1px solid #fca5a5";
-                msg.innerText = "Username is required.";
-                return;
-            }
-
-            const res = await fetch('/api/assign_device', {
+            const payload  = {
+                truck_id:      currentTruckId,
+                username,
+                role,
+                officer_pi:    document.getElementById('f_officer').value.trim(),
+                pi_contact:    document.getElementById('f_pi_contact').value.trim(),
+                police_station:document.getElementById('f_station').value.trim(),
+                vehicle_plate: document.getElementById('f_plate').value.trim(),
+                driver_name:   document.getElementById('f_driver').value.trim(),
+                driver_mobile: document.getElementById('f_driver_mobile').value.trim(),
+                front_rtmp:    document.getElementById('f_front_rtmp').value.trim() || "ADD_LATER",
+                rear_rtmp:     document.getElementById('f_rear_rtmp').value.trim()  || "ADD_LATER",
+            };
+            const res  = await fetch('/api/assign_device', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ truck_id: currentTruckId, username, role })
+                body: JSON.stringify(payload)
             });
             const data = await res.json();
-
             if (data.ok) {
-                msg.style.display = "block";
-                msg.style.background = "#f0fdf4";
-                msg.style.color = "#16a34a";
-                msg.style.border = "1px solid #86efac";
-                msg.innerText = "Operator profile saved successfully!";
+                showMsg("Operator profile saved!", true);
                 setTimeout(closeModal, 1200);
             } else {
-                msg.style.display = "block";
-                msg.style.background = "#fef2f2";
-                msg.style.color = "#dc2626";
-                msg.style.border = "1px solid #fca5a5";
-                msg.innerText = data.error || "Failed to save.";
+                showMsg(data.error || "Failed to save.", false);
             }
         }
 
