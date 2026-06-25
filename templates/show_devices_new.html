@@ -1234,7 +1234,7 @@
             const data = await res.json();
             if (data.ok) {
                 showMsg("Operator profile saved!", true);
-                setTimeout(closeModal, 1300);
+                setTimeout(() => { closeModal(); location.reload(); }, 1300);
             } else {
                 showMsg(data.error || "Failed to save.", false);
             }
