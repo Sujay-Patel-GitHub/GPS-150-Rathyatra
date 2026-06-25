@@ -4149,7 +4149,7 @@ def list_roles():
     if session.get('user_type') != 'admin': return redirect(url_for('login'))
     from mongodb import mongo_client
     assign_col = mongo_client["gps_server_db"]["assign_devices"]
-    roles_data = {"SUPER_ADMIN": [], "RATH_USER": [], "AKHADA_USER": [], "MAINTENANCE_USER": []}
+    roles_data = {"SUPER_ADMIN": [], "RATH_USER": [], "AKHADA_USER": [], "TRUCK_USER": [], "MAINTENANCE_USER": []}
     for doc in assign_col.find():
         role = doc.get("role", "")
         if role in roles_data:

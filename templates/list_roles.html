@@ -490,6 +490,11 @@
                     <div class="role-btn-title">Akhada User</div>
                     <div class="role-btn-count">{{ roles_data['AKHADA_USER']|length }} users</div>
                 </button>
+                <button class="role-btn" onclick="showRole('truck')" id="btn-truck">
+                    <i class="fas fa-truck role-btn-icon" style="color:#0ea5e9;background:#f0f9ff;"></i>
+                    <div class="role-btn-title">Truck User</div>
+                    <div class="role-btn-count">{{ roles_data['TRUCK_USER']|length }} users</div>
+                </button>
                 <button class="role-btn" onclick="showRole('maintenance')" id="btn-maintenance">
                     <i class="fas fa-tools role-btn-icon maintenance"></i>
                     <div class="role-btn-title">Maintenance User</div>
@@ -501,7 +506,8 @@
                 ('superadmin', 'SUPER_ADMIN', 'Super Admin', 'fa-shield-alt', '#f97316', '#fff7ed'),
                 ('rath',       'RATH_USER',   'Rath User',   'fa-gopuram',   '#06b6d4', '#ecfeff'),
                 ('akhada',     'AKHADA_USER', 'Akhada User', 'fa-users',     '#8b5cf6', '#f5f3ff'),
-                ('maintenance','MAINTENANCE_USER','Maintenance User','fa-tools','#ef4444','#fef2f2')
+                ('truck',      'TRUCK_USER',      'Truck User',      'fa-truck','#0ea5e9','#f0f9ff'),
+            ('maintenance','MAINTENANCE_USER','Maintenance User','fa-tools','#ef4444','#fef2f2')
             ] %}
 
             {% for key, role_key, label, icon, color, bg in role_configs %}

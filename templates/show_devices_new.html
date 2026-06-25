@@ -962,6 +962,7 @@
                         <option value="SUPER_ADMIN">SUPER_ADMIN</option>
                         <option value="AKHADA_USER">AKHADA_USER</option>
                         <option value="RATH_USER">RATH_USER</option>
+                        <option value="TRUCK_USER">TRUCK_USER</option>
                         <option value="MAINTENANCE_USER">MAINTENANCE_USER</option>
                     </select>
                 </div>
@@ -970,10 +971,10 @@
 
             <!-- ── STEP 2a: SUPER_ADMIN — password gate ── -->
             <div id="step2_super" style="display:none;padding:16px 22px 22px;">
-                <p style="font-size:0.8rem;color:#6b7280;margin-bottom:14px;">Enter the master password to confirm you have Super Admin authority, then set a new account password.</p>
+                <p style="font-size:0.8rem;color:#6b7280;margin-bottom:14px;">Enter the admin authorization key, then set a new account password.</p>
                 <div style="margin-bottom:12px;">
-                    <label class="flbl">Master Password (type "superadmin" to proceed)</label>
-                    <input id="sa_gate" type="password" placeholder="••••••••••" class="finp">
+                    <label class="flbl">Admin Authorization Key</label>
+                    <input id="sa_gate" type="password" placeholder="Enter authorization key" class="finp">
                 </div>
                 <div style="margin-bottom:12px;">
                     <label class="flbl">New Account Password</label>
@@ -1149,7 +1150,7 @@
                 currentStep2Panel = "step2_akhada";
                 showPanel("step2_akhada");
                 setDots(2, 3);
-            } else if (role === "MAINTENANCE_USER") {
+            } else if (role === "MAINTENANCE_USER" || role === "TRUCK_USER") {
                 currentStep2Panel = "step2_maint";
                 showPanel("step2_maint");
                 setDots(2, 3);
@@ -1209,7 +1210,7 @@
                 if (np !== cp) { showMsg("Passwords do not match.", false); return; }
                 payload.password = np;
 
-            } else if (role === "MAINTENANCE_USER") {
+            } else if (role === "MAINTENANCE_USER" || role === "TRUCK_USER") {
                 payload.vehicle_plate      = document.getElementById('m_plate').value.trim();
                 payload.driver_name        = document.getElementById('m_driver').value.trim();
                 payload.driver_mobile      = document.getElementById('m_driver_mobile').value.trim();
