@@ -205,6 +205,7 @@ def truck_gps(truck_id):
             "gx": f("gx"),
             "gy": f("gy"),
             "gz": f("gz"),
+            "motion": str(data.get("motion", "unknown")),
             "timestamp": datetime.now()
         })
         return jsonify({"ok": True}), 200

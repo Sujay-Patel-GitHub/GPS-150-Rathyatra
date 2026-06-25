@@ -50,6 +50,12 @@
   .tmp-val  { color: #fda4af; }
   .truck-id { color: #38bdf8; font-weight: 700; }
   .ts-val   { color: #475569; font-size: 0.72rem; }
+  .motion-badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
+  .m-still   { background:#1e293b; color:#64748b; border:1px solid #334155; }
+  .m-idle    { background:#422006; color:#fb923c; border:1px solid #9a3412; }
+  .m-moving  { background:#14532d; color:#4ade80; border:1px solid #166534; }
+  .m-rough   { background:#450a0a; color:#f87171; border:1px solid #7f1d1d; }
+  .m-unknown { background:#1e293b; color:#475569; border:1px solid #334155; }
   /* Group headers in table */
   .grp-sep th { background: #0f2744; padding: 4px 12px; font-size: 0.65rem; letter-spacing: .1em; border-top: 1px solid #1e4080; border-bottom: 1px solid #1e4080; }
   .map-wrap { height: 200px; border-bottom: 1px solid #334155; display: none; }
@@ -151,6 +157,16 @@ let activeCol = null, autoRefresh = true, refreshTimer = null, activeTruck = nul
 let deleteTarget = { name: "", count: 0 };
 function esc(s) { return (s+"").replace(/\\/g,"\\\\").replace(/'/g,"\\'"); }
 function n2(v, d=2) { return (v===null||v===undefined||v===""||isNaN(v)) ? "-" : parseFloat(v).toFixed(d); }
+function motionBadge(m) {
+  const map = {
+    still:   ["m-still",   "⬛ Still"],
+    idle:    ["m-idle",    "🟠 Idle"],
+    moving:  ["m-moving",  "🟢 Moving"],
+    rough:   ["m-rough",   "🔴 Rough"],
+  };
+  const [cls, label] = map[m] || ["m-unknown", "— ?"];
+  return `<span class="motion-badge ${cls}">${label}</span>`;
+}
 
 // ── Sidebar ───────────────────────────────────────────────
 async function loadCollections() {
@@ -209,6 +225,7 @@ async function loadTruckGrid() {
       <div class="tc-row">X:<span class="av">${n2(latest.ax,3)}g</span> Y:<span class="av">${n2(latest.ay,3)}g</span> Z:<span class="av">${n2(latest.az,3)}g</span></div>
       <div class="tc-section">Gyroscope</div>
       <div class="tc-row">X:<span class="pv">${n2(latest.gx,1)}</span> Y:<span class="pv">${n2(latest.gy,1)}</span> Z:<span class="pv">${n2(latest.gz,1)}&deg;/s</span></div>
+      <div style="margin-top:10px">${motionBadge(latest.motion)}</div>
       <div class="tc-foot">${trucks[tid].length} records &nbsp;&middot;&nbsp; ${latest.timestamp||""}</div>
     </div>`;
   }).join("");
@@ -248,6 +265,7 @@ async function showTruckDetail(truckId) {
     <td class="gyr-val">${n2(d.gx,1)}</td>
     <td class="gyr-val">${n2(d.gy,1)}</td>
     <td class="gyr-val">${n2(d.gz,1)}</td>
+    <td>${motionBadge(d.motion)}</td>
     <td class="ts-val">${d.timestamp||""}</td>
   </tr>`).join("");
 
@@ -267,6 +285,7 @@ async function showTruckDetail(truckId) {
           <th class="gps-h" colspan="3" style="text-align:center;border-bottom:1px solid #1e4080;">GPS</th>
           <th class="acc-h" colspan="3" style="text-align:center;border-bottom:1px solid #1e4080;">Accelerometer (g)</th>
           <th class="gyr-h" colspan="3" style="text-align:center;border-bottom:1px solid #1e4080;">Gyroscope (deg/s)</th>
+          <th class="meta-h" rowspan="2">Motion</th>
           <th class="meta-h" rowspan="2">Timestamp</th>
         </tr>
         <tr>
