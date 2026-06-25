@@ -3,7 +3,7 @@ name: Deploy to Server
 on:
   push:
     branches:
-      - main  # or 'master' - change this to your default branch name
+      - main
 
 jobs:
   deploy:
@@ -19,32 +19,20 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd "/home/lenovo/6-2-2026-GPS/Latest GPS"
-            # 1. Update the code from GitHub
+            cd /home/lenovo1/LatestGPS
             git fetch https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git main
             git reset --hard FETCH_HEAD
-            
-            # 2. Update dependencies
-            ./venv/bin/python3 -m pip install -r requirements.txt
-            
-            # 3. Restart the app. It is managed by systemd (gps-server.service);
-            #    do NOT launch app.py manually here or you get duplicate instances
-            #    fighting over port 7777. Prefer a clean systemd restart; if this
-            #    user has no passwordless sudo, just kill the process and let
-            #    systemd's "Restart=always" respawn it with the new code.
+            ./venv/bin/python3 -m pip install -r requirements.txt --quiet
             if sudo -n systemctl restart gps-server.service 2>/dev/null; then
               echo "Restarted gps-server.service via systemd"
             else
-              echo "No passwordless sudo for systemctl; killing app.py so systemd respawns it"
               pkill -f "app.py" || true
             fi
-
-            # 4. Verify it came back up; fail loudly (and show the log) if not.
             sleep 8
             if pgrep -f "app.py" > /dev/null; then
-              echo "✅ Deployment Successful! app.py running at http://103.250.160.75:7777"
+              echo "Deployment Successful! app.py running at http://150.129.165.162:7777"
             else
-              echo "❌ app.py did NOT start. Last 40 lines of output.log:"
-              tail -n 40 output.log || true
+              echo "app.py did NOT start. Last 40 lines of output.log:"
+              tail -n 40 /home/lenovo1/LatestGPS/output.log || true
               exit 1
             fi
