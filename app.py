@@ -4151,6 +4151,29 @@ def delete_recording(file_path):
         return jsonify({"success": False, "message": str(e)}), 500
 
 
+@app.route("/truck_dashboard")
+def truck_dashboard():
+    if session.get('user_type') != 'admin': return redirect(url_for('login'))
+    from mongodb import mongo_client
+    gps_db = mongo_client["gps_server_db"]
+    # All trucks that have sent GPS data
+    all_truck_ids = gps_db["new_devices"].distinct("truck_id")
+    registered_ids = set(d["truck_id"] for d in gps_db["registered_trucks"].find({}, {"truck_id": 1}))
+    assign_map = {d["truck_id"]: d for d in gps_db["assign_devices"].find()}
+    trucks = []
+    for tid in sorted(all_truck_ids):
+        if not tid: continue
+        assign = assign_map.get(tid, {})
+        trucks.append({
+            "truck_id":    tid,
+            "is_registered": tid in registered_ids,
+            "username":    assign.get("username", ""),
+            "role":        assign.get("role", ""),
+            "assigned_at": str(assign.get("assigned_at", ""))[:19],
+        })
+    return render_template_string(get_template("TRUCK_DASHBOARD_HTML"), trucks=trucks, logo_url=LOGO_URL)
+
+
 @app.route("/list_roles")
 def list_roles():
     if session.get('user_type') != 'admin': return redirect(url_for('login'))
