@@ -235,6 +235,16 @@ def mongo_data(collection):
     return jsonify(docs)
 
 
+@app.route("/api/mongo_drop/<collection>", methods=["DELETE"])
+def mongo_drop(collection):
+    try:
+        from mongodb import mongo_client
+        mongo_client["gps_server_db"].drop_collection(collection)
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 def get_power_off_threshold():
     try:
         data = col_settings.find_one({"_id": "power_off_config"})
