@@ -58,8 +58,6 @@
   .m-unknown { background:#1e293b; color:#475569; border:1px solid #334155; }
   /* Group headers in table */
   .grp-sep th { background: #0f2744; padding: 4px 12px; font-size: 0.65rem; letter-spacing: .1em; border-top: 1px solid #1e4080; border-bottom: 1px solid #1e4080; }
-  .map-wrap { height: 200px; border-bottom: 1px solid #334155; display: none; }
-  .map-wrap iframe { width: 100%; height: 100%; border: none; }
   .empty { text-align: center; padding: 60px; color: #475569; }
   .empty i { font-size: 2.5rem; margin-bottom: 12px; display: block; }
   /* Truck cards */
@@ -246,10 +244,6 @@ async function showTruckDetail(truckId) {
   const all = await res.json();
   const docs = all.filter(d => d.truck_id === truckId);
 
-  let mapHtml = "";
-  if (docs[0] && docs[0].lat && docs[0].lng)
-    mapHtml = `<div class="map-wrap" style="display:block;"><iframe src="https://maps.google.com/maps?q=${docs[0].lat},${docs[0].lng}&z=15&output=embed"></iframe></div>`;
-
   const rows = docs.map(d => `<tr>
     <td class="truck-id">${d.truck_id||""}</td>
     <td class="gps-val">${n2(d.lat,6)}</td>
@@ -267,8 +261,7 @@ async function showTruckDetail(truckId) {
       <label class="auto-label" style="margin-left:auto;"><input type="checkbox" ${autoRefresh?"checked":""} onchange="toggleAuto(this)"> Auto-refresh</label>
       <button class="refresh-btn" onclick="showTruckDetail('${esc(truckId)}')">&#8635; Refresh</button>
     </div>
-    ${mapHtml}
-    <div class="table-wrap"><table>
+<div class="table-wrap"><table>
       <thead>
         <tr>
           <th class="meta-h">Truck</th>
@@ -294,9 +287,6 @@ async function loadData() {
     return;
   }
   const keys = Object.keys(docs[0]);
-  let mapHtml = "";
-  if (keys.includes("lat") && keys.includes("lng") && docs[0].lat && docs[0].lng)
-    mapHtml = `<div class="map-wrap" style="display:block;"><iframe src="https://maps.google.com/maps?q=${docs[0].lat},${docs[0].lng}&z=15&output=embed"></iframe></div>`;
   const rows = docs.map(d => `<tr>${keys.map(k => {
     let v = d[k]??"";
     if (k==="lat"||k==="lng") return `<td class="gps-val">${v}</td>`;
@@ -311,8 +301,7 @@ async function loadData() {
       <button class="refresh-btn" onclick="loadData()">&#8635; Refresh</button>
       <span style="font-size:.72rem;color:#475569;" id="lastRefresh"></span>
     </div>
-    ${mapHtml}
-    <div class="table-wrap"><table>
+<div class="table-wrap"><table>
       <thead><tr>${keys.map(k=>`<th>${k}</th>`).join("")}</tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
