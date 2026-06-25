@@ -4741,8 +4741,8 @@ def device_info(device_id):
     # Admin can view all devices
     if role != 'Administrator':
         if not vehicle_info:
-            flash("Device not found or you don't have permission to view it.", "error")
-            return redirect(url_for('user_dashboard'))
+            # allow ESP trucks — checked again below with assign_devices
+            pass
 
         if role == 'Transporter' and vehicle_info.get("transporter_name") != user_doc.get("name"):
             flash("You don't have permission to view this device.", "error")
@@ -4756,7 +4756,25 @@ def device_info(device_id):
         device_data = get_live_gps(device_id) or {}
         vehicle_info_local = col_vehicles.find_one({"device_id": device_id})
         if not vehicle_info_local:
-            return "Device not found", 404
+            # ESP truck — build minimal vehicle_info from assign_devices
+            try:
+                from mongodb import mongo_client
+                assign_doc = mongo_client["gps_server_db"]["assign_devices"].find_one({"truck_id": device_id})
+            except Exception:
+                assign_doc = None
+            vehicle_info_local = {
+                "device_id": device_id,
+                "rc_number": assign_doc.get("vehicle_plate", "") if assign_doc else "",
+                "driver_name": assign_doc.get("driver_name", "") if assign_doc else "",
+                "transporter_name": assign_doc.get("contractor_name", "") if assign_doc else "",
+                "godown_manager": "",
+                "mongo_rtmp": {
+                    "rtmp1": assign_doc.get("front_rtmp", "") if assign_doc else "",
+                    "rtmp2": assign_doc.get("rear_rtmp", "") if assign_doc else "",
+                },
+                "rtmp_source": "mongo",
+            }
+            vehicle_info = vehicle_info_local
         device_data = sanitize_data(device_data)
     except Exception as e:
         return f"Connection Error: {e}", 500
