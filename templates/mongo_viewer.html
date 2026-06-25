@@ -87,6 +87,7 @@
   .toast { position: fixed; bottom: 24px; right: 24px; background: #166534; color: #dcfce7; padding: 10px 20px; border-radius: 8px; font-size: .85rem; font-weight: 600; opacity: 0; transform: translateY(10px); transition: all .3s; z-index: 1000; pointer-events: none; }
   .toast.error { background: #7f1d1d; color: #fecaca; }
   .toast.show { opacity: 1; transform: translateY(0); }
+
 </style>
 </head>
 <body>
@@ -112,6 +113,7 @@
   <div class="sidebar">
     <div class="sidebar-title">Collections</div>
     <div id="colList"><div style="padding:20px;color:#475569;font-size:.82rem;">Loading...</div></div>
+
   </div>
   <div class="main" id="mainPanel">
     <div class="placeholder">
@@ -341,6 +343,7 @@ function showToast(msg, isError) {
   setTimeout(()=>t.classList.remove("show"), 3000);
 }
 document.getElementById("modalBg").addEventListener("click", e=>{ if(e.target.id==="modalBg") closeModal(); });
+
 loadCollections();
 setInterval(loadCollections, 10000);
 </script>
