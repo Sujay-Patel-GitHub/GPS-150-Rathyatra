@@ -1260,6 +1260,46 @@ def get_processed_vehicles_list():
             "trip_status": "Ongoing" if raw_trip_status == "1" else "Stop",
             "speed": speed
         })
+
+    # Also include ESP trucks from registered_trucks (new GPS db)
+    try:
+        from mongodb import mongo_client
+        gps_db = mongo_client["gps_server_db"]
+        existing_ids = set(v["device_id"] for v in vehicles_list)
+        latest_map = {}
+        for doc in gps_db["new_devices"].find({}, {"truck_id":1,"lat":1,"lng":1,"speed":1,"timestamp":1}).sort("timestamp", -1):
+            tid = doc.get("truck_id")
+            if tid and tid not in latest_map:
+                latest_map[tid] = doc
+        assign_map = {d["truck_id"]: d for d in gps_db["assign_devices"].find({}, {"_id":0})}
+        threshold_sec = get_power_off_threshold() * 60
+        for doc in gps_db["registered_trucks"].find({}, {"truck_id":1}):
+            tid = doc.get("truck_id")
+            if not tid or tid in existing_ids:
+                continue
+            nd = latest_map.get(tid, {})
+            ts = nd.get("timestamp")
+            lat = nd.get("lat", 23.0225)
+            lng = nd.get("lng", 72.5714)
+            has_gps = bool(nd and lat and lng and not (lat == 23.0225 and lng == 72.5714))
+            a = assign_map.get(tid, {})
+            vehicles_list.append({
+                "device_id": tid,
+                "rc_number": a.get("vehicle_plate", ""),
+                "driver_name": a.get("driver_name", ""),
+                "transporter_name": a.get("contractor_name", ""),
+                "godown_manager": "",
+                "lat": lat, "lng": lng, "has_gps": has_gps,
+                "last_updated_date": ts.strftime("%d-%b-%Y") if ts else "N/A",
+                "last_updated_time": ts.strftime("%I:%M:%S %p") if ts else "",
+                "is_power_off": (datetime.now() - ts).total_seconds() > threshold_sec if ts else True,
+                "camera_status": "No Data", "is_recording": False,
+                "trip_number": 0, "trip_status": "Stop",
+                "speed": nd.get("speed", 0)
+            })
+    except Exception as e:
+        print(f"Error adding ESP trucks to vehicles list: {e}")
+
     return vehicles_list
 
 
