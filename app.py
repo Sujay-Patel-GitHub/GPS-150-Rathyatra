@@ -5070,6 +5070,9 @@ def device_info(device_id):
         device_role = _ad.get("role", "") if _ad else ""
     except Exception:
         device_role = ""
+    # If truck user logged in directly, force truck role
+    if session.get('user_type') == 'truck':
+        device_role = "TRUCK_USER"
 
     return render_template_string(
         get_template("DEVICE_DASHBOARD_HTML"),
