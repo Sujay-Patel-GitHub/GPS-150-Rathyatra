@@ -422,6 +422,20 @@
 
     {% include 'sidebar.html' %}
 
+    <!-- Operator Details Modal -->
+    <div id="detailsModal" style="display:none;position:fixed;inset:0;background:#00000066;z-index:2000;align-items:center;justify-content:center;padding:20px 0;">
+        <div style="background:#fff;border-radius:16px;width:92%;max-width:460px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px #0003;margin:auto;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #f1f5f9;position:sticky;top:0;background:#fff;z-index:1;">
+                <div>
+                    <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#f97316;">Operator Details</div>
+                    <div id="detailTitle" style="font-size:0.95rem;font-weight:700;color:#111827;margin-top:2px;"></div>
+                </div>
+                <button onclick="closeDetails()" style="background:none;border:none;font-size:1.3rem;color:#9ca3af;cursor:pointer;line-height:1;">×</button>
+            </div>
+            <div id="detailBody" style="padding:18px 22px 22px;"></div>
+        </div>
+    </div>
+
     <!-- User Details Modal -->
     <div class="modal-overlay" id="userModal" onclick="closeModalOnOverlay(event)">
         <div class="modal">
@@ -510,7 +524,9 @@
                     {% for user in roles_data[role_key] %}
                     <div class="user-card"
                          data-name="{{ user.username|lower }}"
-                         data-username="{{ user.truck_id|lower }}">
+                         data-username="{{ user.truck_id|lower }}"
+                         onclick="viewAssignDetails('{{ user.truck_id }}','{{ role_key }}')"
+                         style="cursor:pointer;">
                         <div class="user-avatar" style="background:linear-gradient(135deg,{{ color }},{{ color }}99);">
                             {{ user.username[0]|upper if user.username else '?' }}
                         </div>
@@ -869,12 +885,58 @@
         }
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeModal();
+            if (e.key === 'Escape') { closeModal(); closeDetails(); }
         });
 
         window.addEventListener('DOMContentLoaded', () => {
             showRole('superadmin');
         });
+
+        function closeDetails() {
+            document.getElementById('detailsModal').style.display = "none";
+        }
+
+        async function viewAssignDetails(truckId, role) {
+            document.getElementById('detailsModal').style.display = "flex";
+            document.getElementById('detailTitle').innerText = role + ' — ' + truckId;
+            document.getElementById('detailBody').innerHTML = '<div style="text-align:center;padding:30px;color:#9ca3af;"><i class="fas fa-spinner fa-spin" style="font-size:1.5rem;"></i></div>';
+            const res  = await fetch('/api/assign_device/' + encodeURIComponent(truckId));
+            const data = await res.json();
+            if (!data.ok) {
+                document.getElementById('detailBody').innerHTML = '<p style="color:#dc2626;text-align:center;padding:20px;">Failed to load details.</p>';
+                return;
+            }
+            const d = data.doc;
+            const row = (icon, lbl, val) => val ? `
+                <div style="display:flex;align-items:flex-start;gap:12px;padding:10px;background:#f9fafb;border-radius:8px;margin-bottom:8px;">
+                    <div style="width:32px;height:32px;background:#fff7ed;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="fas ${icon}" style="color:#f97316;font-size:0.78rem;"></i>
+                    </div>
+                    <div>
+                        <div style="font-size:0.67rem;color:#9ca3af;margin-bottom:2px;text-transform:uppercase;letter-spacing:.06em;">${lbl}</div>
+                        <div style="font-size:0.88rem;color:#111827;font-weight:600;word-break:break-all;">${val}</div>
+                    </div>
+                </div>` : '';
+            let html = row('fa-truck',        'Truck ID',           d.truck_id)
+                     + row('fa-user',         'Username',           d.username)
+                     + row('fa-tag',          'Role',               d.role)
+                     + row('fa-calendar',     'Assigned At',        d.assigned_at ? d.assigned_at.slice(0,19) : '')
+                     + row('fa-user-shield',  'Officer in Charge',  d.officer_pi)
+                     + row('fa-phone',        'PI Contact',         d.pi_contact)
+                     + row('fa-building',     'Police Station',     d.police_station)
+                     + row('fa-id-card',      'Vehicle Plate',      d.vehicle_plate)
+                     + row('fa-id-badge',     'Driver Name',        d.driver_name)
+                     + row('fa-mobile-alt',   'Driver Mobile',      d.driver_mobile)
+                     + row('fa-hard-hat',     'Contractor Name',    d.contractor_name)
+                     + row('fa-phone-alt',    'Contractor Mobile',  d.contractor_mobile)
+                     + row('fa-video',        'Front RTMP',         d.front_rtmp)
+                     + row('fa-video',        'Rear RTMP',          d.rear_rtmp);
+            document.getElementById('detailBody').innerHTML = html || '<p style="color:#9ca3af;text-align:center;padding:20px;">No details recorded.</p>';
+        }
+
+        window.onclick = function(e) {
+            if (e.target === document.getElementById('detailsModal')) closeDetails();
+        }
 
     </script>
 </body>

@@ -345,7 +345,8 @@ def assign_device():
     }
     # Role-specific detail fields (AKHADA for now; extendable for RATH etc.)
     detail_keys = ["officer_pi", "pi_contact", "police_station", "vehicle_plate",
-                   "driver_name", "driver_mobile", "front_rtmp", "rear_rtmp"]
+                   "driver_name", "driver_mobile", "front_rtmp", "rear_rtmp",
+                   "contractor_name", "contractor_mobile", "password"]
     for k in detail_keys:
         val = str(data.get(k, "")).strip()
         if val:
@@ -358,6 +359,22 @@ def assign_device():
             upsert=True
         )
         return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/assign_device/<truck_id>", methods=["GET"])
+def get_assign_device(truck_id):
+    try:
+        from mongodb import mongo_client
+        doc = mongo_client["gps_server_db"]["assign_devices"].find_one(
+            {"truck_id": truck_id}, {"_id": 0, "password": 0}
+        )
+        if not doc:
+            return jsonify({"ok": False, "error": "Not found"}), 404
+        if "assigned_at" in doc:
+            doc["assigned_at"] = str(doc["assigned_at"])
+        return jsonify({"ok": True, "doc": doc})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
