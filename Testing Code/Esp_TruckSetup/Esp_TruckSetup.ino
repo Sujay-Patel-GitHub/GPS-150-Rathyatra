@@ -46,7 +46,6 @@ struct SharedData {
   // Gyroscope (deg/s)
   float gx, gy, gz;
   // Temperature (C)
-  float temp_c;
 };
 static SharedData shared = {};
 
@@ -193,7 +192,7 @@ void TaskMPU(void* pv) {
     float ax_   = raw[0] * ACC_SCALE;
     float ay_   = raw[1] * ACC_SCALE;
     float az_   = raw[2] * ACC_SCALE;
-    float temp_ = raw[3] / 340.0f + 36.53f;
+    // raw[3] = temperature, not used
     float gx_   = raw[4] * GYR_SCALE;
     float gy_   = raw[5] * GYR_SCALE;
     float gz_   = raw[6] * GYR_SCALE;
@@ -202,7 +201,6 @@ void TaskMPU(void* pv) {
     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(5)) == pdTRUE) {
       shared.ax = ax_; shared.ay = ay_; shared.az = az_;
       shared.gx = gx_; shared.gy = gy_; shared.gz = gz_;
-      shared.temp_c = temp_;
       xSemaphoreGive(dataMutex);
     }
 
@@ -214,8 +212,8 @@ void TaskMPU(void* pv) {
 
     Serial.printf("[GPS] %s  Lat:%.6f Lng:%.6f Spd:%.1f km/h\n",
       snap.gps_valid ? "OK " : "---", snap.lat, snap.lng, snap.speed_kmph);
-    Serial.printf("[ACC] X:%.3fg Y:%.3fg Z:%.3fg  [GYR] X:%.1f Y:%.1f Z:%.1f deg/s  [TMP] %.1fC\n",
-      snap.ax, snap.ay, snap.az, snap.gx, snap.gy, snap.gz, snap.temp_c);
+    Serial.printf("[ACC] X:%.3fg Y:%.3fg Z:%.3fg  [GYR] X:%.1f Y:%.1f Z:%.1f deg/s\n",
+      snap.ax, snap.ay, snap.az, snap.gx, snap.gy, snap.gz);
 
     // Push to server every 5 seconds
     uint32_t now = millis();
@@ -226,12 +224,10 @@ void TaskMPU(void* pv) {
       snprintf(body, sizeof(body),
         "{\"lat\":%.6f,\"lng\":%.6f,\"speed\":%.2f,"
         "\"ax\":%.4f,\"ay\":%.4f,\"az\":%.4f,"
-        "\"gx\":%.3f,\"gy\":%.3f,\"gz\":%.3f,"
-        "\"temp_c\":%.2f}",
+        "\"gx\":%.3f,\"gy\":%.3f,\"gz\":%.3f}",
         snap.lat, snap.lng, snap.speed_kmph,
         snap.ax,  snap.ay,  snap.az,
-        snap.gx,  snap.gy,  snap.gz,
-        snap.temp_c
+        snap.gx,  snap.gy,  snap.gz
       );
 
       HTTPClient http;
@@ -251,6 +247,30 @@ void TaskMPU(void* pv) {
 void setup() {
   Serial.begin(115200);
   EEPROM.begin(EEPROM_SIZE);
+
+  // ── EEPROM erase: hold BOOT button (GPIO0) for 3 seconds at startup ──
+  pinMode(0, INPUT_PULLUP);
+  if (digitalRead(0) == LOW) {
+    Serial.println("BOOT held -- hold 3s to erase EEPROM and re-enter setup...");
+    uint32_t held = millis();
+    while (digitalRead(0) == LOW) {
+      uint32_t elapsed = millis() - held;
+      Serial.printf("  %lu / 3000 ms", elapsed);
+      if (elapsed >= 3000) {
+        Serial.println("
+>>> Erasing EEPROM (WiFi + Truck Number cleared)...");
+        for (int i = 0; i < EEPROM_SIZE; i++) EEPROM.write(i, 0);
+        EEPROM.commit();
+        Serial.println(">>> Done! Restarting into setup portal...");
+        delay(1000);
+        ESP.restart();
+      }
+      delay(100);
+    }
+    Serial.println("
+  Released before 3s -- normal boot continues.");
+  }
+
   gpsSerial.begin(GPS_BAUD, SERIAL_8N1, GPS_RX, GPS_TX);
 
   // MPU-6050 init

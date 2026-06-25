@@ -205,8 +205,6 @@ def truck_gps(truck_id):
             "gx": f("gx"),
             "gy": f("gy"),
             "gz": f("gz"),
-            # Temperature
-            "temp_c": f("temp_c"),
             "timestamp": datetime.now()
         })
         return jsonify({"ok": True}), 200
