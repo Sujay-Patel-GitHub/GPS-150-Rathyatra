@@ -4211,6 +4211,28 @@ def grouping():
     return render_template_string(get_template("GROUPING_HTML"), akhadas=akhadas, trucks=trucks,
                            groups=groups, logo_url=LOGO_URL)
 
+@app.route("/akhada_test_login", methods=["GET", "POST"])
+def akhada_test_login():
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+        from mongodb import mongo_client
+        results = []
+        for doc in mongo_client["gps_server_db"]["assign_devices"].find({"role": "AKHADA_USER"}):
+            su = str(doc.get("username", "")).strip()
+            sp = str(doc.get("password", "")).strip()
+            match = (su.lower() == username.lower() and sp == password)
+            results.append({"stored_user": su, "stored_pass": sp, "input_user": username, "input_pass": password, "match": match})
+            if match:
+                session.clear()
+                session['user_type'] = 'akhada'
+                session['akhada_username'] = su
+                session['akhada_truck_id'] = str(doc.get("truck_id", ""))
+                session.modified = True
+                return f"<h2>LOGIN OK</h2><p>user_type=akhada username={su}</p><p>Session: {dict(session)}</p><a href='/akhada_dashboard'>Go to Dashboard &rarr;</a>"
+        return f"<h2>LOGIN FAILED</h2><pre>{results}</pre>"
+    return '<form method=POST>user:<input name=username> pass:<input name=password type=password><button>Test</button></form>'
+
 @app.route("/api/debug_akhada_users")
 def debug_akhada_users():
     if session.get('user_type') != 'admin': return jsonify({"error": "Unauthorized"}), 403
@@ -4273,25 +4295,27 @@ def get_grouping(akhada_id):
 def akhada_login():
     if session.get('user_type') == 'akhada':
         return redirect(url_for('akhada_dashboard'))
+    error = None
     if request.method == "POST":
-        username = request.form.get("username", "").strip().lower()
+        username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
         try:
             from mongodb import mongo_client
-            # Fetch all akhada users, compare manually (case-insensitive)
             for doc in mongo_client["gps_server_db"]["assign_devices"].find({"role": "AKHADA_USER"}):
-                stored_user = str(doc.get("username", "")).strip().lower()
-                stored_pass = str(doc.get("password", "")).strip()
-                if stored_user == username and stored_pass == password:
+                su = str(doc.get("username", "")).strip()
+                sp = str(doc.get("password", "")).strip()
+                if su.lower() == username.lower() and sp == password:
+                    session.clear()
                     session['user_type']       = 'akhada'
-                    session['akhada_username'] = doc.get("username", username)
-                    session['akhada_truck_id'] = doc.get("truck_id", "")
-                    return redirect(url_for('akhada_dashboard'))
-            print(f"[akhada_login] no match for username='{username}'")
+                    session['akhada_username'] = su
+                    session['akhada_truck_id'] = str(doc.get("truck_id", ""))
+                    session.modified = True
+                    return redirect('/akhada_dashboard')
+            error = f"No match. Tried username='{username}' password='{password}'"
         except Exception as e:
-            print(f"[akhada_login] error: {e}")
-        flash("Invalid username or password.", "error")
-    return render_template_string(get_template("AKHADA_LOGIN_HTML"), logo_url=LOGO_URL)
+            error = f"DB error: {e}"
+    login_html = get_template("AKHADA_LOGIN_HTML")
+    return render_template_string(login_html, logo_url=LOGO_URL, error=error)
 
 @app.route("/akhada_dashboard")
 def akhada_dashboard():
