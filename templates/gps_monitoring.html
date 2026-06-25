@@ -642,24 +642,29 @@
         }
 
         // --- Map Markers ---
-        const carIcon = L.divIcon({
-            className: 'custom-marker',
-            html: `<div style="position: relative; width: 40px; height: 40px; display: flex; justify-content: center;">
-                <i class="fas fa-map-marker" style="color: #dc2626; font-size: 2.5rem; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));"></i>
-                <div style="position: absolute; top: 6px; width: 22px; height: 22px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-truck" style="color: black; font-size: 10px;"></i>
-                </div>
-            </div>`,
-            iconSize: [40, 48],
-            iconAnchor: [20, 48],
-            popupAnchor: [0, -48]
-        });
+        function makeIcon(role) {
+            const isTruck   = role === 'TRUCK_USER';
+            const isAkhada  = role === 'AKHADA_USER';
+            const pinColor  = isAkhada ? '#8b5cf6' : isTruck ? '#f97316' : '#dc2626';
+            const dotColor  = isAkhada ? '#7c3aed' : isTruck ? '#ea6500' : '#111';
+            const faIcon    = isAkhada ? 'fa-shield-alt' : 'fa-truck';
+            return L.divIcon({
+                className: '',
+                html: `<div style="position:relative;width:40px;height:48px;display:flex;justify-content:center;">
+                    <i class="fas fa-map-marker" style="color:${pinColor};font-size:2.5rem;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35));"></i>
+                    <div style="position:absolute;top:6px;width:22px;height:22px;background:white;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas ${faIcon}" style="color:${dotColor};font-size:10px;"></i>
+                    </div>
+                </div>`,
+                iconSize: [40, 48], iconAnchor: [20, 48], popupAnchor: [0, -48]
+            });
+        }
 
         function initMarkers() {
             vehicles.forEach(v => {
                 if (!v.lat || !v.lng) return;
-
-                const marker = L.marker([v.lat, v.lng], { icon: carIcon }).addTo(map);
+                const role = (assignMap[v.device_id] || {}).role || '';
+                const marker = L.marker([v.lat, v.lng], { icon: makeIcon(role) }).addTo(map);
 
                 const popupContent = `
                     <div style="min-width: 200px; font-family: 'Poppins', sans-serif;">
