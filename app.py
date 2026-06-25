@@ -336,6 +336,33 @@ def reset_status(truck_id):
         return jsonify({"status": "error", "error": str(e)})
 
 
+# ── MOSFET Control ───────────────────────────────────────────
+@app.route("/api/mosfet_set/<truck_id>", methods=["POST"])
+def mosfet_set(truck_id):
+    data = request.get_json(silent=True) or {}
+    state = int(data.get("state", 0))  # 1 = ON, 0 = OFF
+    try:
+        from mongodb import mongo_client
+        mongo_client["gps_server_db"]["mosfet_states"].update_one(
+            {"truck_id": truck_id},
+            {"$set": {"truck_id": truck_id, "state": state, "updated_at": datetime.now()}},
+            upsert=True
+        )
+        return jsonify({"ok": True, "state": state})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/mosfet_state/<truck_id>", methods=["GET"])
+def mosfet_state(truck_id):
+    try:
+        from mongodb import mongo_client
+        doc = mongo_client["gps_server_db"]["mosfet_states"].find_one({"truck_id": truck_id})
+        return jsonify({"state": doc["state"] if doc else 0})
+    except Exception as e:
+        return jsonify({"state": 0, "error": str(e)})
+
+
 # ── Device Registration ──────────────────────────────────────
 @app.route("/api/devices/all", methods=["GET"])
 def devices_all():
