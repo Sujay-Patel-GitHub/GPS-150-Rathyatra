@@ -952,6 +952,36 @@ def admin_dashboard():
                 "trip_status": "Ongoing" if raw_trip_status == "1" else "Stop"
             })
 
+    # ── Append ESP trucks from new_devices as unregistered ──
+    try:
+        from mongodb import mongo_client
+        gps_db = mongo_client["gps_server_db"]
+        registered_truck_ids = set(d["truck_id"] for d in gps_db["registered_trucks"].find({}, {"truck_id": 1}))
+        existing_ids = set(d["device_name"] for d in devices_display_list)
+        # Get latest record per truck_id from new_devices
+        for doc in gps_db["new_devices"].aggregate([
+            {"$sort": {"timestamp": -1}},
+            {"$group": {"_id": "$truck_id", "lat": {"$first": "$lat"}, "lng": {"$first": "$lng"}, "ts": {"$first": "$timestamp"}}}
+        ]):
+            tid = doc["_id"]
+            if not tid or tid in existing_ids:
+                continue
+            ts = doc.get("ts")
+            ts_str = ts.strftime("%d-%b-%Y %I:%M:%S %p") if ts else "N/A"
+            devices_display_list.append({
+                "id": len(devices_display_list) + 1,
+                "device_name": tid,
+                "is_registered": tid in registered_truck_ids,
+                "rc_number": "", "transporter": "", "transporter_phone": "",
+                "godown_manager": "", "godown_phone": "", "driver_name": "", "driver_phone": "",
+                "gps_lat": doc.get("lat"), "gps_lng": doc.get("lng"),
+                "last_updated_date": ts_str, "last_updated_time": "",
+                "is_power_off": False, "camera_status": "N/A",
+                "is_recording": False, "trip_number": 0, "trip_status": "N/A"
+            })
+    except Exception as e:
+        pass  # don't break dashboard if new_devices query fails
+
     return render_template_string(
         get_template("SHOW_DEVICES_HTML"),
         devices=devices_display_list,
