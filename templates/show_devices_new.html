@@ -886,21 +886,6 @@
                                 </div>
                             </div>
 
-                            <div class="info-item" id="trip-block-{{ device.device_name|upper }}">
-                                <i class="fas fa-route"
-                                    style="color: #6366f1; background: #e0e7ff; padding: 6px; border-radius: 6px; font-size: 0.9rem;"></i>
-                                <div class="info-content">
-                                    <span class="info-label trip-num-label" style="font-size: 0.6rem;">Trip #{{
-                                        device.trip_number }}</span>
-                                    <span
-                                        class="camera-status trip-status-badge {% if device.trip_status == 'Ongoing' %}camera-on{% else %}camera-none{% endif %}"
-                                        style="font-size: 0.55rem; padding: 1px 4px;">
-                                        {% if device.trip_status == 'Ongoing' %}<span class="pulse-on"></span>{% endif
-                                        %}
-                                        <span class="status-text">{{ device.trip_status }}</span>
-                                    </span>
-                                </div>
-                            </div>
                         </div>
                         {% else %}
                         <div class="unregistered-msg">
@@ -1086,29 +1071,6 @@
                             } else {
                                 recIndicator.className = 'recording-inactive';
                                 recIndicator.title = 'Recording Inactive';
-                            }
-                        }
-
-                        const tripBlock = document.getElementById(`trip-block-${upperId}`);
-                        if (tripBlock) {
-                            const tripNumLabel = tripBlock.querySelector('.trip-num-label');
-                            const statusBadge = tripBlock.querySelector('.trip-status-badge');
-                            const statusText = tripBlock.querySelector('.status-text');
-
-                            if (tripNumLabel) tripNumLabel.textContent = `Trip #${data.trip_number}`;
-                            if (statusText) statusText.textContent = data.trip_status;
-
-                            if (data.trip_status === 'Ongoing') {
-                                statusBadge.className = 'camera-status trip-status-badge camera-on';
-                                if (!statusBadge.querySelector('.pulse-on')) {
-                                    const pulse = document.createElement('span');
-                                    pulse.className = 'pulse-on';
-                                    statusBadge.prepend(pulse);
-                                }
-                            } else {
-                                statusBadge.className = 'camera-status trip-status-badge camera-none';
-                                const pulse = statusBadge.querySelector('.pulse-on');
-                                if (pulse) pulse.remove();
                             }
                         }
 
