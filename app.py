@@ -4211,6 +4211,20 @@ def grouping():
     return render_template_string(get_template("GROUPING_HTML"), akhadas=akhadas, trucks=trucks,
                            groups=groups, logo_url=LOGO_URL)
 
+@app.route("/api/debug_akhada_users")
+def debug_akhada_users():
+    if session.get('user_type') != 'admin': return jsonify({"error": "Unauthorized"}), 403
+    from mongodb import mongo_client
+    users = []
+    for doc in mongo_client["gps_server_db"]["assign_devices"].find({"role": "AKHADA_USER"}):
+        users.append({
+            "truck_id": doc.get("truck_id"),
+            "username": doc.get("username"),
+            "has_password": bool(doc.get("password")),
+            "password_len": len(str(doc.get("password", ""))),
+        })
+    return jsonify(users)
+
 @app.route("/api/get_password/<truck_id>")
 def get_password(truck_id):
     if session.get('user_type') != 'admin': return jsonify({"ok": False}), 403
@@ -4260,20 +4274,22 @@ def akhada_login():
     if session.get('user_type') == 'akhada':
         return redirect(url_for('akhada_dashboard'))
     if request.method == "POST":
-        username = request.form.get("username", "").strip()
+        username = request.form.get("username", "").strip().lower()
         password = request.form.get("password", "").strip()
         try:
             from mongodb import mongo_client
-            doc = mongo_client["gps_server_db"]["assign_devices"].find_one(
-                {"username": {"$regex": f"^{username}$", "$options": "i"}, "role": "AKHADA_USER"}
-            )
-            if doc and doc.get("password", "") == password:
-                session['user_type']       = 'akhada'
-                session['akhada_username'] = doc.get("username", username)
-                session['akhada_truck_id'] = doc.get("truck_id", "")
-                return redirect(url_for('akhada_dashboard'))
+            # Fetch all akhada users, compare manually (case-insensitive)
+            for doc in mongo_client["gps_server_db"]["assign_devices"].find({"role": "AKHADA_USER"}):
+                stored_user = str(doc.get("username", "")).strip().lower()
+                stored_pass = str(doc.get("password", "")).strip()
+                if stored_user == username and stored_pass == password:
+                    session['user_type']       = 'akhada'
+                    session['akhada_username'] = doc.get("username", username)
+                    session['akhada_truck_id'] = doc.get("truck_id", "")
+                    return redirect(url_for('akhada_dashboard'))
+            print(f"[akhada_login] no match for username='{username}'")
         except Exception as e:
-            print(f"Akhada login error: {e}")
+            print(f"[akhada_login] error: {e}")
         flash("Invalid username or password.", "error")
     return render_template_string(get_template("AKHADA_LOGIN_HTML"), logo_url=LOGO_URL)
 
