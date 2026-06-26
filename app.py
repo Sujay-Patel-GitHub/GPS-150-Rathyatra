@@ -1,5 +1,5 @@
 from flask import Flask, request, render_template, render_template_string, redirect, url_for, abort, jsonify, \
-    session, flash, send_from_directory, Response, send_file, make_response
+    session, flash, send_from_directory, Response, send_file
 import requests
 import os
 import time
@@ -44,11 +44,6 @@ def inject_common_vars():
 # --- RTMP Stream Configuration ---
 STREAM_ROOT = Path(__file__).parent / "streams"
 STREAM_ROOT.mkdir(exist_ok=True)
-# Wipe stale segments on startup so HLS.js never loads old data
-import shutil as _shutil
-for _d in STREAM_ROOT.iterdir():
-    if _d.is_dir():
-        _shutil.rmtree(_d, ignore_errors=True)
 
 PROCESS_TABLE = {}
 LAST_HEARTBEAT = {}
@@ -663,8 +658,8 @@ def start_ffmpeg(src, out_dir):
     cmd = [
         "ffmpeg", "-fflags", "nobuffer", "-rtbufsize", "1500M",
         "-i", src, "-c:v", "copy", "-c:a", "aac", "-ar", "44100", "-b:a", "128k",
-        "-f", "hls", "-hls_time", "2", "-hls_list_size", "5", "-hls_allow_cache", "0",
-        "-hls_flags", "delete_segments+omit_endlist+independent_segments",
+        "-f", "hls", "-hls_time", "2", "-hls_list_size", "1500", "-hls_allow_cache", "0",
+        "-hls_flags", "delete_segments+append_list+omit_endlist+independent_segments",
         "-hls_segment_filename", str(out_dir / "segment_%03d.ts"),
         str(out_dir / "index.m3u8"),
     ]
@@ -5102,7 +5097,7 @@ def device_info(device_id):
     if session.get('user_type') == 'truck':
         device_role = "TRUCK_USER"
 
-    resp = make_response(render_template_string(
+    return render_template_string(
         get_template("DEVICE_DASHBOARD_HTML"),
         device_id=device_id,
         initial_data=device_data,
@@ -5112,10 +5107,7 @@ def device_info(device_id):
         tr_phone=tr_phone,
         dr_phone=dr_phone,
         device_role=device_role
-    ))
-    resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-    resp.headers['Pragma'] = 'no-cache'
-    return resp
+    )
 
 
 # --- GPS API Routes ---
@@ -5151,25 +5143,19 @@ def play_rtmp():
 
     stream_id = str(abs(hash(src)))[:10]
     out_dir = STREAM_ROOT / stream_id
+    out_dir.mkdir(exist_ok=True)
 
     with PROCESS_LOCK:
         LAST_HEARTBEAT[stream_id] = time.time()
-        proc = PROCESS_TABLE.get(stream_id)
-        if proc is None or proc.poll() is not None:
-            if out_dir.exists():
-                for f in out_dir.glob("*.m3u8"): f.unlink(missing_ok=True)
-                for f in out_dir.glob("*.ts"): f.unlink(missing_ok=True)
-            out_dir.mkdir(exist_ok=True)
+        if stream_id not in PROCESS_TABLE or PROCESS_TABLE[stream_id].poll() is not None:
             PROCESS_TABLE[stream_id] = start_ffmpeg(src, out_dir)
 
-    # Wait up to 20s for first segment
-    for _ in range(40):
-        if (out_dir / "index.m3u8").exists():
-            break
+    for _ in range(60):
+        if (out_dir / "index.m3u8").exists(): break
         time.sleep(0.5)
 
     if not (out_dir / "index.m3u8").exists():
-        return jsonify({"error": "Stream timeout - RTMP source may be offline"}), 500
+        return jsonify({"error": "Stream timeout"}), 500
 
     return jsonify({"hls_url": f"/hls/{stream_id}/index.m3u8", "stream_id": stream_id})
 
