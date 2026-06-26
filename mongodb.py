@@ -4,7 +4,7 @@ import sys
 # --- MONGODB CONFIGURATION ---
 try:
     # Connect to local MongoDB
-    mongo_client = MongoClient("mongodb://localhost:27017/")
+    mongo_client = MongoClient("mongodb://localhost:27017/", w=1, j=True)
 
     # Main Database: gps_server_db
     db = mongo_client["gps_server_db"]
