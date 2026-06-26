@@ -1027,6 +1027,7 @@ def admin_dashboard():
             last_updated_date = "N/A"
             last_updated_time = ""
             is_power_off = True
+            is_online_1m = False
             try:
                 date_str = location.get("date", "")
                 time_str = location.get("time", "")
@@ -1040,15 +1041,14 @@ def admin_dashboard():
 
                     # Check if more than configured threshold ago
                     threshold_sec = get_power_off_threshold() * 60
-                    if (datetime.now() - ist_time).total_seconds() > threshold_sec:
-                        is_power_off = True
-                    else:
-                        is_power_off = False
+                    is_power_off = (datetime.now() - ist_time).total_seconds() > threshold_sec
+                    is_online_1m = (datetime.now() - ist_time).total_seconds() <= 60
 
                     last_updated_date = ist_time.strftime("%d-%b-%Y")
                     last_updated_time = ist_time.strftime("%I:%M:%S %p")
                 else:
                     is_power_off = True
+                    is_online_1m = False
             except:
                 pass
         except:
@@ -1116,6 +1116,7 @@ def admin_dashboard():
                 "last_updated_date": last_updated_date,
                 "last_updated_time": last_updated_time,
                 "is_power_off": is_power_off,
+                "is_online_1m": is_online_1m,
                 "camera_status": camera_status,
                 "is_recording": is_recording,
                 "trip_number": latest_trip_num,
@@ -1172,6 +1173,7 @@ def admin_dashboard():
                 "last_updated_date": last_updated_date,
                 "last_updated_time": last_updated_time,
                 "is_power_off": is_power_off,
+                "is_online_1m": is_online_1m,
                 "camera_status": camera_status,
                 "is_recording": is_recording,
                 "trip_number": latest_trip_num,
@@ -1201,6 +1203,7 @@ def admin_dashboard():
                     dev["last_updated_date"] = ts.strftime("%d-%b-%Y")
                     dev["last_updated_time"] = ts.strftime("%I:%M:%S %p")
                     dev["is_power_off"] = (datetime.now() - ts).total_seconds() > threshold_sec
+                    dev["is_online_1m"] = (datetime.now() - ts).total_seconds() <= 60
                 if ndoc.get("lat"):
                     dev["gps_lat"] = ndoc.get("lat")
                     dev["gps_lng"] = ndoc.get("lng")
@@ -1244,7 +1247,9 @@ def admin_dashboard():
                 "godown_manager": "", "godown_phone": "", "driver_name": a.get("driver_name",""), "driver_phone": "",
                 "gps_lat": doc.get("lat"), "gps_lng": doc.get("lng"),
                 "last_updated_date": ts_date, "last_updated_time": ts_time,
-                "is_power_off": is_po, "camera_status": "N/A",
+                "is_power_off": is_po,
+                "is_online_1m": is_ol_1m,
+                "camera_status": "N/A",
                 "is_recording": False, "trip_number": 0, "trip_status": "N/A"
             })
     except Exception as e:
@@ -1499,6 +1504,7 @@ def get_vehicle_gps(device_id):
         last_updated_date = "N/A"
         last_updated_time = ""
         is_power_off = True
+        is_online_1m = False
         try:
             date_str = location.get("date", "")
             time_str = location.get("time", "")
@@ -1515,16 +1521,15 @@ def get_vehicle_gps(device_id):
 
                 # Check if more than configured threshold ago
                 threshold_sec = get_power_off_threshold() * 60
-                if (datetime.now() - ist_time).total_seconds() > threshold_sec:
-                    is_power_off = True
-                else:
-                    is_power_off = False
+                is_power_off = (datetime.now() - ist_time).total_seconds() > threshold_sec
+                is_online_1m = (datetime.now() - ist_time).total_seconds() <= 60
 
                 # Format the output
                 last_updated_date = ist_time.strftime("%d-%b-%Y")
                 last_updated_time = ist_time.strftime("%I:%M:%S %p")
             else:
                 is_power_off = True
+                is_online_1m = False
         except Exception as e:
             print(f"Error converting timestamp for {device_id}: {e}")
             pass
@@ -1541,6 +1546,7 @@ def get_vehicle_gps(device_id):
                 last_updated_date = ts.strftime("%d-%b-%Y")
                 last_updated_time = ts.strftime("%I:%M:%S %p")
                 is_power_off = (datetime.now() - ts).total_seconds() > threshold_sec
+                is_online_1m = (datetime.now() - ts).total_seconds() <= 60
                 if (lat is None or lat == 0) and nd.get("lat"):
                     lat = nd["lat"]
                     lon = nd["lng"]
@@ -1562,6 +1568,7 @@ def get_vehicle_gps(device_id):
                         ts = nd["timestamp"]
                         last_updated_date = ts.strftime("%d-%b-%Y")
                         last_updated_time = ts.strftime("%I:%M:%S %p")
+                        is_online_1m = (datetime.now() - ts).total_seconds() <= 60
             except Exception:
                 pass
 
@@ -1575,7 +1582,8 @@ def get_vehicle_gps(device_id):
                 "speed": "0",
                 "last_updated_date": last_updated_date,
                 "last_updated_time": last_updated_time,
-                "is_power_off": is_power_off
+                "is_power_off": is_power_off,
+                "is_online_1m": is_online_1m
             })
 
         # Return last known position with offline flag when device is not live
@@ -1588,7 +1596,8 @@ def get_vehicle_gps(device_id):
                 "speed": "0",
                 "last_updated_date": last_updated_date,
                 "last_updated_time": last_updated_time,
-                "is_power_off": True
+                "is_power_off": True,
+                "is_online_1m": is_online_1m
             })
         
         # Get camera status
@@ -1656,6 +1665,7 @@ def get_vehicle_gps(device_id):
             "last_updated_date": last_updated_date,
             "last_updated_time": last_updated_time,
             "is_power_off": is_power_off,
+            "is_online_1m": is_online_1m,
             "camera_status": camera_status,
             "is_recording": is_recording,
             "trip_number": latest_trip_num,
