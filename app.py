@@ -1494,6 +1494,45 @@ def get_vehicle_gps(device_id):
         # Flat structure — use device_data directly as location
         location = device_data
 
+        # 1. Fetch metadata (camera, recording, trip status) first, so they are available for all returns
+        if "mosfet" in device_data:
+            mosfet_val = device_data.get("mosfet")
+            camera_status = "On" if str(mosfet_val) == "1" else "Off"
+        else:
+            camera_status = "No Data"
+        
+        # Check if currently recording
+        with RECORDING_LOCK:
+            is_recording = device_id in RECORDING_SESSIONS
+
+        # Get RFID / Trip Status
+        rfid_data = device_data.get("rfid_data", {})
+        raw_trip_status = str(rfid_data.get("status", "0"))
+        trip_status = "Ongoing" if raw_trip_status == "1" else "Stop"
+        
+        # Determine Trip Number (latest folder)
+        latest_trip_num = 0
+        try:
+            base_path = Path(__file__).parent / "RECORDINGS"
+            current_date_str = datetime.now().strftime("%Y-%m-%d")
+            vehicle_path = base_path / current_date_str / device_id
+            
+            if vehicle_path.exists():
+                session_folders = [d for d in vehicle_path.iterdir() if d.is_dir() and d.name.isdigit()]
+                if session_folders:
+                    latest_trip_num = max([int(d.name) for d in session_folders])
+            else:
+                date_folders = sorted([d for d in base_path.iterdir() if d.is_dir() and re.match(r'\d{4}-\d{2}-\d{2}', d.name)], reverse=True)
+                for df in date_folders:
+                    vp = df / device_id
+                    if vp.exists():
+                        sessions = [d for d in vp.iterdir() if d.is_dir() and d.name.isdigit()]
+                        if sessions:
+                            latest_trip_num = max([int(d.name) for d in sessions])
+                            break
+        except Exception as e:
+            print(f"Error fetching trip number for {device_id}: {e}")
+
         # Try to get lat and lon
         lat = None
         lon = None
@@ -1594,7 +1633,11 @@ def get_vehicle_gps(device_id):
                 "last_updated_date": last_updated_date,
                 "last_updated_time": last_updated_time,
                 "is_power_off": is_power_off,
-                "is_online_1m": is_online_1m
+                "is_online_1m": is_online_1m,
+                "camera_status": camera_status,
+                "is_recording": is_recording,
+                "trip_number": latest_trip_num,
+                "trip_status": trip_status
             })
 
         # Return last known position with offline flag when device is not live
@@ -1608,24 +1651,12 @@ def get_vehicle_gps(device_id):
                 "last_updated_date": last_updated_date,
                 "last_updated_time": last_updated_time,
                 "is_power_off": True,
-                "is_online_1m": is_online_1m
+                "is_online_1m": is_online_1m,
+                "camera_status": camera_status,
+                "is_recording": is_recording,
+                "trip_number": latest_trip_num,
+                "trip_status": trip_status
             })
-        
-        # Get camera status
-        if "mosfet" in device_data:
-            mosfet_val = device_data.get("mosfet")
-            camera_status = "On" if str(mosfet_val) == "1" else "Off"
-        else:
-            camera_status = "No Data"
-        
-        # Check if currently recording
-        with RECORDING_LOCK:
-            is_recording = device_id in RECORDING_SESSIONS
-        
-        if is_recording:
-             # Logic to save to col_gps_recordings is here but handled by separate thread usually?
-             # No, if we want to record the POINT, we can do it here too if needed.
-             pass
 
         # === NEW: Map Recording (Live View) ===
         # Save it by default also!
@@ -1640,33 +1671,6 @@ def get_vehicle_gps(device_id):
              })
         except Exception as rx:
              print(f"Error saving map recording: {rx}")
-        
-        # Get RFID / Trip Status
-        rfid_data = device_data.get("rfid_data", {})
-        raw_trip_status = str(rfid_data.get("status", "0"))
-        
-        # Determine Trip Number (latest folder)
-        latest_trip_num = 0
-        try:
-            base_path = Path(__file__).parent / "RECORDINGS"
-            current_date_str = datetime.now().strftime("%Y-%m-%d")
-            vehicle_path = base_path / current_date_str / device_id
-            
-            if vehicle_path.exists():
-                session_folders = [d for d in vehicle_path.iterdir() if d.is_dir() and d.name.isdigit()]
-                if session_folders:
-                    latest_trip_num = max([int(d.name) for d in session_folders])
-            else:
-                date_folders = sorted([d for d in base_path.iterdir() if d.is_dir() and re.match(r'\d{4}-\d{2}-\d{2}', d.name)], reverse=True)
-                for df in date_folders:
-                    vp = df / device_id
-                    if vp.exists():
-                        sessions = [d for d in vp.iterdir() if d.is_dir() and d.name.isdigit()]
-                        if sessions:
-                            latest_trip_num = max([int(d.name) for d in sessions])
-                            break
-        except Exception as e:
-            print(f"Error fetching trip number for {device_id}: {e}")
 
         return jsonify({
             "lat": lat,
@@ -1680,7 +1684,7 @@ def get_vehicle_gps(device_id):
             "camera_status": camera_status,
             "is_recording": is_recording,
             "trip_number": latest_trip_num,
-            "trip_status": "Ongoing" if raw_trip_status == "1" else "Stop"
+            "trip_status": trip_status
         })
     except Exception as e:
         print(f"Error fetching GPS for {device_id}: {str(e)}")
@@ -1711,8 +1715,53 @@ def get_devices_list():
         return jsonify([])
     
     try:
-        device_ids = sorted([v["device_id"] for v in col_vehicles.find({}, {"device_id": 1}) if v.get("device_id")])
-        return jsonify(device_ids)
+        device_ids = set()
+        
+        # 1. From col_vehicles (registered_vehicles)
+        for v in col_vehicles.find({}, {"device_id": 1}):
+            d = v.get("device_id")
+            if d:
+                device_ids.add(d.strip())
+                
+        # 2. From new_devices
+        try:
+            from mongodb import mongo_client
+            gps_db = mongo_client["gps_server_db"]
+            for d in gps_db["new_devices"].distinct("truck_id"):
+                if d:
+                    device_ids.add(d.strip())
+        except Exception as e:
+            print(f"Error getting distinct new_devices: {e}")
+            
+        # 3. From assign_devices
+        try:
+            from mongodb import mongo_client
+            gps_db = mongo_client["gps_server_db"]
+            for d in gps_db["assign_devices"].distinct("truck_id"):
+                if d:
+                    device_ids.add(d.strip())
+        except Exception as e:
+            print(f"Error getting distinct assign_devices: {e}")
+            
+        # 4. From map_recordings
+        try:
+            for d in col_map_recordings.distinct("device_id"):
+                if d:
+                    device_ids.add(d.strip())
+        except Exception as e:
+            print(f"Error getting distinct map_recordings: {e}")
+
+        # 5. From registered_trucks
+        try:
+            from mongodb import mongo_client
+            gps_db = mongo_client["gps_server_db"]
+            for d in gps_db["registered_trucks"].distinct("truck_id"):
+                if d:
+                    device_ids.add(d.strip())
+        except Exception as e:
+            print(f"Error getting distinct registered_trucks: {e}")
+            
+        return jsonify(sorted(list(device_ids)))
     except Exception as e:
         print(f"Error fetching device list: {e}")
         return jsonify([])
@@ -1733,17 +1782,42 @@ def get_map_recordings_data():
         start_dt = datetime.strptime(date_str, "%Y-%m-%d")
         end_dt = start_dt + timedelta(days=1)
         
-        # Optimized query using the new compound index and projection
-        cursor = col_map_recordings.find({
+        # 1. Try exact match in map_recordings (fastest)
+        query = {
             "device_id": device_id,
             "timestamp": {"$gte": start_dt, "$lt": end_dt}
-        }, {"lat": 1, "lng": 1, "speed": 1, "timestamp": 1, "_id": 0}).sort("timestamp", 1)
+        }
+        cursor = list(col_map_recordings.find(
+            query, {"lat": 1, "lng": 1, "speed": 1, "timestamp": 1, "_id": 0}
+        ).sort("timestamp", 1))
         
-        # Check count for potential downsampling
-        total_points = col_map_recordings.count_documents({
-            "device_id": device_id,
-            "timestamp": {"$gte": start_dt, "$lt": end_dt}
-        })
+        # 2. Try case-insensitive fallback in map_recordings
+        if not cursor:
+            query = {
+                "device_id": {"$regex": f"^{device_id}$", "$options": "i"},
+                "timestamp": {"$gte": start_dt, "$lt": end_dt}
+            }
+            cursor = list(col_map_recordings.find(
+                query, {"lat": 1, "lng": 1, "speed": 1, "timestamp": 1, "_id": 0}
+            ).sort("timestamp", 1))
+            
+        # 3. Try fallback in new_devices collection
+        used_fallback = False
+        if not cursor:
+            from mongodb import mongo_client
+            gps_db = mongo_client["gps_server_db"]
+            # Try case-insensitive query in new_devices
+            query = {
+                "truck_id": {"$regex": f"^{device_id}$", "$options": "i"},
+                "timestamp": {"$gte": start_dt, "$lt": end_dt}
+            }
+            cursor = list(gps_db["new_devices"].find(
+                query, {"lat": 1, "lng": 1, "speed": 1, "timestamp": 1, "_id": 0}
+            ).sort("timestamp", 1))
+            if cursor:
+                used_fallback = True
+
+        total_points = len(cursor)
 
         points = []
         # Downsample if excessive (e.g. > 5000 points) to speed up transfer and UI rendering
@@ -1753,14 +1827,17 @@ def get_map_recordings_data():
 
         count = 0
         for doc in cursor:
-            if not is_valid_gps_coordinate(doc.get("lat"), doc.get("lng")):
+            # Map lng/lng variations just in case
+            lat_val = doc.get("lat")
+            lng_val = doc.get("lng") or doc.get("lon")
+            if not is_valid_gps_coordinate(lat_val, lng_val):
                 continue
             count += 1
             if count % skip_n != 0: continue
             
             points.append({
-                "lat": doc["lat"],
-                "lng": doc["lng"],
+                "lat": lat_val,
+                "lng": lng_val,
                 "speed": doc.get("speed"),
                 "timestamp": doc["timestamp"].isoformat(),
                 "time": doc["timestamp"].strftime("%H:%M:%S"),
@@ -1768,7 +1845,12 @@ def get_map_recordings_data():
             })
             
         points = filter_coordinate_spikes(points)
-        return jsonify({"points": points, "total_raw": total_points, "optimized": skip_n > 1})
+        return jsonify({
+            "points": points, 
+            "total_raw": total_points, 
+            "optimized": skip_n > 1, 
+            "fallback_used": used_fallback
+        })
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -2052,10 +2134,52 @@ def api_export_recordings():
         end_dt = start_dt + timedelta(days=1)
         
         def fetch_cursor(s_dt, e_dt):
-            points = list(col_map_recordings.find({
+            # 1. Exact match in map_recordings
+            query = {
                 "device_id": device_id,
                 "timestamp": {"$gte": s_dt, "$lt": e_dt}
-            }, {"lat": 1, "lng": 1, "speed": 1, "timestamp": 1, "_id": 0}).sort("timestamp", 1))
+            }
+            points = list(col_map_recordings.find(
+                query, {"lat": 1, "lng": 1, "speed": 1, "timestamp": 1, "_id": 0}
+            ).sort("timestamp", 1))
+            
+            # 2. Case-insensitive fallback in map_recordings
+            if not points:
+                query = {
+                    "device_id": {"$regex": f"^{device_id}$", "$options": "i"},
+                    "timestamp": {"$gte": s_dt, "$lt": e_dt}
+                }
+                points = list(col_map_recordings.find(
+                    query, {"lat": 1, "lng": 1, "speed": 1, "timestamp": 1, "_id": 0}
+                ).sort("timestamp", 1))
+                
+            # 3. Fallback in new_devices
+            if not points:
+                try:
+                    from mongodb import mongo_client
+                    gps_db = mongo_client["gps_server_db"]
+                    query = {
+                        "truck_id": {"$regex": f"^{device_id}$", "$options": "i"},
+                        "timestamp": {"$gte": s_dt, "$lt": e_dt}
+                    }
+                    new_pts = list(gps_db["new_devices"].find(
+                        query, {"lat": 1, "lng": 1, "speed": 1, "timestamp": 1, "_id": 0}
+                    ).sort("timestamp", 1))
+                    
+                    # Convert to standard format with lat and lng
+                    points = []
+                    for doc in new_pts:
+                        lat_val = doc.get("lat")
+                        lng_val = doc.get("lng") or doc.get("lon")
+                        points.append({
+                            "lat": lat_val,
+                            "lng": lng_val,
+                            "speed": doc.get("speed"),
+                            "timestamp": doc["timestamp"]
+                        })
+                except Exception as e:
+                    print(f"Error in export fallback to new_devices: {e}")
+                    
             return [pt for pt in points if is_valid_gps_coordinate(pt.get("lat"), pt.get("lng"))]
             
         cursor = fetch_cursor(start_dt, end_dt)
