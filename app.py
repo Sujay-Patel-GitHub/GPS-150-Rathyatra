@@ -4262,13 +4262,16 @@ def mongo_health():
     try:
         from mongodb import mongo_client
         db = mongo_client["gps_server_db"]
-        collections = db.list_collection_names()
+        needed = ["assign_devices","registered_trucks","new_devices","akhada_groups",
+                  "registered_vehicles","godown_managers","transporters","drivers",
+                  "gps_live","sos_logs","map_recordings"]
         counts = {}
-        for c in collections:
+        for c in needed:
             try: counts[c] = db[c].count_documents({})
-            except: counts[c] = "error"
-        ping = db.command("ping")
-        return jsonify({"ok": True, "ping": ping, "collections": counts})
+            except Exception as e: counts[c] = f"error: {e}"
+        # sample assign_devices
+        sample = list(db["assign_devices"].find({}, {"_id":0,"truck_id":1,"username":1,"role":1}).limit(5))
+        return jsonify({"ok": True, "counts": counts, "assign_devices_sample": sample})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
 
