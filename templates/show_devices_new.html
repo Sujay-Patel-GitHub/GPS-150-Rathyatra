@@ -875,29 +875,19 @@
                                 <div class="info-content">
                                     <span class="info-label" style="font-size: 0.6rem;">Camera</span>
                                     <div style="display: flex; align-items: center; gap: 4px;">
-                                        {% if device.camera_status == 'No Data' %}
-                                        <span class="camera-status camera-none"
-                                            style="font-size: 0.55rem; padding: 1px 4px;">No Data</span>
-                                        <button onclick="toggleCamera('{{ device.device_name }}', '1')"
-                                            style="padding: 0 4px; border-radius: 3px; border: 1px solid #10b981; background: #d1fae5; color: #065f46; font-size: 0.5rem; font-weight: bold; cursor: pointer;">ON</button>
-                                        <button onclick="toggleCamera('{{ device.device_name }}', '0')"
-                                            style="padding: 0 4px; border-radius: 3px; border: 1px solid #ef4444; background: #fee2e2; color: #991b1b; font-size: 0.5rem; font-weight: bold; cursor: pointer;">OFF</button>
-                                        {% else %}
-                                        <span
-                                            class="camera-status {% if device.camera_status == 'On' %}camera-on{% elif device.camera_status == 'Off' %}camera-off{% else %}camera-none{% endif %}"
-                                            style="font-size: 0.55rem; padding: 1px 4px;">
-                                            {% if device.camera_status == 'On' %}<span class="pulse-on"></span>{% endif
-                                            %}
-                                            {{ device.camera_status }}
-                                        </span>
-                                        {% set toggle_action = '0' if device.camera_status == 'On' else '1' %}
-                                        <button
-                                            class="toggle-camera-btn {{ 'on' if device.camera_status == 'On' else 'off' }}"
-                                            onclick="toggleCamera('{{ device.device_name }}', '{{ toggle_action }}')"
-                                            style="background: none; border: none; cursor: pointer; padding: 2px;">
-                                            <i class="fas fa-power-off" style="font-size: 0.75rem;"></i>
-                                        </button>
-                                        {% endif %}
+                                         <span id="camera-status-{{ device.device_name|upper }}"
+                                             class="camera-status {% if device.camera_status == 'On' %}camera-on{% elif device.camera_status == 'Off' %}camera-off{% else %}camera-none{% endif %}"
+                                             style="font-size: 0.55rem; padding: 1px 4px;">
+                                             {% if device.camera_status == 'On' %}<span class="pulse-on"></span>{% endif %}
+                                             {{ device.camera_status }}
+                                         </span>
+                                         {% set toggle_action = '0' if device.camera_status == 'On' else '1' %}
+                                         <button id="camera-btn-{{ device.device_name|upper }}"
+                                             class="toggle-camera-btn {{ 'on' if device.camera_status == 'On' else 'off' }}"
+                                             onclick="toggleCamera('{{ device.device_name }}', '{{ toggle_action }}')"
+                                             style="background: none; border: none; cursor: pointer; padding: 2px;">
+                                             <i class="fas fa-power-off" style="font-size: 0.75rem;"></i>
+                                         </button>
                                     </div>
                                 </div>
                             </div>
@@ -1328,6 +1318,27 @@
         }
 
         function toggleCamera(deviceId, action) {
+            const upperId = deviceId.toUpperCase();
+            const statusSpan = document.getElementById(`camera-status-${upperId}`);
+            const toggleBtn = document.getElementById(`camera-btn-${upperId}`);
+            
+            const originalText = statusSpan ? statusSpan.innerHTML : '';
+            const originalClass = statusSpan ? statusSpan.className : '';
+            const originalBtnClass = toggleBtn ? toggleBtn.className : '';
+            const originalBtnOnclick = toggleBtn ? toggleBtn.getAttribute('onclick') : '';
+
+            // Update UI optimistically
+            const isOn = (action === '1');
+            if (statusSpan) {
+                statusSpan.className = `camera-status ${isOn ? 'camera-on' : 'camera-off'}`;
+                statusSpan.innerHTML = isOn ? '<span class="pulse-on"></span>On' : 'Off';
+            }
+            if (toggleBtn) {
+                toggleBtn.className = `toggle-camera-btn ${isOn ? 'on' : 'off'}`;
+                const nextAction = isOn ? '0' : '1';
+                toggleBtn.setAttribute('onclick', `toggleCamera('${deviceId}', '${nextAction}')`);
+            }
+
             fetch('/toggle_camera', {
                 method: 'POST',
                 headers: {
@@ -1340,15 +1351,30 @@
             })
                 .then(response => response.json())
                 .then(data => {
-                    if (data.success) {
-                        // Removed alert for better UX
-                        location.reload(); // Reload to reflect changes
-                    } else {
+                    if (!data.success) {
+                        // Revert UI on failure
+                        if (statusSpan) {
+                            statusSpan.className = originalClass;
+                            statusSpan.innerHTML = originalText;
+                        }
+                        if (toggleBtn) {
+                            toggleBtn.className = originalBtnClass;
+                            toggleBtn.setAttribute('onclick', originalBtnOnclick);
+                        }
                         alert('Error: ' + data.message);
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
+                    // Revert UI on error
+                    if (statusSpan) {
+                        statusSpan.className = originalClass;
+                        statusSpan.innerHTML = originalText;
+                    }
+                    if (toggleBtn) {
+                        toggleBtn.className = originalBtnClass;
+                        toggleBtn.setAttribute('onclick', originalBtnOnclick);
+                    }
                     alert('An error occurred while toggling the camera.');
                 });
         }
@@ -1385,6 +1411,22 @@
                                 html += `<span class="power-off-label" style="color: #ef4444; font-weight: 800; text-transform: uppercase; font-size: 0.85rem; margin-top: 2px;">Power Off</span>`;
                             }
                             timeContainer.innerHTML = html;
+                        }
+
+                        // Update Camera status dynamically from polling
+                        const cameraStatus = document.getElementById(`camera-status-${upperId}`);
+                        const cameraBtn = document.getElementById(`camera-btn-${upperId}`);
+                        if (cameraStatus && cameraBtn && data.camera_status) {
+                            const state = data.camera_status; // "On", "Off", "No Data", "N/A"
+                            const isOn = (state === 'On');
+                            const isOff = (state === 'Off');
+                            
+                            cameraStatus.className = `camera-status ${isOn ? 'camera-on' : (isOff ? 'camera-off' : 'camera-none')}`;
+                            cameraStatus.innerHTML = isOn ? '<span class="pulse-on"></span>On' : (isOff ? 'Off' : state);
+                            
+                            cameraBtn.className = `toggle-camera-btn ${isOn ? 'on' : 'off'}`;
+                            const nextAction = isOn ? '0' : '1';
+                            cameraBtn.setAttribute('onclick', `toggleCamera('${deviceId}', '${nextAction}')`);
                         }
                     })
                     .catch(e => console.error(`Error polling data for ${deviceId}:`, e));
