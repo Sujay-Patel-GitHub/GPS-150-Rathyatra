@@ -774,6 +774,10 @@ def apply_time_offset(dt, device_id, vehicle_doc=None):
 def login():
     if session.get('user_type') == 'admin':
         return redirect(url_for('admin_dashboard'))
+    elif session.get('user_type') == 'truck':
+        return redirect('/device_info/' + session.get('truck_id', ''))
+    elif session.get('user_type') == 'akhada':
+        return redirect('/akhada_dashboard')
     elif 'username' in session:
         return redirect(url_for('user_dashboard'))
 
@@ -805,7 +809,6 @@ def login():
                     role = doc.get("role")
                     if role == "TRUCK_USER":
                         session['user_type'] = 'truck'
-                        session['username'] = su
                         session['truck_username'] = su
                         session['truck_id'] = str(doc.get("truck_id", ""))
                         return redirect('/device_info/' + doc.get("truck_id", ""))
@@ -4978,7 +4981,7 @@ def add_user_godown(username):
 # --- CAMERA SYSTEM ROUTES ---
 @app.route("/device_info/<device_id>")
 def device_info(device_id):
-    if 'username' not in session:
+    if 'username' not in session and session.get('user_type') not in ('truck', 'akhada'):
         return redirect(url_for('login'))
 
     # Check if user has permission to view this device
