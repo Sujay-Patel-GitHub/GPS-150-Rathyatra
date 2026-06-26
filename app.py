@@ -228,15 +228,52 @@ def truck_gps(truck_id):
         except: return default
     try:
         from mongodb import mongo_client
-        col = mongo_client["gps_server_db"]["new_devices"]
-        col.insert_one({
+        db = mongo_client["gps_server_db"]
+        
+        lat_val = f("lat")
+        lng_val = f("lng")
+        speed_val = f("speed")
+        motion_val = str(data.get("motion", "unknown"))
+        now = datetime.now()
+        
+        # 1. Insert into new_devices
+        db["new_devices"].insert_one({
             "truck_id": truck_id,
-            "lat":      f("lat"),
-            "lng":      f("lng"),
-            "speed":    f("speed"),
-            "motion":   str(data.get("motion", "unknown")),
-            "timestamp": datetime.now()
+            "lat":      lat_val,
+            "lng":      lng_val,
+            "speed":    speed_val,
+            "motion":   motion_val,
+            "timestamp": now
         })
+        
+        # 2. Update gps_live so the rest of the app gets this live coordinate instantly!
+        db["gps_live"].update_one(
+            {"device_id": truck_id},
+            {"$set": {
+                "device_id": truck_id,
+                "lat":      lat_val,
+                "lng":      lng_val,
+                "speed":    speed_val,
+                "date":     now.strftime("%d-%m-%Y"),
+                "time":     now.strftime("%H:%M:%S"),
+                "updated_at": now
+            }},
+            upsert=True
+        )
+        
+        # 3. Save to map_recordings by default!
+        try:
+            db["map_recordings"].insert_one({
+                "device_id": truck_id,
+                "lat":      lat_val,
+                "lng":      lng_val,
+                "speed":    speed_val,
+                "timestamp": now,
+                "created_at": now
+            })
+        except Exception as ie:
+            pass
+            
         return jsonify({"ok": True}), 200
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
@@ -876,13 +913,18 @@ def push_gps(device_id):
     data = request.get_json(silent=True) or request.form.to_dict()
     if not data:
         return jsonify({"success": False, "error": "No data"}), 400
+    
+    lat = data.get("lat")
+    lng = data.get("lng") or data.get("lon")
+    speed = data.get("speed", 0)
+    
     col_gps_live.update_one(
         {"device_id": device_id},
         {"$set": {
             "device_id": device_id,
-            "lat": data.get("lat"),
-            "lng": data.get("lng") or data.get("lon"),
-            "speed": data.get("speed", 0),
+            "lat": lat,
+            "lng": lng,
+            "speed": speed,
             "date": data.get("date", ""),
             "time": data.get("time", ""),
             "mosfet": data.get("mosfet"),
@@ -896,6 +938,39 @@ def push_gps(device_id):
         }},
         upsert=True
     )
+    
+    # Save to map_recordings and new_devices by default!
+    try:
+        if lat is not None and lng is not None:
+            lat_f = float(lat)
+            lng_f = float(lng)
+            speed_f = float(speed)
+            if is_valid_gps_coordinate(lat_f, lng_f):
+                col_map_recordings.insert_one({
+                    "device_id": device_id,
+                    "lat": lat_f,
+                    "lng": lng_f,
+                    "speed": speed_f,
+                    "timestamp": datetime.now(),
+                    "created_at": datetime.now()
+                })
+                
+                # Also insert into new_devices to keep both collections completely synced
+                try:
+                    from mongodb import mongo_client
+                    mongo_client["gps_server_db"]["new_devices"].insert_one({
+                        "truck_id": device_id,
+                        "lat": lat_f,
+                        "lng": lng_f,
+                        "speed": speed_f,
+                        "motion": "unknown",
+                        "timestamp": datetime.now()
+                    })
+                except Exception:
+                    pass
+    except Exception as e:
+        pass
+        
     return jsonify({"success": True})
 
 
@@ -1533,18 +1608,18 @@ def get_vehicle_gps(device_id):
              pass
 
         # === NEW: Map Recording (Live View) ===
-        if request.args.get('record') == 'true':
-             try:
-                 col_map_recordings.insert_one({
-                     "device_id": device_id,
-                     "lat": lat,
-                     "lng": lon,
-                     "speed": speed,
-                     "timestamp": datetime.now(), # Server time as requested
-                     "created_at": datetime.now()
-                 })
-             except Exception as rx:
-                 print(f"Error saving map recording: {rx}")
+        # Save it by default also!
+        try:
+             col_map_recordings.insert_one({
+                 "device_id": device_id,
+                 "lat": lat,
+                 "lng": lon,
+                 "speed": speed,
+                 "timestamp": datetime.now(), # Server time as requested
+                 "created_at": datetime.now()
+             })
+        except Exception as rx:
+             print(f"Error saving map recording: {rx}")
         
         # Get RFID / Trip Status
         rfid_data = device_data.get("rfid_data", {})

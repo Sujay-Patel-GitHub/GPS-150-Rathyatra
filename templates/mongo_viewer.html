@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -286,13 +286,44 @@ async function loadData() {
     document.getElementById("mainPanel").innerHTML = `<div class="toolbar"><h2>${activeCol}</h2></div><div class="empty"><i>&#128205;</i>No data yet.</div>`;
     return;
   }
-  const keys = Object.keys(docs[0]);
+  
+  // Gather all unique keys across all documents to ensure all columns and data are shown
+  const keySet = new Set();
+  docs.forEach(d => Object.keys(d).forEach(k => keySet.add(k)));
+  const keys = Array.from(keySet);
+
   const rows = docs.map(d => `<tr>${keys.map(k => {
-    let v = d[k]??"";
-    if (k==="lat"||k==="lng") return `<td class="gps-val">${v}</td>`;
-    if (k==="timestamp") return `<td class="ts-val">${v}</td>`;
+    let v = d[k];
+    if (v === null || v === undefined) {
+      v = "";
+    } else if (typeof v === 'object') {
+      v = JSON.stringify(v);
+    }
+    
+    // Highlight styling for critical keys
+    if (k === "lat" || k === "lng" || k === "lon") {
+      return `<td class="gps-val">${v}</td>`;
+    }
+    if (k === "speed") {
+      return `<td class="gps-val" style="color: #34d399; font-weight: bold;">${v}</td>`;
+    }
+    if (k === "timestamp" || k === "created_at" || k === "updated_at") {
+      return `<td class="ts-val">${v}</td>`;
+    }
+    if (k === "device_id" || k === "truck_id") {
+      return `<td class="truck-id">${v}</td>`;
+    }
     return `<td>${v}</td>`;
   }).join("")}</tr>`).join("");
+
+  const theadHeaders = keys.map(k => {
+    let cls = "";
+    if (k === "lat" || k === "lng" || k === "lon" || k === "speed") cls = "gps-h";
+    else if (k === "timestamp" || k === "created_at" || k === "updated_at") cls = "meta-h";
+    else if (k === "device_id" || k === "truck_id") cls = "acc-h";
+    return `<th class="${cls}">${k}</th>`;
+  }).join("");
+
   document.getElementById("mainPanel").innerHTML = `
     <div class="toolbar">
       <h2>${activeCol}</h2>
@@ -301,8 +332,8 @@ async function loadData() {
       <button class="refresh-btn" onclick="loadData()">&#8635; Refresh</button>
       <span style="font-size:.72rem;color:#475569;" id="lastRefresh"></span>
     </div>
-<div class="table-wrap"><table>
-      <thead><tr>${keys.map(k=>`<th>${k}</th>`).join("")}</tr></thead>
+    <div class="table-wrap"><table>
+      <thead><tr>${theadHeaders}</tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
   document.getElementById("lastRefresh").textContent = "Updated " + new Date().toLocaleTimeString();
