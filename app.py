@@ -1022,14 +1022,10 @@ def admin_dashboard():
                 if location:
                     # Get coordinates
                     try:
-                        lat_val = float(location.get("lat", 0))
-                        lng_val = float(location.get("lng") or location.get("lon", 0))
-                        if is_valid_gps_coordinate(lat_val, lng_val):
-                            gps_lat = lat_val
-                            gps_lng = lng_val
-                        else:
-                            gps_lat = None
-                            gps_lng = None
+                        if "lat" in location:
+                            gps_lat = float(location.get("lat", 0.0))
+                        if "lng" in location or "lon" in location:
+                            gps_lng = float(location.get("lng") or location.get("lon", 0.0))
                     except:
                         pass
                     
@@ -1214,7 +1210,7 @@ def admin_dashboard():
                     dev["last_updated_time"] = ts.strftime("%I:%M:%S %p")
                     dev["is_power_off"] = (datetime.now() - ts).total_seconds() > threshold_sec
                     dev["is_online_1m"] = (datetime.now() - ts).total_seconds() <= 60
-                if ndoc.get("lat"):
+                if ndoc.get("lat") is not None:
                     dev["gps_lat"] = ndoc.get("lat")
                     dev["gps_lng"] = ndoc.get("lng")
             # Merge assign_devices info into existing devices too
@@ -1539,11 +1535,10 @@ def get_vehicle_gps(device_id):
 
         if location:
             try:
-                lat_val = float(location.get("lat", 0))
-                lon_val = float(location.get("lng") or location.get("lon", 0))
-                if is_valid_gps_coordinate(lat_val, lon_val):
-                    lat = lat_val
-                    lon = lon_val
+                if "lat" in location:
+                    lat = float(location.get("lat", 0.0))
+                if "lng" in location or "lon" in location:
+                    lon = float(location.get("lng") or location.get("lon", 0.0))
             except:
                 pass
 
@@ -1597,21 +1592,21 @@ def get_vehicle_gps(device_id):
                 last_updated_time = ts.strftime("%I:%M:%S %p")
                 is_power_off = (datetime.now() - ts).total_seconds() > threshold_sec
                 is_online_1m = (datetime.now() - ts).total_seconds() <= 60
-                if (lat is None or lat == 0) and nd.get("lat"):
+                if lat is None and nd.get("lat") is not None:
                     lat = nd["lat"]
                     lon = nd["lng"]
         except Exception:
             pass
 
         # Check if we have valid GPS data — fall back to last known from new_devices
-        if lat is None or lon is None or (lat == 0 and lon == 0):
+        if lat is None or lon is None:
             try:
                 from mongodb import mongo_client
                 nd = mongo_client["gps_server_db"]["new_devices"].find_one(
                     {"truck_id": {"$regex": f"^{device_id}$", "$options": "i"}, "lat": {"$exists": True, "$ne": 0}},
                     sort=[("timestamp", -1)]
                 )
-                if nd and nd.get("lat") and nd.get("lng"):
+                if nd and nd.get("lat") is not None and nd.get("lng") is not None:
                     lat = float(nd["lat"])
                     lon = float(nd.get("lng") or nd.get("lon", 0))
                     if nd.get("timestamp"):
@@ -1622,11 +1617,11 @@ def get_vehicle_gps(device_id):
             except Exception:
                 pass
 
-        if lat is None or lon is None or (lat == 0 and lon == 0):
+        if lat is None or lon is None:
             return jsonify({
                 "error": "No GPS data available",
                 "has_gps": False,
-                "is_offline": True,
+                "is_offline": is_power_off,
                 "lat": None,
                 "lng": None,
                 "speed": "0",
