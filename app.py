@@ -1228,6 +1228,7 @@ def admin_dashboard():
             ts_date = ts.strftime("%d-%b-%Y") if ts else "N/A"
             ts_time = ts.strftime("%I:%M:%S %p") if ts else ""
             is_po = (datetime.now() - ts).total_seconds() > threshold_sec if ts else True
+            is_ol_1m = (datetime.now() - ts).total_seconds() <= 60 if ts else False
             a = assign_map.get(tid, {})
             devices_display_list.append({
                 "id": len(devices_display_list) + 1,

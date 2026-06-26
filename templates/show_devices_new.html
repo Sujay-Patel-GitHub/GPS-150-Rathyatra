@@ -792,8 +792,8 @@
                             <i class="fas fa-video"></i>
                             <span>{{ device.device_name }}</span>
                             <span id="header-status-{{ device.device_name|upper }}"
-                                class="{% if device.is_power_off %}status-dot-red{% else %}status-dot-green{% endif %}"
-                                title="{% if device.is_power_off %}Offline (Last updated > 12m ago){% else %}Online (Last updated < 12m ago){% endif %}"></span>
+                                class="{% if device.is_online_1m %}status-dot-green{% else %}status-dot-red{% endif %}"
+                                title="{% if device.is_online_1m %}Online (Last updated < 1m ago){% else %}Offline (Last updated > 1m ago){% endif %}"></span>
                         </a>
                         <span
                             class="status-badge-inline {% if device.is_registered %}badge-green{% else %}badge-red{% endif %}">
@@ -1366,12 +1366,12 @@
                         const upperId = deviceId.toUpperCase();
                         const statusDot = document.getElementById(`header-status-${upperId}`);
                         if (statusDot) {
-                            if (data.is_power_off) {
-                                statusDot.className = 'status-dot-red';
-                                statusDot.title = 'Offline (Last updated > 12m ago)';
-                            } else {
+                            if (data.is_online_1m) {
                                 statusDot.className = 'status-dot-green';
-                                statusDot.title = 'Online (Last updated < 12m ago)';
+                                statusDot.title = 'Online (Last updated < 1m ago)';
+                            } else {
+                                statusDot.className = 'status-dot-red';
+                                statusDot.title = 'Offline (Last updated > 1m ago)';
                             }
                         }
 
