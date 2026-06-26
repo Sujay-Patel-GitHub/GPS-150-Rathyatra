@@ -304,6 +304,14 @@
             /* Allows click-through for drag if needed, controls handle interaction */
         }
 
+        .video-wrapper iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+            background: #000;
+        }
+
         /* --- Controls & Overlay (Camera) --- */
         .controls-bar {
             position: absolute;
@@ -667,57 +675,20 @@
             </div>
 
             <div class="video-wrapper" id="video-wrapper-{{ key }}">
-                <video id="video-{{ key }}" autoplay muted playsinline></video>
-
-                <!-- Controls -->
-                <div class="controls-bar" id="controls-{{ key }}" style="display:none;">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:4px; padding:0 4px;">
-                        <span id="time-left-{{ key }}"
-                            style="color:#cbd5e1; font-size:0.75rem; font-family:monospace; font-weight:600;">-00:00</span>
-                        <span id="time-right-{{ key }}"
-                            style="color:#cbd5e1; font-size:0.75rem; font-family:monospace; font-weight:600;">LIVE</span>
-                    </div>
-                    <input type="range" class="video-seek" id="seek-bar-{{ key }}" min="0" max="100" step="1"
-                        value="100" oninput="userSeek('{{ key }}')">
-                    <div class="ctrl-row">
-                        <div class="ctrl-group">
-                            <button class="live-badge live" id="live-btn-{{ key }}" onclick="goLive('{{ key }}')"><i
-                                    class="fas fa-circle text-[8px]"></i> LIVE</button>
-                        </div>
-                        <div class="ctrl-group">
-                            <button class="ctrl-btn" onclick="rewind('{{ key }}')"><i
-                                    class="fas fa-rotate-left"></i></button>
-                            <button class="ctrl-btn" onclick="forward('{{ key }}')"><i
-                                    class="fas fa-rotate-right"></i></button>
-                            <button class="ctrl-btn" onclick="toggleAudio('{{ key }}')"><i class="fas fa-volume-mute"
-                                    id="icon-vol-{{ key }}"></i></button>
-                            <button class="ctrl-btn stop" onclick="manualStop('{{ key }}')"><i
-                                    class="fas fa-stop"></i></button>
-                            <button class="ctrl-btn" onclick="toggleFullScreen('{{ key }}')"><i
-                                    class="fas fa-expand"></i></button>
-                        </div>
-                    </div>
-                </div>
-
+                {% if stream.url %}
+                <iframe src="/stream_player?src={{ stream.url | urlencode }}" allowfullscreen></iframe>
+                {% else %}
                 <!-- Overlay -->
                 <div class="cam-overlay" id="overlay-{{ key }}">
                     <div id="msg-box-{{ key }}" class="msg-center-box" data-url="{{ stream.url }}">
-                        {% if stream.url %}
-                        <div class="glass-card">
-                            <div class="status-icon"><i class="fas fa-video"></i></div>
-                            <div class="status-title">Ready</div>
-                            <button class="start-btn" onclick="startStream('{{ key }}', '{{ stream.url }}')"><i
-                                    class="fas fa-play"></i> Start Feed</button>
-                        </div>
-                        {% else %}
                         <div class="glass-card">
                             <div class="status-icon error"><i class="fas fa-link-slash"></i></div>
                             <div class="status-title error">Not Configured</div>
                             <div class="status-desc error">No RTMP link found.</div>
                         </div>
-                        {% endif %}
                     </div>
                 </div>
+                {% endif %}
             </div>
         </div>
         {% endfor %}
@@ -1346,199 +1317,45 @@
 
         // Removed saveConfig function
 
-        // --- STREAMING LOGIC ---
+        // --- STREAMING LOGIC (IFRAME SYSTEM) ---
         function initStreams() {
-            Object.keys(configuredStreams).forEach(uiKey => {
-                const stream = configuredStreams[uiKey];
-                if (stream.url) {
-                    startStream(uiKey, stream.url);
-                }
-            });
-            setInterval(sendHeartbeat, 3000);
-            setInterval(watchDog, 2000);
+            // No initialization needed, iframes load their src automatically
         }
 
         function restartAll() {
             if (!confirm("Restart all streams?")) return;
-            stopAllStreams();
-            setTimeout(() => {
-                restartAllStreams();
-            }, 1000);
-        }
-
-        const reconnectTimers = {};
-
-        function scheduleReconnect(uiKey, rtmpUrl) {
-            if (reconnectTimers[uiKey]) clearTimeout(reconnectTimers[uiKey]);
-            let secs = 30;
-            const msgBox = document.getElementById(`msg-box-${uiKey}`);
-            function tick() {
-                if (userPaused[uiKey]) return;
-                if (!document.getElementById(`msg-box-${uiKey}`)) return;
-                msgBox.innerHTML = `<div class="glass-card"><div class="status-icon error"><i class="fas fa-video-slash"></i></div><div class="status-title error">Offline — reconnecting in ${secs}s</div><button class="start-btn retry" onclick="cancelReconnect('${uiKey}'); startStream('${uiKey}', '${rtmpUrl}')"><i class="fas fa-redo"></i> Retry Now</button></div>`;
-                if (secs <= 0) {
-                    startStream(uiKey, rtmpUrl);
-                } else {
-                    secs--;
-                    reconnectTimers[uiKey] = setTimeout(tick, 1000);
+            document.querySelectorAll('.video-wrapper iframe').forEach(iframe => {
+                const src = iframe.src || iframe.dataset.savedSrc;
+                if (src && src !== 'about:blank') {
+                    iframe.src = 'about:blank';
+                    setTimeout(() => {
+                        iframe.src = src;
+                    }, 100);
                 }
-            }
-            tick();
+            });
         }
 
-        function cancelReconnect(uiKey) {
-            if (reconnectTimers[uiKey]) { clearTimeout(reconnectTimers[uiKey]); delete reconnectTimers[uiKey]; }
+        function stopAllStreams() {
+            document.querySelectorAll('.video-wrapper iframe').forEach(iframe => {
+                if (iframe.src && iframe.src !== 'about:blank') {
+                    iframe.dataset.savedSrc = iframe.src;
+                    iframe.src = 'about:blank';
+                }
+            });
         }
 
-        function startStream(uiKey, rtmpUrl) {
-            cancelReconnect(uiKey);
-            const msgBox = document.getElementById(`msg-box-${uiKey}`);
-            msgBox.innerHTML = `<div class="glass-card"><div class="status-icon"><i class="fas fa-spinner fa-spin"></i></div><div class="status-title">Connecting...</div></div>`;
-            userPaused[uiKey] = false;
-            fetch(`/play_rtmp?src=${encodeURIComponent(rtmpUrl)}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.error) throw new Error(data.error);
-                    activeStreams.set(uiKey, data.stream_id);
-                    loadHls(uiKey, data.hls_url + '?t=' + Date.now());
-                })
-                .catch(err => {
-                    updateIndicator(uiKey, 'offline');
-                    if (!userPaused[uiKey]) scheduleReconnect(uiKey, rtmpUrl);
-                });
+        function restartAllStreams() {
+            document.querySelectorAll('.video-wrapper iframe').forEach(iframe => {
+                if (iframe.dataset.savedSrc) {
+                    iframe.src = iframe.dataset.savedSrc;
+                }
+            });
         }
 
-        function loadHls(uiKey, src) {
-            const video = document.getElementById(`video-${uiKey}`);
-            if (Hls.isSupported()) {
-                const hls = new Hls({
-                    startPosition: -1,
-                    liveSyncDurationCount: 3,
-                    backBufferLength: 300,
-                    manifestLoadingMaxRetry: 10,
-                    manifestLoadingRetryDelay: 1000,
-                    levelLoadingMaxRetry: 10,
-                    levelLoadingRetryDelay: 1000,
-                    fragLoadingMaxRetry: 10,
-                    fragLoadingRetryDelay: 1000
-                });
-                hls.loadSource(src); hls.attachMedia(video);
-                hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                    video.play().catch(e => console.log("Auto-play blocked"));
-                    updateIndicator(uiKey, 'online');
-                });
-                hls.on(Hls.Events.ERROR, (event, data) => {
-                    if (data.fatal) {
-                        hls.destroy();
-                        delete players[uiKey];
-                        updateIndicator(uiKey, 'offline');
-                        const rtmpUrl = document.getElementById(`msg-box-${uiKey}`).dataset.url;
-                        if (!userPaused[uiKey] && rtmpUrl) scheduleReconnect(uiKey, rtmpUrl);
-                    }
-                });
-                players[uiKey] = hls;
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = src; video.play();
-                updateIndicator(uiKey, 'online');
-            }
-            video.addEventListener('timeupdate', () => updateTimeline(uiKey));
-            document.getElementById(`overlay-${uiKey}`).classList.add('hidden');
-            document.getElementById(`controls-${uiKey}`).style.display = 'flex';
-
-            // Set indicator to GREEN
-            updateIndicator(uiKey, 'online');
-        }
-
-        function manualStop(uiKey) {
-            userPaused[uiKey] = true;
-            cancelReconnect(uiKey);
-            if (players[uiKey]) { players[uiKey].destroy(); delete players[uiKey]; }
-            const video = document.getElementById(`video-${uiKey}`);
-            video.pause(); video.src = "";
-            if (activeStreams.has(uiKey)) {
-                fetch('/stop_stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stream_id: activeStreams.get(uiKey) }) });
-                activeStreams.delete(uiKey);
-            }
-            manualStopUI(uiKey);
-
-            // Set indicator to BLINKING RED (Offline/Stopped)
-            updateIndicator(uiKey, 'offline');
-        }
-
-        function manualStopUI(uiKey) {
-            document.getElementById(`overlay-${uiKey}`).classList.remove('hidden');
-            document.getElementById(`controls-${uiKey}`).style.display = 'none';
-            // document.getElementById(`indicator-${uiKey}`).style.color = '#cbd5e1'; // Removed in favor of class helper
-            const msgBox = document.getElementById(`msg-box-${uiKey}`);
-            const rtmpUrl = msgBox.dataset.url;
-            if (rtmpUrl) msgBox.innerHTML = `<div class="glass-card"><div class="status-icon"><i class="fas fa-video"></i></div><div class="status-title">Ready</div><button class="start-btn" onclick="startStream('${uiKey}', '${rtmpUrl}')"><i class="fas fa-play"></i> Start Feed</button></div>`;
-
-            // FIX: Ensure flex column direction is enforced via JS
-            msgBox.style.flexDirection = 'column';
-            msgBox.style.alignItems = 'center';
-            msgBox.style.justifyContent = 'center';
-        }
-
-        // --- VIDEO CONTROLS ---
-        function updateTimeline(uiKey) {
-            if (dragging[uiKey]) return;
-            const video = document.getElementById(`video-${uiKey}`);
-            const slider = document.getElementById(`seek-bar-${uiKey}`);
-            const timeLeft = document.getElementById(`time-left-${uiKey}`);
-            const timeRight = document.getElementById(`time-right-${uiKey}`);
-            const liveBtn = document.getElementById(`live-btn-${uiKey}`);
-
-            let start = 0, end = video.duration || 0;
-            if (video.seekable.length > 0) { start = video.seekable.start(0); end = video.seekable.end(0); }
-
-            slider.min = start; slider.max = end; slider.value = video.currentTime;
-
-            const secondsBehind = Math.floor(end - video.currentTime);
-            const isLive = secondsBehind < 5;
-            if (isLive) { liveBtn.classList.add('live'); liveBtn.classList.remove('dvr'); }
-            else { liveBtn.classList.add('dvr'); liveBtn.classList.remove('live'); }
-
-            const mins = Math.floor(secondsBehind / 60).toString().padStart(2, '0');
-            const secs = (secondsBehind % 60).toString().padStart(2, '0');
-
-            if (timeLeft) timeLeft.innerText = `-${mins}:${secs}`;
-            if (timeRight) timeRight.innerText = "LIVE";
-        }
-
-        function userSeek(uiKey) {
-            dragging[uiKey] = true;
-            const video = document.getElementById(`video-${uiKey}`);
-            video.currentTime = document.getElementById(`seek-bar-${uiKey}`).value;
-            setTimeout(() => dragging[uiKey] = false, 1000);
-        }
-        function goLive(uiKey) { document.getElementById(`video-${uiKey}`).currentTime = document.getElementById(`video-${uiKey}`).seekable.end(0) - 1; }
-        function rewind(uiKey) { document.getElementById(`video-${uiKey}`).currentTime -= 10; }
-        function forward(uiKey) { document.getElementById(`video-${uiKey}`).currentTime += 10; }
-        function toggleFullScreen(uiKey) {
-            const el = document.getElementById(`video-wrapper-${uiKey}`);
-            document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen();
-        }
-        function toggleAudio(uiKey) {
-            const v = document.getElementById(`video-${uiKey}`);
-            v.muted = !v.muted;
-            document.getElementById(`icon-vol-${uiKey}`).className = v.muted ? "fas fa-volume-mute" : "fas fa-volume-up";
-        }
-
-        function watchDog() {
-            // Functionality removed to allow history playback without auto-forwarding to live.
-            // activeStreams.forEach((sid, uiKey) => {
-            //     if (userPaused[uiKey]) return;
-            //     const v = document.getElementById(`video-${uiKey}`);
-            //     if (v.duration && !dragging[uiKey] && (v.duration - v.currentTime > 15)) v.currentTime = v.duration - 1;
-            // });
-        }
-
-        function sendHeartbeat() {
-            if (activeStreams.size > 0) fetch('/keep_alive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stream_ids: Array.from(activeStreams.values()) }) }).catch(() => { });
-        }
-        window.addEventListener("beforeunload", () => {
-            if (activeStreams.size > 0) activeStreams.forEach(sid => fetch('/stop_stream', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stream_id: sid }), keepalive: true }));
-        });
+        // Stubs/Helpers to prevent reference errors
+        function updateIndicator(uiKey, status) {}
+        function manualStop(uiKey) {}
+        function startStream(uiKey, rtmpUrl) {}
     </script>
 </body>
 

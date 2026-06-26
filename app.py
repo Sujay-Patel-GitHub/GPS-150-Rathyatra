@@ -5066,6 +5066,30 @@ def device_info(device_id):
 
     try:
         device_data = get_live_gps(device_id) or {}
+        # Fallback to new_devices if get_live_gps has no valid coords
+        loc = device_data.get("location", {})
+        lat = loc.get("lat") or loc.get("latitude")
+        lng = loc.get("lng") or loc.get("longitude") or loc.get("lon")
+        if not lat or not lng or float(lat) == 0 or float(lng) == 0:
+            try:
+                from mongodb import mongo_client
+                nd = mongo_client["gps_server_db"]["new_devices"].find_one(
+                    {"truck_id": {"$regex": f"^{device_id}$", "$options": "i"}, "lat": {"$exists": True, "$ne": 0}},
+                    sort=[("timestamp", -1)]
+                )
+                if nd and nd.get("lat") and nd.get("lng"):
+                    device_data["location"] = {
+                        "lat": float(nd["lat"]),
+                        "lng": float(nd["lng"]),
+                        "speed": float(nd.get("speed", 0)),
+                        "alt": 0,
+                        "sat": 0,
+                        "date": nd["timestamp"].strftime("%d-%m-%Y") if nd.get("timestamp") else "--",
+                        "time": nd["timestamp"].strftime("%H:%M:%S") if nd.get("timestamp") else "--",
+                        "UID": "GPS"
+                    }
+            except Exception as ex:
+                print(f"Fallback error in device_info: {ex}")
         vehicle_info_local = col_vehicles.find_one({"device_id": device_id})
         if not vehicle_info_local:
             # ESP truck — build minimal vehicle_info from assign_devices
