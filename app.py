@@ -5102,7 +5102,7 @@ def device_info(device_id):
     if session.get('user_type') == 'truck':
         device_role = "TRUCK_USER"
 
-    return render_template_string(
+    resp = make_response(render_template_string(
         get_template("DEVICE_DASHBOARD_HTML"),
         device_id=device_id,
         initial_data=device_data,
@@ -5112,7 +5112,10 @@ def device_info(device_id):
         tr_phone=tr_phone,
         dr_phone=dr_phone,
         device_role=device_role
-    )
+    ))
+    resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    resp.headers['Pragma'] = 'no-cache'
+    return resp
 
 
 # --- GPS API Routes ---
