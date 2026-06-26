@@ -240,12 +240,8 @@ def mongo_data(collection):
 
 @app.route("/api/mongo_drop/<collection>", methods=["DELETE"])
 def mongo_drop(collection):
-    try:
-        from mongodb import mongo_client
-        mongo_client["gps_server_db"].drop_collection(collection)
-        return jsonify({"ok": True})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
+    # Permanently disabled — no collection drops allowed
+    return jsonify({"ok": False, "error": "Drop operations are disabled to protect data."}), 403
 
 
 # ── Device Remote Reset ──────────────────────────────────────
