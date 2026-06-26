@@ -5156,20 +5156,22 @@ def play_rtmp():
         LAST_HEARTBEAT[stream_id] = time.time()
         proc = PROCESS_TABLE.get(stream_id)
         if proc is None or proc.poll() is not None:
-            # Clear stale files so hls_ready only triggers on fresh segments
             if out_dir.exists():
                 for f in out_dir.glob("*.m3u8"): f.unlink(missing_ok=True)
                 for f in out_dir.glob("*.ts"): f.unlink(missing_ok=True)
             out_dir.mkdir(exist_ok=True)
             PROCESS_TABLE[stream_id] = start_ffmpeg(src, out_dir)
 
+    # Wait up to 20s for first segment
+    for _ in range(40):
+        if (out_dir / "index.m3u8").exists():
+            break
+        time.sleep(0.5)
+
+    if not (out_dir / "index.m3u8").exists():
+        return jsonify({"error": "Stream timeout - RTMP source may be offline"}), 500
+
     return jsonify({"hls_url": f"/hls/{stream_id}/index.m3u8", "stream_id": stream_id})
-
-
-@app.route("/hls_ready/<stream_id>")
-def hls_ready(stream_id):
-    ready = (STREAM_ROOT / stream_id / "index.m3u8").exists()
-    return jsonify({"ready": ready})
 
 
 @app.route("/stop_stream", methods=["POST"])
