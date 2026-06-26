@@ -667,8 +667,9 @@ def start_ffmpeg(src, out_dir):
         "-hls_segment_filename", str(out_dir / "segment_%03d.ts"),
         str(out_dir / "index.m3u8"),
     ]
+    log_path = out_dir / "ffmpeg.log"
     print("▶️ Starting FFmpeg:", " ".join(cmd))
-    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=open(log_path, "w"))
     return proc
 
 
@@ -4271,7 +4272,9 @@ def mongo_health():
             except Exception as e: counts[c] = f"error: {e}"
         # sample assign_devices
         sample = list(db["assign_devices"].find({}, {"_id":0,"truck_id":1,"username":1,"role":1}).limit(5))
-        return jsonify({"ok": True, "counts": counts, "assign_devices_sample": sample})
+        import shutil
+        ffmpeg_path = shutil.which("ffmpeg")
+        return jsonify({"ok": True, "counts": counts, "assign_devices_sample": sample, "ffmpeg": ffmpeg_path or "NOT FOUND"})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
 
@@ -5050,13 +5053,18 @@ def device_info(device_id):
     # Determine RTMP source preference
     source_pref = vehicle_info.get("rtmp_source", get_rtmp_source()) if vehicle_info else get_rtmp_source()
     
-    # Always use mongo_rtmp for streams
+    def clean_rtmp(url):
+        if not url: return ""
+        url = url.strip()
+        if url in ("ADD_LATER", "add_later", "-", "N/A", "NA"): return ""
+        return url
+
     mongo_rtmp = vehicle_info.get("mongo_rtmp", {}) if vehicle_info else {}
     rtmp_streams = {
-        "1": {"name": extract_stream_name(mongo_rtmp.get("rtmp1"), 1), "url": mongo_rtmp.get("rtmp1", "")},
-        "2": {"name": extract_stream_name(mongo_rtmp.get("rtmp2"), 2), "url": mongo_rtmp.get("rtmp2", "")},
-        "3": {"name": extract_stream_name(mongo_rtmp.get("rtmp3"), 3), "url": mongo_rtmp.get("rtmp3", "")},
-        "4": {"name": extract_stream_name(mongo_rtmp.get("rtmp4"), 4), "url": mongo_rtmp.get("rtmp4", "")}
+        "1": {"name": extract_stream_name(mongo_rtmp.get("rtmp1"), 1), "url": clean_rtmp(mongo_rtmp.get("rtmp1", ""))},
+        "2": {"name": extract_stream_name(mongo_rtmp.get("rtmp2"), 2), "url": clean_rtmp(mongo_rtmp.get("rtmp2", ""))},
+        "3": {"name": extract_stream_name(mongo_rtmp.get("rtmp3"), 3), "url": clean_rtmp(mongo_rtmp.get("rtmp3", ""))},
+        "4": {"name": extract_stream_name(mongo_rtmp.get("rtmp4"), 4), "url": clean_rtmp(mongo_rtmp.get("rtmp4", ""))}
     }
 
     # --- FETCH ASSIGNED USER CONTACT DETAILS ---
@@ -5180,6 +5188,13 @@ def hls(stream_id, filename):
     folder = STREAM_ROOT / stream_id
     if not folder.exists(): abort(404)
     return send_from_directory(folder, filename)
+
+@app.route("/api/stream_log/<stream_id>")
+def stream_log(stream_id):
+    if session.get('user_type') != 'admin': return "Unauthorized", 403
+    log_path = STREAM_ROOT / stream_id / "ffmpeg.log"
+    if not log_path.exists(): return "No log yet", 404
+    return log_path.read_text(errors="replace")[-3000:]
 
 
 @app.route("/get_gps_update/<device_id>")
