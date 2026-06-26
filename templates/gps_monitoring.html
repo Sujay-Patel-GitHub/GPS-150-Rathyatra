@@ -495,6 +495,9 @@
                 <button class="action-btn" onclick="showAllVehicles()">
                     <i class="fas fa-expand-arrows-alt"></i> Fit Map
                 </button>
+                <button class="action-btn" id="snapRoadBtn" onclick="toggleSnapToRoad()" title="Snap all vehicles to the nearest road">
+                    <i class="fas fa-road"></i> Snap to Road: OFF
+                </button>
                 <button class="action-btn" onclick="refreshLocations()">
                     <i class="fas fa-sync-alt"></i> Refresh
                 </button>
@@ -660,32 +663,109 @@
             });
         }
 
-        function initMarkers() {
-            vehicles.forEach(v => {
-                if (!v.lat || !v.lng) return;
-                const role = (assignMap[v.device_id] || {}).role || '';
-                const marker = L.marker([v.lat, v.lng], { icon: makeIcon(role) }).addTo(map);
+        let snapToRoad = false;
+        const snapCache = {};
+        let lastOverpassFetch = 0;
 
-                const popupContent = `
-                    <div style="min-width: 200px; font-family: 'Poppins', sans-serif;">
-                        <h4 style="margin:0 0 8px 0; color:#111827; border-bottom:1px solid #eee; padding-bottom:5px;">
-                            ${v.device_id}
-                        </h4>
-                        <div style="font-size:0.85rem; color:#4b5563; line-height:1.6;">
-                            <strong>Godown:</strong> ${v.godown_manager || 'N/A'}<br>
-                            <strong>Status:</strong> ${v.has_gps ? '<span style="color:#059669; font-weight:600;">Online</span>' : 'Offline'}<br>
-                            <strong>Speed:</strong> ${v.speed || 0} km/h<br>
-                            <div style="margin-top:8px;">
-                                <a href="https://www.google.com/maps?q=${v.lat},${v.lng}" target="_blank" 
-                                   style="color:#2563eb; text-decoration:none; font-weight:500;">
-                                   <i class="fas fa-external-link-alt"></i> Google Maps
-                                </a>
-                            </div>
+        function nearestPointOnSegment(p, a, b) {
+            const mLat = 111320, mLng = 111320 * Math.cos(p.lat * Math.PI / 180);
+            const px = p.lng * mLng, py = p.lat * mLat;
+            const ax = a.lon * mLng, ay = a.lat * mLat;
+            const bx = b.lon * mLng, by = b.lat * mLat;
+            const dx = bx - ax, dy = by - ay;
+            const len2 = dx * dx + dy * dy;
+            let t = len2 ? ((px - ax) * dx + (py - ay) * dy) / len2 : 0;
+            t = Math.max(0, Math.min(1, t));
+            const cx = ax + t * dx, cy = ay + t * dy;
+            return { lat: cy / mLat, lng: cx / mLng, dist: Math.hypot(px - cx, py - cy) };
+        }
+
+        async function snapToNearestRoad(lat, lng) {
+            const key = lat.toFixed(5) + ',' + lng.toFixed(5);
+            if (snapCache[key]) return snapCache[key];
+
+            const now = Date.now();
+            if (now - lastOverpassFetch < 1500) {
+                throw new Error("throttled");
+            }
+            lastOverpassFetch = now;
+
+            const radius = 60;
+            const exclude = "footway|path|pedestrian|steps|cycleway|bridleway|construction|proposed|raceway";
+            const q = `[out:json][timeout:8];way(around:${radius},${lat},${lng})["highway"]["highway"!~"${exclude}"];out geom;`;
+            const url = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(q);
+
+            const r = await fetch(url);
+            const j = await r.json();
+            let best = null;
+            const P = { lat, lng };
+            if (j && j.elements) {
+                for (const way of j.elements) {
+                    const g = way.geometry;
+                    if (!g || g.length < 2) continue;
+                    for (let i = 0; i < g.length - 1; i++) {
+                        const cp = nearestPointOnSegment(P, g[i], g[i + 1]);
+                        if (!best || cp.dist < best.dist) best = cp;
+                    }
+                }
+            }
+            if (best) {
+                snapCache[key] = [best.lat, best.lng];
+                return snapCache[key];
+            }
+            throw new Error("no road nearby");
+        }
+
+        function updateOrAddMarker(v) {
+            if (!v.lat || !v.lng) return;
+
+            const role = (assignMap[v.device_id] || {}).role || '';
+            const popupContent = `
+                <div style="min-width: 200px; font-family: 'Poppins', sans-serif;">
+                    <h4 style="margin:0 0 8px 0; color:#111827; border-bottom:1px solid #eee; padding-bottom:5px;">
+                        ${v.device_id}
+                    </h4>
+                    <div style="font-size:0.85rem; color:#4b5563; line-height:1.6;">
+                        <strong>Godown:</strong> ${v.godown_manager || 'N/A'}<br>
+                        <strong>Status:</strong> ${v.has_gps ? '<span style="color:#059669; font-weight:600;">Online</span>' : 'Offline'}<br>
+                        <strong>Speed:</strong> ${v.speed || 0} km/h<br>
+                        <div style="margin-top:8px;">
+                            <a href="https://www.google.com/maps?q=${v.lat},${v.lng}" target="_blank" 
+                               style="color:#2563eb; text-decoration:none; font-weight:500;">
+                               <i class="fas fa-external-link-alt"></i> Google Maps
+                            </a>
                         </div>
                     </div>
-                `;
-                marker.bindPopup(popupContent);
-                markers[v.device_id] = marker;
+                </div>
+            `;
+
+            const applyPosition = (lat, lng) => {
+                if (markers[v.device_id]) {
+                    markers[v.device_id].setLatLng([lat, lng]);
+                    markers[v.device_id].setPopupContent(popupContent);
+                } else {
+                    const marker = L.marker([lat, lng], { icon: makeIcon(role) }).addTo(map);
+                    marker.bindPopup(popupContent);
+                    markers[v.device_id] = marker;
+                }
+            };
+
+            if (snapToRoad) {
+                snapToNearestRoad(v.lat, v.lng)
+                    .then(([slat, slng]) => {
+                        applyPosition(slat, slng);
+                    })
+                    .catch(() => {
+                        applyPosition(v.lat, v.lng);
+                    });
+            } else {
+                applyPosition(v.lat, v.lng);
+            }
+        }
+
+        function initMarkers() {
+            vehicles.forEach(v => {
+                updateOrAddMarker(v);
             });
         }
 
@@ -694,51 +774,17 @@
                 .then(r => r.json())
                 .then(data => {
                     if (data && !data.error) {
-                        // Keep track of active card before updating
                         const activeCard = document.querySelector('.vehicle-card.active');
                         const activeId = activeCard ? activeCard.getAttribute('data-id') : null;
 
                         vehicles = data;
 
-                        // Update markers on the map
                         vehicles.forEach(v => {
-                            if (!v.lat || !v.lng) return;
-
-                            const popupContent = `
-                                <div style="min-width: 200px; font-family: 'Poppins', sans-serif;">
-                                    <h4 style="margin:0 0 8px 0; color:#111827; border-bottom:1px solid #eee; padding-bottom:5px;">
-                                        ${v.device_id}
-                                    </h4>
-                                    <div style="font-size:0.85rem; color:#4b5563; line-height:1.6;">
-                                        <strong>Godown:</strong> ${v.godown_manager || 'N/A'}<br>
-                                        <strong>Status:</strong> ${v.has_gps ? '<span style="color:#059669; font-weight:600;">Online</span>' : 'Offline'}<br>
-                                        <strong>Speed:</strong> ${v.speed || 0} km/h<br>
-                                        <div style="margin-top:8px;">
-                                            <a href="https://www.google.com/maps?q=${v.lat},${v.lng}" target="_blank" 
-                                               style="color:#2563eb; text-decoration:none; font-weight:500;">
-                                               <i class="fas fa-external-link-alt"></i> Google Maps
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-
-                            if (markers[v.device_id]) {
-                                // Update position in place
-                                markers[v.device_id].setLatLng([v.lat, v.lng]);
-                                markers[v.device_id].setPopupContent(popupContent);
-                            } else {
-                                // Create marker if it doesn't exist
-                                const marker = L.marker([v.lat, v.lng], { icon: carIcon }).addTo(map);
-                                marker.bindPopup(popupContent);
-                                markers[v.device_id] = marker;
-                            }
+                            updateOrAddMarker(v);
                         });
 
-                        // Re-render vehicle list card content but filter search query as well
                         filterVehicleList();
 
-                        // Restore active card highlights if they exist
                         if (activeId) {
                             const newActiveCard = document.querySelector(`.vehicle-card[data-id="${activeId}"]`);
                             if (newActiveCard) {
@@ -746,11 +792,33 @@
                             }
                         }
 
-                        // Update stats summary counter
                         updateStats();
                     }
                 })
                 .catch(e => console.error(e));
+        }
+
+        function toggleSnapToRoad() {
+            snapToRoad = !snapToRoad;
+            const btn = document.getElementById('snapRoadBtn');
+            if (btn) {
+                if (snapToRoad) {
+                    btn.classList.add('active');
+                    btn.innerHTML = '<i class="fas fa-road"></i> Snap to Road: ON';
+                    btn.style.background = '#dcfce7';
+                    btn.style.color = '#16a34a';
+                    btn.style.borderColor = '#16a34a';
+                } else {
+                    btn.classList.remove('active');
+                    btn.innerHTML = '<i class="fas fa-road"></i> Snap to Road: OFF';
+                    btn.style.background = '';
+                    btn.style.color = '';
+                    btn.style.borderColor = '';
+                }
+            }
+            vehicles.forEach(v => {
+                updateOrAddMarker(v);
+            });
         }
 
         function focusVehicle(id, lat, lng) {
