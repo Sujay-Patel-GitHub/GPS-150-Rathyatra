@@ -147,7 +147,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:#f1f5f9;color:#0
                 <div class="cam-label"><i class="fas fa-video"></i> Front Camera</div>
                 <div class="cam-body">
                     {% if own.get('front_rtmp') and own.front_rtmp != 'ADD_LATER' and own.front_rtmp != '' %}
-                    <iframe src="{{ own.front_rtmp }}" allowfullscreen></iframe>
+                    <iframe src="/stream_player?src={{ own.front_rtmp | urlencode }}" allowfullscreen></iframe>
                     {% else %}
                     <div class="cam-no-feed"><i class="fas fa-video-slash"></i><span>No Feed Configured</span></div>
                     {% endif %}
@@ -158,7 +158,7 @@ html,body{height:100%;font-family:'Inter',sans-serif;background:#f1f5f9;color:#0
                 <div class="cam-label"><i class="fas fa-video"></i> Rear Camera</div>
                 <div class="cam-body">
                     {% if own.get('rear_rtmp') and own.rear_rtmp != 'ADD_LATER' and own.rear_rtmp != '' %}
-                    <iframe src="{{ own.rear_rtmp }}" allowfullscreen></iframe>
+                    <iframe src="/stream_player?src={{ own.rear_rtmp | urlencode }}" allowfullscreen></iframe>
                     {% else %}
                     <div class="cam-no-feed"><i class="fas fa-video-slash"></i><span>No Feed Configured</span></div>
                     {% endif %}

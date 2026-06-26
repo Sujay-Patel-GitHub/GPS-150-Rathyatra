@@ -573,7 +573,7 @@
 
             if (role === 'AKHADA_USER') {
                 const rtmp = info.front_rtmp || '';
-                cameraFrame.src = rtmp || 'about:blank';
+                cameraFrame.src = rtmp ? '/stream_player?src=' + encodeURIComponent(rtmp) : 'about:blank';
                 container.classList.add('akhada-mode');
             } else {
                 // TRUCK_USER or anything else → full screen map

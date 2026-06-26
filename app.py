@@ -1727,9 +1727,28 @@ def get_vehicle_cameras(device_id):
     try:
         # Get vehicle info from MongoDB
         vehicle_info = col_vehicles.find_one({"device_id": device_id})
-        
         if not vehicle_info:
-            return jsonify({"success": False, "error": "Vehicle not found"}), 404
+            # Fallback to case-insensitive match
+            vehicle_info = col_vehicles.find_one({"device_id": {"$regex": f"^{re.escape(device_id)}$", "$options": "i"}})
+            
+        if not vehicle_info:
+            # ESP truck — build minimal vehicle_info from assign_devices
+            try:
+                from mongodb import mongo_client
+                assign_doc = mongo_client["gps_server_db"]["assign_devices"].find_one({"truck_id": {"$regex": f"^{device_id}$", "$options": "i"}})
+            except Exception:
+                assign_doc = None
+            if assign_doc:
+                vehicle_info = {
+                    "device_id": device_id,
+                    "mongo_rtmp": {
+                        "rtmp1": assign_doc.get("front_rtmp", ""),
+                        "rtmp2": assign_doc.get("rear_rtmp", ""),
+                    },
+                    "rtmp_source": "mongo",
+                }
+            else:
+                return jsonify({"success": False, "error": "Vehicle not found"}), 404
         
         # Determine RTMP source preference
         source_pref = vehicle_info.get("rtmp_source", get_rtmp_source())
@@ -5192,6 +5211,273 @@ def play_rtmp():
         return jsonify({"error": "Stream timeout"}), 500
 
     return jsonify({"hls_url": f"/hls/{stream_id}/index.m3u8", "stream_id": stream_id})
+
+
+@app.route("/stream_player")
+def stream_player():
+    src = request.args.get("src", "").strip()
+    if not src:
+        return "<h3>Error: No stream URL provided</h3>", 400
+    
+    # Render a clean, self-contained HTML player page with HLS.js
+    player_template = """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Stream Player</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        #video-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.75);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            z-index: 10;
+            transition: opacity 0.3s;
+        }
+        .hidden {
+            display: none !important;
+        }
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #3b82f6;
+            animation: spin 1s linear infinite;
+            margin-bottom: 12px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .status-title {
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+        .error-text {
+            color: #ef4444;
+            font-size: 0.85rem;
+            margin-top: 8px;
+            text-align: center;
+            padding: 0 10px;
+        }
+        .retry-btn {
+            margin-top: 12px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.85rem;
+        }
+        .retry-btn:hover {
+            background: #1d4ed8;
+        }
+    </style>
+</head>
+<body>
+    <div id="video-container">
+        <div id="overlay" class="overlay">
+            <div id="spinner" class="spinner"></div>
+            <div id="status-text" class="status-title">Connecting...</div>
+            <div id="error-text" class="error-text hidden"></div>
+            <button id="retry-btn" class="retry-btn hidden" onclick="startStream()">Retry Now</button>
+        </div>
+        <video id="videoPlayer" autoplay muted playsinline></video>
+    </div>
+
+    <script>
+        const rtmpUrl = {{ rtmp_url | tojson }};
+        let hls = null;
+        let streamId = null;
+        let heartbeatInterval = null;
+        let reconnectTimer = null;
+        let isConnecting = false;
+
+        function showStatus(text, showSpinner = true, errorText = "") {
+            document.getElementById("overlay").classList.remove("hidden");
+            document.getElementById("status-text").innerText = text;
+            const spinner = document.getElementById("spinner");
+            if (showSpinner) spinner.classList.remove("hidden");
+            else spinner.classList.add("hidden");
+            
+            const errEl = document.getElementById("error-text");
+            if (errorText) {
+                errEl.innerText = errorText;
+                errEl.classList.remove("hidden");
+                document.getElementById("retry-btn").classList.remove("hidden");
+            } else {
+                errEl.classList.add("hidden");
+                document.getElementById("retry-btn").classList.add("hidden");
+            }
+        }
+
+        function hideStatus() {
+            document.getElementById("overlay").classList.add("hidden");
+        }
+
+        async function startStream() {
+            if (isConnecting) return;
+            isConnecting = true;
+            
+            stopStream();
+            showStatus("Connecting to camera...", true);
+            
+            try {
+                const res = await fetch(`/play_rtmp?src=${encodeURIComponent(rtmpUrl)}`);
+                const data = await res.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                streamId = data.stream_id;
+                playHls(data.hls_url + '?t=' + Date.now());
+                
+                // Start heartbeat
+                startHeartbeat();
+            } catch (err) {
+                console.error("Stream error:", err);
+                showStatus("Offline", false, err.message || "Could not connect to camera stream.");
+                scheduleReconnect();
+            } finally {
+                isConnecting = false;
+            }
+        }
+
+        function playHls(src) {
+            const video = document.getElementById("videoPlayer");
+            if (Hls.isSupported()) {
+                hls = new Hls({
+                    startPosition: -1,
+                    liveSyncDurationCount: 3,
+                    manifestLoadingMaxRetry: 10,
+                    manifestLoadingRetryDelay: 1000,
+                });
+                hls.loadSource(src);
+                hls.attachMedia(video);
+                
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    video.play().catch(e => console.log("Play blocked, waiting for interaction"));
+                    hideStatus();
+                });
+                
+                hls.on(Hls.Events.ERROR, (event, data) => {
+                    if (data.fatal) {
+                        console.warn("Fatal HLS error:", data.type);
+                        stopStream();
+                        showStatus("Stream Interrupted", false, "Trying to reconnect...");
+                        scheduleReconnect();
+                    }
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = src;
+                video.play();
+                hideStatus();
+            }
+        }
+
+        function stopStream() {
+            // Clear reconnect timers
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
+            
+            // Clear heartbeat
+            if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+                heartbeatInterval = null;
+            }
+            
+            // Destroy HLS player
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
+            
+            const video = document.getElementById("videoPlayer");
+            video.pause();
+            video.src = "";
+            
+            // Tell server to stop stream
+            if (streamId) {
+                fetch('/stop_stream', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ stream_id: streamId }),
+                    keepalive: true
+                });
+                streamId = null;
+            }
+        }
+
+        function startHeartbeat() {
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
+            heartbeatInterval = setInterval(() => {
+                if (streamId) {
+                    fetch('/keep_alive', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ stream_ids: [streamId] })
+                    }).catch(e => {});
+                }
+            }, 3000);
+        }
+
+        function scheduleReconnect() {
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+            reconnectTimer = setTimeout(() => {
+                startStream();
+            }, 10000); // Retry every 10 seconds
+        }
+
+        // Start playing on page load
+        window.addEventListener("load", startStream);
+        
+        // Clean up on unload
+        window.addEventListener("beforeunload", stopStream);
+    </script>
+</body>
+</html>
+    """
+    return render_template_string(player_template, rtmp_url=src)
 
 
 @app.route("/stop_stream", methods=["POST"])
