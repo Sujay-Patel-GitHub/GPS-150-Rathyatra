@@ -201,7 +201,11 @@ def get_rtmp_source():
 def get_live_gps(device_id):
     """Return latest GPS doc for a device from col_gps_live, or {}."""
     try:
-        return col_gps_live.find_one({"device_id": device_id}) or {}
+        doc = col_gps_live.find_one({"device_id": device_id})
+        if doc:
+            doc.pop("_id", None)
+            return doc
+        return {}
     except:
         return {}
 
