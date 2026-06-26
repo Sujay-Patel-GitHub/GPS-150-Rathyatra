@@ -136,7 +136,22 @@
   <div class="sidebar">
     <div class="sidebar-title">Collections</div>
     <div id="colList"><div style="padding:20px;color:#475569;font-size:.82rem;">Loading...</div></div>
-
+    
+    <div class="sidebar-title" style="border-top: 1px solid #334155; margin-top: 15px; padding-top: 15px;">Devices</div>
+    <div class="dev-section">
+      <div class="dev-section-title reg">
+        <span class="dot-badge"></span>Registered
+        <span class="dev-count" id="regCount">0</span>
+      </div>
+      <div id="regList"></div>
+    </div>
+    <div class="dev-section">
+      <div class="dev-section-title unreg">
+        <span class="dot-badge"></span>Unregistered
+        <span class="dev-count" id="unregCount">0</span>
+      </div>
+      <div id="unregList"></div>
+    </div>
   </div>
   <div class="main" id="mainPanel">
     <div class="placeholder">
@@ -183,21 +198,29 @@ async function loadCollections() {
 }
 
 async function selectCol(name) {
-  activeCol = name; activeTruck = null;
+  // Clear any existing timer immediately to prevent race conditions
   clearInterval(refreshTimer);
+  activeCol = name; 
+  activeTruck = null;
+  
   if (name === "new_devices") {
     await loadTruckGrid();
-    if (autoRefresh) refreshTimer = setInterval(loadTruckGrid, 4000);
   } else {
     await loadData();
-    if (autoRefresh) refreshTimer = setInterval(loadData, 4000);
   }
 }
 
 // ── Truck grid ────────────────────────────────────────────
 async function loadTruckGrid() {
+  // Clear any existing timer immediately to prevent race conditions
+  clearInterval(refreshTimer);
+  
   const res = await fetch("/api/mongo_data/new_devices");
   const docs = await res.json();
+  
+  // Guard clause: If the user navigated away while the fetch was in flight, abort
+  if (activeCol !== "new_devices" || activeTruck !== null) return;
+
   const trucks = {};
   for (const d of docs) { const t = d.truck_id || "unknown"; if (!trucks[t]) trucks[t] = []; trucks[t].push(d); }
   const ids = Object.keys(trucks).sort();
@@ -235,13 +258,24 @@ async function loadTruckGrid() {
     <div class="truck-grid">${cards}</div>`;
   document.getElementById("lastRefresh").textContent = "Updated " + new Date().toLocaleTimeString();
   await loadCollections();
+  
+  // Clear again just in case another action happened, then set the interval
+  clearInterval(refreshTimer);
+  if (autoRefresh) refreshTimer = setInterval(loadTruckGrid, 4000);
 }
 
 // ── Truck detail table ────────────────────────────────────
 async function showTruckDetail(truckId) {
+  // Clear any existing timer immediately to prevent race conditions
+  clearInterval(refreshTimer);
   activeTruck = truckId;
+  
   const res = await fetch("/api/mongo_data/new_devices");
   const all = await res.json();
+  
+  // Guard clause: If the user navigated away while the fetch was in flight, abort
+  if (activeTruck !== truckId || activeCol !== "new_devices") return;
+
   const docs = all.filter(d => d.truck_id === truckId);
 
   const rows = docs.map(d => `<tr>
@@ -261,7 +295,7 @@ async function showTruckDetail(truckId) {
       <label class="auto-label" style="margin-left:auto;"><input type="checkbox" ${autoRefresh?"checked":""} onchange="toggleAuto(this)"> Auto-refresh</label>
       <button class="refresh-btn" onclick="showTruckDetail('${esc(truckId)}')">&#8635; Refresh</button>
     </div>
-<div class="table-wrap"><table>
+    <div class="table-wrap"><table>
       <thead>
         <tr>
           <th class="meta-h">Truck</th>
@@ -273,6 +307,7 @@ async function showTruckDetail(truckId) {
       <tbody>${rows}</tbody>
     </table></div>`;
 
+  // Clear again just in case another action happened, then set the interval
   clearInterval(refreshTimer);
   if (autoRefresh) refreshTimer = setInterval(() => showTruckDetail(truckId), 4000);
 }
@@ -280,8 +315,16 @@ async function showTruckDetail(truckId) {
 // ── Generic collection ────────────────────────────────────
 async function loadData() {
   if (!activeCol) return;
+  
+  // Clear any existing timer immediately to prevent race conditions
+  clearInterval(refreshTimer);
+  
   const res = await fetch("/api/mongo_data/" + activeCol);
   const docs = await res.json();
+  
+  // Guard clause: If the user navigated away while the fetch was in flight, abort
+  if (activeCol === "new_devices" || activeTruck !== null) return;
+
   if (!docs.length) {
     document.getElementById("mainPanel").innerHTML = `<div class="toolbar"><h2>${activeCol}</h2></div><div class="empty"><i>&#128205;</i>No data yet.</div>`;
     return;
@@ -338,6 +381,10 @@ async function loadData() {
     </table></div>`;
   document.getElementById("lastRefresh").textContent = "Updated " + new Date().toLocaleTimeString();
   await loadCollections();
+  
+  // Clear again just in case another action happened, then set the interval
+  clearInterval(refreshTimer);
+  if (autoRefresh) refreshTimer = setInterval(loadData, 4000);
 }
 
 function toggleAuto(cb) {
@@ -389,29 +436,36 @@ async function loadDevicePanels() {
 
     const unregEl = document.getElementById("unregList");
     const regEl   = document.getElementById("regList");
-    document.getElementById("unregCount").textContent = data.unregistered.length;
-    document.getElementById("regCount").textContent   = data.registered.length;
+    const unregCountEl = document.getElementById("unregCount");
+    const regCountEl = document.getElementById("regCount");
 
-    if (data.unregistered.length === 0) {
-      unregEl.innerHTML = '<div class="dev-empty">No unregistered devices</div>';
-    } else {
-      unregEl.innerHTML = data.unregistered.map(id =>
-        `<div class="dev-item unreg-item">
-          <span>${id}</span>
-          <button class="dev-action btn-register" onclick="registerDevice('${id}')">Register</button>
-        </div>`
-      ).join("");
+    if (unregCountEl) unregCountEl.textContent = data.unregistered.length;
+    if (regCountEl) regCountEl.textContent   = data.registered.length;
+
+    if (unregEl) {
+      if (data.unregistered.length === 0) {
+        unregEl.innerHTML = '<div class="dev-empty">No unregistered devices</div>';
+      } else {
+        unregEl.innerHTML = data.unregistered.map(id =>
+          `<div class="dev-item unreg-item">
+            <span>${id}</span>
+            <button class="dev-action btn-register" onclick="registerDevice('${id}')">Register</button>
+          </div>`
+        ).join("");
+      }
     }
 
-    if (data.registered.length === 0) {
-      regEl.innerHTML = '<div class="dev-empty">No registered devices</div>';
-    } else {
-      regEl.innerHTML = data.registered.map(id =>
-        `<div class="dev-item reg-item">
-          <span>${id}</span>
-          <button class="dev-action btn-unregister" onclick="unregisterDevice('${id}')">Remove</button>
-        </div>`
-      ).join("");
+    if (regEl) {
+      if (data.registered.length === 0) {
+        regEl.innerHTML = '<div class="dev-empty">No registered devices</div>';
+      } else {
+        regEl.innerHTML = data.registered.map(id =>
+          `<div class="dev-item reg-item">
+            <span>${id}</span>
+            <button class="dev-action btn-unregister" onclick="unregisterDevice('${id}')">Remove</button>
+          </div>`
+        ).join("");
+      }
     }
   } catch(e) {
     console.error("Device panel error:", e);
