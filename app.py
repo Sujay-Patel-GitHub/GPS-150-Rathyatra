@@ -4256,6 +4256,22 @@ def akhada_test_login():
         return f"<h2>LOGIN FAILED</h2><pre>{results}</pre>"
     return '<form method=POST>user:<input name=username> pass:<input name=password type=password><button>Test</button></form>'
 
+@app.route("/api/mongo_health")
+def mongo_health():
+    if session.get('user_type') != 'admin': return jsonify({"error": "Unauthorized"}), 403
+    try:
+        from mongodb import mongo_client
+        db = mongo_client["gps_server_db"]
+        collections = db.list_collection_names()
+        counts = {}
+        for c in collections:
+            try: counts[c] = db[c].count_documents({})
+            except: counts[c] = "error"
+        ping = db.command("ping")
+        return jsonify({"ok": True, "ping": ping, "collections": counts})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
 @app.route("/api/debug_akhada_users")
 def debug_akhada_users():
     if session.get('user_type') != 'admin': return jsonify({"error": "Unauthorized"}), 403
