@@ -493,6 +493,12 @@ def mosfet_set(truck_id):
             {"$set": {"truck_id": truck_id, "state": state, "updated_at": datetime.now()}},
             upsert=True
         )
+        # Keep gps_live in sync
+        col_gps_live.update_one(
+            {"device_id": truck_id},
+            {"$set": {"mosfet": state}},
+            upsert=True
+        )
         return jsonify({"ok": True, "state": state})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
@@ -5657,26 +5663,6 @@ def keep_alive():
     return jsonify({"status": "ok"})
 
 
-@app.route("/hls/<stream_id>/<path:filename>")
-def hls(stream_id, filename):
-    folder = STREAM_ROOT / stream_id
-    if not folder.exists(): abort(404)
-    return send_from_directory(folder, filename)
-
-@app.route("/api/stream_log/<stream_id>")
-def stream_log(stream_id):
-    if session.get('user_type') != 'admin': return "Unauthorized", 403
-    log_path = STREAM_ROOT / stream_id / "ffmpeg.log"
-    if not log_path.exists(): return "No log yet", 404
-    return log_path.read_text(errors="replace")[-3000:]
-
-
-@app.route("/get_gps_update/<device_id>")
-def get_gps_update(device_id):
-    return api_vehicle(device_id)
-
-
-
 @app.route("/toggle_camera", methods=["POST"])
 def toggle_camera():
     if session.get('user_type') != 'admin':
@@ -5695,6 +5681,15 @@ def toggle_camera():
             return jsonify({"success": False, "message": "Invalid action"}), 400
         
         col_gps_live.update_one({"device_id": device_id}, {"$set": {"mosfet": new_val}}, upsert=True)
+        
+        # Keep mosfet_states in sync
+        from mongodb import mongo_client
+        mongo_client["gps_server_db"]["mosfet_states"].update_one(
+            {"truck_id": device_id},
+            {"$set": {"truck_id": device_id, "state": new_val, "updated_at": datetime.now()}},
+            upsert=True
+        )
+        
         return jsonify({"success": True, "message": f"Camera turned {action} successfully"})
             
     except Exception as e:
@@ -5702,6 +5697,23 @@ def toggle_camera():
         return jsonify({"success": False, "message": str(e)}), 500
 
 
+@app.route("/hls/<stream_id>/<path:filename>")
+def hls(stream_id, filename):
+    folder = STREAM_ROOT / stream_id
+    if not folder.exists(): abort(404)
+    return send_from_directory(folder, filename)
+
+@app.route("/api/stream_log/<stream_id>")
+def stream_log(stream_id):
+    if session.get('user_type') != 'admin': return "Unauthorized", 403
+    log_path = STREAM_ROOT / stream_id / "ffmpeg.log"
+    if not log_path.exists(): return "No log yet", 404
+    return log_path.read_text(errors="replace")[-3000:]
+
+
+@app.route("/get_gps_update/<device_id>")
+def get_gps_update(device_id):
+    return api_vehicle(device_id)
 @app.route("/reset_eeprom", methods=["POST"])
 def reset_eeprom():
     if session.get('user_type') != 'admin':
