@@ -11,9 +11,9 @@
 #include <HTTPClient.h>
 
 // ── CONFIG — edit these lines only ────────────────────────
-const char* TRUCK_NAME = "TRUCK1";
-const char* WIFI_SSID  = "Airtel_sujay2";
-const char* WIFI_PASS  = "sujay@15122007";
+const char* TRUCK_NAME = "TRUCK2";
+const char* WIFI_SSID  = "surya2";
+const char* WIFI_PASS  = "Pilab@909090";
 #define MOSFET_PIN 27
 // ──────────────────────────────────────────────────────────
 
@@ -119,6 +119,10 @@ void handleOTAResult() {
 // ── Task: GPS (Core 0)
 void TaskGPS(void* pv) {
   for (;;) {
+    if (WiFi.status() != WL_CONNECTED) {
+      vTaskDelay(pdMS_TO_TICKS(100));
+      continue;
+    }
     while (gpsSerial.available()) {
       if (gps.encode(gpsSerial.read()) && gps.location.isUpdated()) {
         if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(5)) == pdTRUE) {
@@ -137,6 +141,10 @@ void TaskGPS(void* pv) {
 // ── Task: Web OTA + ArduinoOTA (Core 0)
 void TaskOTA(void* pv) {
   for (;;) {
+    if (WiFi.status() != WL_CONNECTED) {
+      vTaskDelay(pdMS_TO_TICKS(500));
+      continue;
+    }
     otaServer.handleClient();
     ArduinoOTA.handle();
     vTaskDelay(pdMS_TO_TICKS(10));
@@ -147,8 +155,6 @@ void TaskOTA(void* pv) {
 void TaskMPU(void* pv) {
   static uint32_t lastPushMs    = 0;
   static uint32_t lastMosfetMs  = 0;
-  static uint32_t lastWifiCheckMs = 0;
-  static bool     wifiWasDown   = false;
 
   // Motion state
   static float    deltaHistory[DELTA_SAMPLES] = {};
@@ -159,6 +165,41 @@ void TaskMPU(void* pv) {
   static const char* motionState = "still";
 
   for (;;) {
+    // ── WiFi reconnection logic: pause MPU/GPS and focus on reconnecting ──
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.println("\n[WiFi] Disconnected. Pausing MPU and GPS tasks. Focusing on reconnection...");
+      WiFi.disconnect(true);
+      delay(100);
+      WiFi.begin(WIFI_SSID, WIFI_PASS);
+      
+      uint32_t reconnectStart = millis();
+      uint32_t lastBegin = reconnectStart;
+      while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+        
+        // If disconnected for more than 3 minutes, reboot the ESP32 to guarantee a clean reconnect
+        if (millis() - reconnectStart > 180000) {
+          Serial.println("\n[WiFi] Reconnection failed after 3 minutes. Rebooting ESP32...");
+          ESP.restart();
+        }
+        
+        // Retry WiFi.begin every 30 seconds
+        if (millis() - lastBegin > 30000) {
+          Serial.println("\n[WiFi] Connection attempt timed out. Retrying WiFi.begin...");
+          WiFi.disconnect(true);
+          delay(100);
+          WiFi.begin(WIFI_SSID, WIFI_PASS);
+          lastBegin = millis();
+        }
+      }
+      Serial.printf("\n[WiFi] Reconnected. IP: %s\n", WiFi.localIP().toString().c_str());
+      // Reset timers to avoid immediate polling/pushing
+      lastPushMs = millis();
+      lastMosfetMs = millis();
+      continue;
+    }
+
     // ── Read MPU ──
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x3B);
@@ -230,22 +271,7 @@ void TaskMPU(void* pv) {
     Serial.printf("[ACC] X:%.3fg Y:%.3fg Z:%.3fg  [GYR] X:%.1f Y:%.1f Z:%.1f  avgD:%.3fg\n",
       snap.ax, snap.ay, snap.az, snap.gx, snap.gy, snap.gz, avgDelta);
 
-    // ── WiFi watchdog: check every 8s, reconnect if dropped ──
-    if ((now - lastWifiCheckMs) >= 8000) {
-      lastWifiCheckMs = now;
-      if (WiFi.status() != WL_CONNECTED) {
-        if (!wifiWasDown) {
-          wifiWasDown = true;
-          Serial.println("[WiFi] Disconnected! Reconnecting...");
-        }
-        WiFi.disconnect(true);
-        delay(100);
-        WiFi.begin(WIFI_SSID, WIFI_PASS);
-      } else if (wifiWasDown) {
-        wifiWasDown = false;
-        Serial.printf("[WiFi] Reconnected! IP: %s\n", WiFi.localIP().toString().c_str());
-      }
-    }
+    // WiFi reconnection is handled at the start of TaskMPU.
 
     // ── Push GPS + MPU + motion every 5s ──
     if ((now - lastPushMs) >= 5000 && WiFi.status() == WL_CONNECTED) {
