@@ -1350,7 +1350,32 @@
             }, 1000);
         }
 
+        const reconnectTimers = {};
+
+        function scheduleReconnect(uiKey, rtmpUrl) {
+            if (reconnectTimers[uiKey]) clearTimeout(reconnectTimers[uiKey]);
+            let secs = 30;
+            const msgBox = document.getElementById(`msg-box-${uiKey}`);
+            function tick() {
+                if (userPaused[uiKey]) return;
+                if (!document.getElementById(`msg-box-${uiKey}`)) return;
+                msgBox.innerHTML = `<div class="glass-card"><div class="status-icon error"><i class="fas fa-video-slash"></i></div><div class="status-title error">Offline — reconnecting in ${secs}s</div><button class="start-btn retry" onclick="cancelReconnect('${uiKey}'); startStream('${uiKey}', '${rtmpUrl}')"><i class="fas fa-redo"></i> Retry Now</button></div>`;
+                if (secs <= 0) {
+                    startStream(uiKey, rtmpUrl);
+                } else {
+                    secs--;
+                    reconnectTimers[uiKey] = setTimeout(tick, 1000);
+                }
+            }
+            tick();
+        }
+
+        function cancelReconnect(uiKey) {
+            if (reconnectTimers[uiKey]) { clearTimeout(reconnectTimers[uiKey]); delete reconnectTimers[uiKey]; }
+        }
+
         function startStream(uiKey, rtmpUrl) {
+            cancelReconnect(uiKey);
             const msgBox = document.getElementById(`msg-box-${uiKey}`);
             msgBox.innerHTML = `<div class="glass-card"><div class="status-icon"><i class="fas fa-spinner fa-spin"></i></div><div class="status-title">Connecting...</div></div>`;
             userPaused[uiKey] = false;
@@ -1363,8 +1388,7 @@
                 })
                 .catch(err => {
                     updateIndicator(uiKey, 'offline');
-                    const msgBox = document.getElementById(`msg-box-${uiKey}`);
-                    msgBox.innerHTML = `<div class="glass-card"><div class="status-icon error"><i class="fas fa-video-slash"></i></div><div class="status-title error">Offline</div><button class="start-btn retry" onclick="startStream('${uiKey}', '${rtmpUrl}')"><i class="fas fa-redo"></i> Retry</button></div>`;
+                    if (!userPaused[uiKey]) scheduleReconnect(uiKey, rtmpUrl);
                 });
         }
 
@@ -1389,20 +1413,11 @@
                 });
                 hls.on(Hls.Events.ERROR, (event, data) => {
                     if (data.fatal) {
-                        switch (data.type) {
-                            case Hls.ErrorTypes.NETWORK_ERROR:
-                                console.log("Fatal network error encountered, try to recover");
-                                hls.startLoad();
-                                break;
-                            case Hls.ErrorTypes.MEDIA_ERROR:
-                                console.log("Fatal media error encountered, try to recover");
-                                hls.recoverMediaError();
-                                break;
-                            default:
-                                console.log("Unrecoverable error");
-                                hls.destroy();
-                                break;
-                        }
+                        hls.destroy();
+                        delete players[uiKey];
+                        updateIndicator(uiKey, 'offline');
+                        const rtmpUrl = document.getElementById(`msg-box-${uiKey}`).dataset.url;
+                        if (!userPaused[uiKey] && rtmpUrl) scheduleReconnect(uiKey, rtmpUrl);
                     }
                 });
                 players[uiKey] = hls;
@@ -1420,6 +1435,7 @@
 
         function manualStop(uiKey) {
             userPaused[uiKey] = true;
+            cancelReconnect(uiKey);
             if (players[uiKey]) { players[uiKey].destroy(); delete players[uiKey]; }
             const video = document.getElementById(`video-${uiKey}`);
             video.pause(); video.src = "";
