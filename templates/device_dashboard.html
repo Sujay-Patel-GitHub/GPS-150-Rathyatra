@@ -1392,27 +1392,36 @@
                 });
         }
 
+        const stallWatchers = {};
+
         function loadHls(uiKey, src) {
             const video = document.getElementById(`video-${uiKey}`);
             if (Hls.isSupported()) {
                 const hls = new Hls({
                     startPosition: -1,
-                    liveSyncDurationCount: 3,
-                    backBufferLength: 300,
-                    manifestLoadingMaxRetry: 10,
+                    liveSyncDurationCount: 2,
+                    liveMaxLatencyDurationCount: 4,
+                    backBufferLength: 10,
+                    maxBufferLength: 15,
+                    maxMaxBufferLength: 20,
+                    manifestLoadingMaxRetry: 6,
                     manifestLoadingRetryDelay: 1000,
-                    levelLoadingMaxRetry: 10,
+                    levelLoadingMaxRetry: 6,
                     levelLoadingRetryDelay: 1000,
-                    fragLoadingMaxRetry: 10,
-                    fragLoadingRetryDelay: 1000
+                    fragLoadingMaxRetry: 6,
+                    fragLoadingRetryDelay: 1000,
+                    enableWorker: true,
+                    lowLatencyMode: false,
                 });
                 hls.loadSource(src); hls.attachMedia(video);
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
                     video.play().catch(e => console.log("Auto-play blocked"));
                     updateIndicator(uiKey, 'online');
+                    startStallWatcher(uiKey, hls, video);
                 });
                 hls.on(Hls.Events.ERROR, (event, data) => {
                     if (data.fatal) {
+                        stopStallWatcher(uiKey);
                         hls.destroy();
                         delete players[uiKey];
                         updateIndicator(uiKey, 'offline');
@@ -1428,14 +1437,44 @@
             video.addEventListener('timeupdate', () => updateTimeline(uiKey));
             document.getElementById(`overlay-${uiKey}`).classList.add('hidden');
             document.getElementById(`controls-${uiKey}`).style.display = 'flex';
-
-            // Set indicator to GREEN
             updateIndicator(uiKey, 'online');
+        }
+
+        function startStallWatcher(uiKey, hls, video) {
+            stopStallWatcher(uiKey);
+            let lastTime = -1, stuckCount = 0;
+            stallWatchers[uiKey] = setInterval(() => {
+                if (userPaused[uiKey] || video.paused) return;
+                if (video.currentTime === lastTime) {
+                    stuckCount++;
+                    if (stuckCount >= 2) {
+                        // Stuck for 4+ seconds — snap to live edge
+                        stuckCount = 0;
+                        try {
+                            const levels = hls.levels;
+                            if (hls.liveSyncPosition) {
+                                video.currentTime = hls.liveSyncPosition;
+                            } else if (video.seekable.length) {
+                                video.currentTime = video.seekable.end(0) - 1;
+                            }
+                            video.play().catch(() => {});
+                        } catch(e) {}
+                    }
+                } else {
+                    stuckCount = 0;
+                }
+                lastTime = video.currentTime;
+            }, 2000);
+        }
+
+        function stopStallWatcher(uiKey) {
+            if (stallWatchers[uiKey]) { clearInterval(stallWatchers[uiKey]); delete stallWatchers[uiKey]; }
         }
 
         function manualStop(uiKey) {
             userPaused[uiKey] = true;
             cancelReconnect(uiKey);
+            stopStallWatcher(uiKey);
             if (players[uiKey]) { players[uiKey].destroy(); delete players[uiKey]; }
             const video = document.getElementById(`video-${uiKey}`);
             video.pause(); video.src = "";
