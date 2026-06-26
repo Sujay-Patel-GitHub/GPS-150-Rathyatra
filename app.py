@@ -1428,17 +1428,48 @@ def get_vehicle_gps(device_id):
         except Exception:
             pass
 
-        # Check if we have valid GPS data
+        # Check if we have valid GPS data — fall back to last known from new_devices
+        if lat is None or lon is None or (lat == 0 and lon == 0):
+            try:
+                from mongodb import mongo_client
+                nd = mongo_client["gps_server_db"]["new_devices"].find_one(
+                    {"truck_id": device_id, "lat": {"$exists": True, "$ne": 0}},
+                    sort=[("timestamp", -1)]
+                )
+                if nd and nd.get("lat") and nd.get("lng"):
+                    lat = float(nd["lat"])
+                    lon = float(nd.get("lng") or nd.get("lon", 0))
+                    if nd.get("timestamp"):
+                        ts = nd["timestamp"]
+                        last_updated_date = ts.strftime("%d-%b-%Y")
+                        last_updated_time = ts.strftime("%I:%M:%S %p")
+            except Exception:
+                pass
+
         if lat is None or lon is None or (lat == 0 and lon == 0):
             return jsonify({
                 "error": "No GPS data available",
                 "has_gps": False,
-                "lat": 23.0225,
-                "lng": 72.5714,
+                "is_offline": True,
+                "lat": None,
+                "lng": None,
                 "speed": "0",
                 "last_updated_date": last_updated_date,
                 "last_updated_time": last_updated_time,
                 "is_power_off": is_power_off
+            })
+
+        # Return last known position with offline flag when device is not live
+        if is_power_off:
+            return jsonify({
+                "has_gps": True,
+                "is_offline": True,
+                "lat": lat,
+                "lng": lon,
+                "speed": "0",
+                "last_updated_date": last_updated_date,
+                "last_updated_time": last_updated_time,
+                "is_power_off": True
             })
         
         # Get camera status

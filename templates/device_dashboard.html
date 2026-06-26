@@ -960,7 +960,23 @@
 
         function initGPS(initialData) {
             const processGPSPayload = (d) => {
-                if (!d || (!d.has_gps && !d.lat)) return;
+                if (!d) return;
+
+                // Show offline badge if device is not live
+                let offlineBanner = document.getElementById('offline-banner');
+                if (d.is_offline || d.is_power_off) {
+                    if (!offlineBanner) {
+                        offlineBanner = document.createElement('div');
+                        offlineBanner.id = 'offline-banner';
+                        offlineBanner.style.cssText = 'position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:9999;background:#ef4444;color:#fff;padding:6px 18px;border-radius:20px;font-size:0.78rem;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.3);letter-spacing:0.5px;';
+                        offlineBanner.innerHTML = '<i class="fas fa-wifi" style="text-decoration:line-through;margin-right:5px;"></i>OFFLINE — Showing Last Known Position';
+                        document.body.appendChild(offlineBanner);
+                    }
+                } else if (offlineBanner) {
+                    offlineBanner.remove();
+                }
+
+                if (!d.has_gps || !d.lat || !d.lng) return;
 
                 const lat = parseFloat(d.lat);
                 const lng = parseFloat(d.lng || d.lon);
