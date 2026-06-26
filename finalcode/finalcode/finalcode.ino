@@ -11,8 +11,8 @@
 #include <HTTPClient.h>
 
 // ── CONFIG — edit these lines only ────────────────────────
-const char* TRUCK_NAME = "TRUCK2";
-const char* WIFI_SSID  = "surya2";
+const char* TRUCK_NAME = "TRUCK1";
+const char* WIFI_SSID  = "surya1";
 const char* WIFI_PASS  = "Pilab@909090";
 #define MOSFET_PIN 27
 // ──────────────────────────────────────────────────────────
@@ -296,11 +296,20 @@ void TaskMPU(void* pv) {
       int code = http.GET();
       if (code == 200) {
         String resp = http.getString();
-        int idx = resp.indexOf("\"state\":");
+        int idx = resp.indexOf("\"state\"");
         if (idx >= 0) {
-          int val = resp.charAt(idx + 8) == '1' ? 1 : 0;
-          digitalWrite(MOSFET_PIN, val ? HIGH : LOW);
-          Serial.printf("[MOSFET] %s\n", val ? "ON" : "OFF");
+          int colonIdx = resp.indexOf(':', idx);
+          if (colonIdx >= 0) {
+            int searchIdx = colonIdx + 1;
+            while (searchIdx < resp.length() && (resp.charAt(searchIdx) == ' ' || resp.charAt(searchIdx) == '\r' || resp.charAt(searchIdx) == '\n' || resp.charAt(searchIdx) == '\t')) {
+              searchIdx++;
+            }
+            if (searchIdx < resp.length()) {
+              int val = (resp.charAt(searchIdx) == '1') ? 1 : 0;
+              digitalWrite(MOSFET_PIN, val ? HIGH : LOW);
+              Serial.printf("[MOSFET] %s\n", val ? "ON" : "OFF");
+            }
+          }
         }
       }
       http.end();
