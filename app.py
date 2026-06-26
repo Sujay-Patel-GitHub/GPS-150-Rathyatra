@@ -306,7 +306,7 @@ def mongo_collections():
 def mongo_data(collection):
     from mongodb import mongo_client
     db = mongo_client["gps_server_db"]
-    docs = list(db[collection].find({}, {"_id": 0}).sort("timestamp", -1).limit(50))
+    docs = list(db[collection].find({}, {"_id": 0}).sort("timestamp", -1))
     for d in docs:
         if "timestamp" in d and hasattr(d["timestamp"], "strftime"):
             d["timestamp"] = d["timestamp"].strftime("%d-%b-%Y %I:%M:%S %p")
