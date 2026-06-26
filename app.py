@@ -6308,6 +6308,24 @@ def api_reset_sections():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route("/api/cleanup_tests")
+def cleanup_tests():
+    try:
+        from mongodb import mongo_client
+        db = mongo_client["gps_server_db"]
+        t1 = db["new_devices"].delete_many({"truck_id": {"$regex": "^VERIFY_.*", "$options": "i"}})
+        t2 = db["gps_live"].delete_many({"device_id": {"$regex": "^VERIFY_.*", "$options": "i"}})
+        t3 = db["map_recordings"].delete_many({"device_id": {"$regex": "^VERIFY_.*", "$options": "i"}})
+        return jsonify({
+            "success": True,
+            "deleted_new_devices": t1.deleted_count,
+            "deleted_gps_live": t2.deleted_count,
+            "deleted_map_recordings": t3.deleted_count
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 def _sos_background_poller():
     """Runs forever in a daemon thread. Polls Firebase sos.json every 5s and records
     events in MongoDB regardless of whether any browser is open."""

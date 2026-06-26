@@ -46,6 +46,18 @@ try:
     # 11. Test collection — lat/lng from ESP test device
     col_test = db["test"]
 
+    # 12. Route collection
+    col_route = db["route"]
+
+    # 13. Area collection
+    col_area = db["area"]
+
+    # Ensure route and area collections exist in the database
+    if "route" not in db.list_collection_names():
+        db.create_collection("route")
+    if "area" not in db.list_collection_names():
+        db.create_collection("area")
+
     # Create indexes for optimization
     col_map_recordings.create_index([("device_id", 1), ("timestamp", 1)])
     col_sos_logs.create_index([("started_at", -1)])
