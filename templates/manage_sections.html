@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Sidebar Sections - Admin Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <!-- SortableJS CDN for premium drag-and-drop experience -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --background: #f8fafc;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --success: #10b981;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+
+        body {
+            background: var(--background);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+            width: 100%;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 32px;
+            margin-top: 70px;
+            margin-left: 240px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            min-height: calc(100vh - 70px);
+        }
+
+        body.sidebar-collapsed .main-content {
+            margin-left: 75px;
+        }
+
+        @media (max-width: 900px) {
+            .main-content {
+                margin-left: 0 !important;
+                padding: 20px;
+            }
+            body.sidebar-collapsed .main-content {
+                margin-left: 0 !important;
+            }
+        }
+
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .page-title {
+            font-size: 1.6rem;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .page-title i {
+            color: var(--primary);
+        }
+
+        .page-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        /* Card Container */
+        .config-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            padding: 24px;
+            max-width: 768px;
+            margin-bottom: 32px;
+        }
+
+        .section-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        /* Individual Section Item */
+        .section-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 14px 20px;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .section-item.sortable-chosen {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            box-shadow: var(--shadow-lg);
+            transform: scale(1.01);
+        }
+
+        .section-item.sortable-ghost {
+            opacity: 0.4;
+        }
+
+        .item-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .drag-handle {
+            color: var(--text-muted);
+            cursor: grab;
+            padding: 4px;
+            font-size: 1.1rem;
+            transition: color 0.2s;
+        }
+
+        .drag-handle:hover {
+            color: var(--text-main);
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
+        .icon-wrapper {
+            width: 38px;
+            height: 38px;
+            background: #eff6ff;
+            color: var(--primary);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .section-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-main);
+        }
+
+        .section-url {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: monospace;
+        }
+
+        .item-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .status-badge {
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            padding: 4px 10px;
+            border-radius: 999px;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-visible {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .badge-hidden {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        /* Toggle Switch Styling */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e1;
+            transition: .3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+        }
+
+        input:checked + .slider {
+            background-color: var(--primary);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        /* Actions Bar */
+        .actions-bar {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 20px;
+        }
+
+        .btn {
+            font-family: inherit;
+            font-size: 0.875rem;
+            font-weight: 600;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid transparent;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-secondary {
+            background: white;
+            border-color: var(--border-color);
+            color: var(--text-main);
+        }
+
+        .btn-secondary:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            background: #0f172a;
+            color: white;
+            padding: 14px 24px;
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: slideIn 0.3s forwards, fadeOut 0.3s 2.7s forwards;
+        }
+
+        .toast-success i {
+            color: var(--success);
+        }
+
+        .toast-error i {
+            color: #ef4444;
+        }
+
+        @keyframes slideIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeOut {
+            to {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    {% include 'navbar.html' %}
+
+    <div class="app-container">
+        {% include 'sidebar.html' %}
+
+        <main class="main-content">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">
+                        <i class="fas fa-sliders-h"></i> Manage Sidebar Sections
+                    </h1>
+                    <p class="page-subtitle">Configure which sections are visible in the sidebar and arrange them in your preferred order.</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-secondary" onclick="resetDefaults()">
+                        <i class="fas fa-undo"></i> Reset to Defaults
+                    </button>
+                </div>
+            </div>
+
+            <div class="config-card">
+                <div class="section-list" id="sortableList">
+                    {% for section in sidebar_sections %}
+                    <div class="section-item" data-id="{{ section.id }}" data-name="{{ section.name }}"
+                        data-href="{{ section.href }}" data-icon="{{ section.icon }}">
+                        <div class="item-left">
+                            <div class="drag-handle">
+                                <i class="fas fa-grip-lines"></i>
+                            </div>
+                            <div class="icon-wrapper">
+                                <i class="{{ section.icon }}"></i>
+                            </div>
+                            <div class="section-details">
+                                <span class="section-name">{{ section.name }}</span>
+                                <span class="section-url">{{ section.href }}</span>
+                            </div>
+                        </div>
+                        <div class="item-right">
+                            <span class="status-badge {{ 'badge-visible' if section.visible else 'badge-hidden' }}">
+                                {{ 'Visible' if section.visible else 'Hidden' }}
+                            </span>
+                            <label class="switch">
+                                <input type="checkbox" {% if section.visible %}checked{% endif %}
+                                    onchange="toggleVisibility(this)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="actions-bar">
+                    <button class="btn btn-secondary" onclick="location.reload()">
+                        <i class="fas fa-cancel"></i> Cancel
+                    </button>
+                    <button class="btn btn-primary" onclick="saveConfiguration()">
+                        <i class="fas fa-save"></i> Save Configuration
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        // Initialize SortableJS
+        const el = document.getElementById('sortableList');
+        const sortable = Sortable.create(el, {
+            handle: '.drag-handle',
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            chosenClass: 'sortable-chosen'
+        });
+
+        // Show Toast Notification
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            
+            const icon = type === 'success' ? 'fa-circle-check' : 'fa-circle-xmark';
+            toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        // Toggle visibility badge dynamically
+        function toggleVisibility(checkbox) {
+            const item = checkbox.closest('.section-item');
+            const badge = item.querySelector('.status-badge');
+            if (checkbox.checked) {
+                badge.className = 'status-badge badge-visible';
+                badge.textContent = 'Visible';
+            } else {
+                badge.className = 'status-badge badge-hidden';
+                badge.textContent = 'Hidden';
+            }
+        }
+
+        // Save layout configuration
+        function saveConfiguration() {
+            const listItems = document.querySelectorAll('.section-item');
+            const sections = [];
+
+            listItems.forEach(item => {
+                const id = item.getAttribute('data-id');
+                const name = item.getAttribute('data-name');
+                const href = item.getAttribute('data-href');
+                const icon = item.getAttribute('data-icon');
+                const visible = item.querySelector('input[type="checkbox"]').checked;
+
+                sections.push({ id, name, href, icon, visible });
+            });
+
+            fetch('/api/save_sections', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ sections })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Configuration saved successfully.', 'success');
+                    // Reload page after a short delay to refresh the sidebar dynamically
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    showToast(data.error || 'Failed to save configuration.', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('A network error occurred.', 'error');
+            });
+        }
+
+        // Reset configuration to default values
+        function resetDefaults() {
+            if (!confirm('Are you sure you want to reset all sidebar sections to their default order and visibility?')) {
+                return;
+            }
+
+            fetch('/api/reset_sections', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Sidebar sections reset to defaults.', 'success');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    showToast(data.error || 'Failed to reset configuration.', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('A network error occurred.', 'error');
+            });
+        }
+    </script>
+</body>
+
+</html>

@@ -146,28 +146,23 @@
 </style>
 
 <div class="sidebar" id="mainSidebar">
-    <a href="/add_user"><button class="{{ 'active' if request.path == '/add_user' else '' }}"><i
-                class="fas fa-user-plus"></i> <span>Add New User</span></button></a>
-    <a href="/admin_dashboard"><button class="{{ 'active' if request.path == '/admin_dashboard' else '' }}"><i
-                class="fas fa-list-ul"></i> <span>Show Devices</span></button></a>
-    <a href="/gps_monitoring"><button class="{{ 'active' if request.path == '/gps_monitoring' else '' }}"><i
-                class="fas fa-map-marked-alt"></i> <span>GPS Monitoring</span></button></a>
-    <a href="/monthly_report"><button class="{{ 'active' if request.path == '/monthly_report' else '' }}"><i
-                class="fas fa-file-invoice"></i> <span>Detailed Report</span></button></a>
-    <a href="/list_roles"><button class="{{ 'active' if request.path == '/list_roles' else '' }}"><i
-                class="fas fa-users"></i> <span>List Roles</span></button></a>
-    <a href="/grouping"><button class="{{ 'active' if request.path == '/grouping' else '' }}"><i
-                class="fas fa-object-group"></i> <span>Grouping</span></button></a>
-<a href="/manage_rtmp"><button class="{{ 'active' if request.path == '/manage_rtmp' else '' }}"><i
-                class="fas fa-link"></i> <span>RTMP Link Management</span></button></a>
-    <a href="/recordings"><button class="{{ 'active' if request.path == '/recordings' else '' }}"><i
-                class="fas fa-video"></i> <span>Recordings</span></button></a>
-    <a href="/map_recording"><button class="{{ 'active' if request.path == '/map_recording' else '' }}"><i
-                class="fas fa-map-marked"></i> <span>Map Recording</span></button></a>
-    <a href="/sos_logs"><button class="{{ 'active' if request.path == '/sos_logs' else '' }}"><i
-                class="fas fa-triangle-exclamation"></i> <span>SOS Logs</span>
-                <span id="sosUnreadBadge" style="display:none; background:#ef4444; color:#fff; font-size:0.6rem; font-weight:800; padding:2px 7px; border-radius:999px; margin-left:auto;"></span>
-            </button></a>
+    {% for section in sidebar_sections %}
+        {% if section.visible %}
+            {% if section.id == 'sos_logs' %}
+                <a href="{{ section.href }}"><button class="{{ 'active' if request.path == section.href else '' }}"><i
+                            class="{{ section.icon }}"></i> <span>{{ section.name }}</span>
+                            <span id="sosUnreadBadge" style="display:none; background:#ef4444; color:#fff; font-size:0.6rem; font-weight:800; padding:2px 7px; border-radius:999px; margin-left:auto;"></span>
+                        </button></a>
+            {% else %}
+                <a href="{{ section.href }}"><button class="{{ 'active' if request.path == section.href else '' }}"><i
+                            class="{{ section.icon }}"></i> <span>{{ section.name }}</span></button></a>
+            {% endif %}
+        {% endif %}
+    {% endfor %}
+    {% if session.get('username') == 'superadmin' or session.get('role') == 'Superadmin' %}
+        <a href="/manage_sections"><button class="{{ 'active' if request.path == '/manage_sections' else '' }}"><i
+                    class="fas fa-sliders-h"></i> <span>Manage Sections</span></button></a>
+    {% endif %}
 </div>
 
 <script>
