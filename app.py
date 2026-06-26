@@ -1065,17 +1065,17 @@ def admin_dashboard():
         gps_db = mongo_client["gps_server_db"]
         registered_truck_ids = set(d["truck_id"] for d in gps_db["registered_trucks"].find({}, {"truck_id": 1}))
         assign_map = {d["truck_id"]: d for d in gps_db["assign_devices"].find()}
-        # Build latest-per-truck map from new_devices (find+sort, avoids aggregate issues on MongoDB 4.4)
+        # Build latest-per-truck map from new_devices (case-insensitive key = upper)
         latest_map = {}
         for doc in gps_db["new_devices"].find({}, {"truck_id": 1, "lat": 1, "lng": 1, "timestamp": 1}).sort("timestamp", -1):
             tid = doc.get("truck_id")
-            if tid and tid not in latest_map:
-                latest_map[tid] = doc
+            if tid and tid.upper() not in latest_map:
+                latest_map[tid.upper()] = doc
 
         # Always override timestamp from new_devices for any device that has ESP data
         threshold_sec = get_power_off_threshold() * 60
         for dev in devices_display_list:
-            ndoc = latest_map.get(dev["device_name"])
+            ndoc = latest_map.get(dev["device_name"].upper())
             if ndoc:
                 ts = ndoc.get("timestamp")
                 if ts:
@@ -1292,15 +1292,15 @@ def get_processed_vehicles_list():
         latest_map = {}
         for doc in gps_db["new_devices"].find({}, {"truck_id":1,"lat":1,"lng":1,"speed":1,"timestamp":1}).sort("timestamp", -1):
             tid = doc.get("truck_id")
-            if tid and tid not in latest_map:
-                latest_map[tid] = doc
+            if tid and tid.upper() not in latest_map:
+                latest_map[tid.upper()] = doc
         assign_map = {d["truck_id"]: d for d in gps_db["assign_devices"].find({}, {"_id":0})}
         threshold_sec = get_power_off_threshold() * 60
         for doc in gps_db["registered_trucks"].find({}, {"truck_id":1}):
             tid = doc.get("truck_id")
             if not tid or tid in existing_ids:
                 continue
-            nd = latest_map.get(tid, {})
+            nd = latest_map.get(tid.upper(), {})
             ts = nd.get("timestamp")
             lat = nd.get("lat", 23.0225)
             lng = nd.get("lng", 72.5714)
@@ -1414,7 +1414,7 @@ def get_vehicle_gps(device_id):
         try:
             from mongodb import mongo_client
             nd = mongo_client["gps_server_db"]["new_devices"].find_one(
-                {"truck_id": device_id}, sort=[("timestamp", -1)]
+                {"truck_id": {"$regex": f"^{device_id}$", "$options": "i"}}, sort=[("timestamp", -1)]
             )
             if nd and nd.get("timestamp"):
                 ts = nd["timestamp"]
@@ -1433,7 +1433,7 @@ def get_vehicle_gps(device_id):
             try:
                 from mongodb import mongo_client
                 nd = mongo_client["gps_server_db"]["new_devices"].find_one(
-                    {"truck_id": device_id, "lat": {"$exists": True, "$ne": 0}},
+                    {"truck_id": {"$regex": f"^{device_id}$", "$options": "i"}, "lat": {"$exists": True, "$ne": 0}},
                     sort=[("timestamp", -1)]
                 )
                 if nd and nd.get("lat") and nd.get("lng"):
