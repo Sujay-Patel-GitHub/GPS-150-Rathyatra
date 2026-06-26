@@ -1332,14 +1332,17 @@
 
         // --- STREAMING LOGIC ---
         function initStreams() {
-            Object.keys(configuredStreams).forEach(uiKey => {
-                const stream = configuredStreams[uiKey];
-                if (stream.url) {
-                    startStream(uiKey, stream.url);
-                }
-            });
             setInterval(sendHeartbeat, 3000);
             setInterval(watchDog, 2000);
+            // Small delay so DOM is fully painted before starting streams
+            setTimeout(() => {
+                Object.keys(configuredStreams).forEach(uiKey => {
+                    const stream = configuredStreams[uiKey];
+                    if (stream.url) {
+                        startStream(uiKey, stream.url);
+                    }
+                });
+            }, 500);
         }
 
         function restartAll() {
