@@ -5150,14 +5150,14 @@ def play_rtmp():
         if stream_id not in PROCESS_TABLE or PROCESS_TABLE[stream_id].poll() is not None:
             PROCESS_TABLE[stream_id] = start_ffmpeg(src, out_dir)
 
-    for _ in range(60):
-        if (out_dir / "index.m3u8").exists(): break
-        time.sleep(0.5)
-
-    if not (out_dir / "index.m3u8").exists():
-        return jsonify({"error": "Stream timeout"}), 500
-
+    # Return immediately — client polls /hls_ready/<stream_id> until ready
     return jsonify({"hls_url": f"/hls/{stream_id}/index.m3u8", "stream_id": stream_id})
+
+
+@app.route("/hls_ready/<stream_id>")
+def hls_ready(stream_id):
+    ready = (STREAM_ROOT / stream_id / "index.m3u8").exists()
+    return jsonify({"ready": ready})
 
 
 @app.route("/stop_stream", methods=["POST"])

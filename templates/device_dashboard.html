@@ -1387,12 +1387,31 @@
                 .then(data => {
                     if (data.error) throw new Error(data.error);
                     activeStreams.set(uiKey, data.stream_id);
-                    loadHls(uiKey, data.hls_url + '?t=' + Date.now());
+                    waitForStream(uiKey, data.stream_id, data.hls_url, rtmpUrl, 0);
                 })
                 .catch(err => {
                     updateIndicator(uiKey, 'offline');
                     if (!userPaused[uiKey]) scheduleReconnect(uiKey, rtmpUrl);
                 });
+        }
+
+        function waitForStream(uiKey, streamId, hlsUrl, rtmpUrl, tries) {
+            if (userPaused[uiKey]) return;
+            if (tries > 60) { // 30s timeout
+                updateIndicator(uiKey, 'offline');
+                if (!userPaused[uiKey]) scheduleReconnect(uiKey, rtmpUrl);
+                return;
+            }
+            fetch(`/hls_ready/${streamId}`)
+                .then(r => r.json())
+                .then(d => {
+                    if (d.ready) {
+                        loadHls(uiKey, hlsUrl + '?t=' + Date.now());
+                    } else {
+                        setTimeout(() => waitForStream(uiKey, streamId, hlsUrl, rtmpUrl, tries + 1), 500);
+                    }
+                })
+                .catch(() => setTimeout(() => waitForStream(uiKey, streamId, hlsUrl, rtmpUrl, tries + 1), 500));
         }
 
         const stallWatchers = {};
