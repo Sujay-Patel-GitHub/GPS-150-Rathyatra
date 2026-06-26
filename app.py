@@ -4326,7 +4326,7 @@ def debug_akhada_users():
 def get_password(truck_id):
     if session.get('user_type') != 'admin': return jsonify({"ok": False}), 403
     from mongodb import mongo_client
-    doc = mongo_client["gps_server_db"]["assign_devices"].find_one({"truck_id": truck_id}, {"password": 1})
+    doc = mongo_client["gps_server_db"]["assign_devices"].find_one({"truck_id": {"$regex": f"^{truck_id}$", "$options": "i"}}, {"password": 1})
     return jsonify({"ok": bool(doc), "password": doc.get("password", "") if doc else ""})
 
 @app.route("/api/change_password", methods=["POST"])
@@ -4400,7 +4400,7 @@ def akhada_dashboard():
     from mongodb import mongo_client
     gps_db = mongo_client["gps_server_db"]
     # Own info
-    own_doc = gps_db["assign_devices"].find_one({"truck_id": akhada_truck_id}, {"_id": 0, "password": 0}) or {}
+    own_doc = gps_db["assign_devices"].find_one({"truck_id": {"$regex": f"^{akhada_truck_id}$", "$options": "i"}}, {"_id": 0, "password": 0}) or {}
     # Grouped trucks
     group_doc = gps_db["akhada_groups"].find_one({"akhada_truck_id": akhada_truck_id}) or {}
     truck_ids = group_doc.get("assigned_trucks", [])
@@ -4440,7 +4440,7 @@ def truck_dashboard():
     truck_id = session.get('truck_id', '')
     try:
         from mongodb import mongo_client
-        doc = mongo_client["gps_server_db"]["assign_devices"].find_one({"truck_id": truck_id}, {"_id": 0, "password": 0})
+        doc = mongo_client["gps_server_db"]["assign_devices"].find_one({"truck_id": {"$regex": f"^{truck_id}$", "$options": "i"}}, {"_id": 0, "password": 0})
     except Exception:
         doc = {}
     return render_template_string(get_template("TRUCK_DASHBOARD_HTML"), truck_id=truck_id, doc=doc or {}, logo_url=LOGO_URL)
@@ -5052,7 +5052,7 @@ def device_info(device_id):
             # ESP truck — build minimal vehicle_info from assign_devices
             try:
                 from mongodb import mongo_client
-                assign_doc = mongo_client["gps_server_db"]["assign_devices"].find_one({"truck_id": device_id})
+                assign_doc = mongo_client["gps_server_db"]["assign_devices"].find_one({"truck_id": {"$regex": f"^{device_id}$", "$options": "i"}})
             except Exception:
                 assign_doc = None
             vehicle_info_local = {
@@ -5123,7 +5123,7 @@ def device_info(device_id):
 
     try:
         from mongodb import mongo_client
-        _ad = mongo_client["gps_server_db"]["assign_devices"].find_one({"truck_id": device_id}, {"_id": 0, "role": 1})
+        _ad = mongo_client["gps_server_db"]["assign_devices"].find_one({"truck_id": {"$regex": f"^{device_id}$", "$options": "i"}}, {"_id": 0, "role": 1})
         device_role = _ad.get("role", "") if _ad else ""
     except Exception:
         device_role = ""
