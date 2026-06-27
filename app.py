@@ -577,8 +577,12 @@ def register_device(truck_id):
 @app.route("/api/devices/unregister/<truck_id>", methods=["DELETE"])
 def unregister_device(truck_id):
     try:
-        from mongodb import mongo_client
-        mongo_client["gps_server_db"]["registered_trucks"].delete_one({"truck_id": truck_id})
+        from mongodb import db
+        db["registered_trucks"].delete_many({"truck_id": truck_id})
+        db["registered_vehicles"].delete_many({"device_id": truck_id})
+        db["gps_live"].delete_many({"device_id": truck_id})
+        db["map_recordings"].delete_many({"device_id": truck_id})
+        db["sos_logs"].delete_many({"device_id": truck_id})
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
