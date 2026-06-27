@@ -147,6 +147,16 @@
             cursor: pointer;
             -webkit-appearance: none;
         }
+        /* Prevent sidebar list overflow clipping */
+        #sidebarFleetTab {
+            overflow-x: hidden !important;
+            width: 100% !important;
+        }
+        #sidebarFleetTab > div {
+            box-sizing: border-box !important;
+            width: calc(100% - 2px) !important;
+            margin-left: 1px;
+        }
     </style>
 </head>
 <body class="overflow-hidden select-none">
@@ -289,6 +299,7 @@
                             <option value="">Select Device...</option>
                         </select>
                         <input type="date" id="playbackDateSelect" class="theme-bg-sidebar-header theme-border border rounded-lg px-2 py-1 text-[11px] theme-text-main font-bold focus:outline-none focus:border-orange-500 cursor-pointer">
+                        <input type="time" id="playbackTimeSelect" disabled onchange="jumpToPlaybackTime(this.value)" class="theme-bg-sidebar-header theme-border border rounded-lg px-2 py-1 text-[11px] theme-text-main font-bold focus:outline-none focus:border-orange-500 cursor-pointer w-20">
                         <button onclick="loadHistoryPlayback()" id="loadHistoryBtn" class="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-[10px] px-3 py-1.5 rounded-lg cursor-pointer transition-all">
                             Load
                         </button>
@@ -703,21 +714,7 @@
             updateWhenIdle: true,
             keepBuffer: 6
         });
-        const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Esri Satellite',
-            updateWhenIdle: true,
-            keepBuffer: 6
-        });
-        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19, attribution: 'OpenStreetMap',
-            updateWhenIdle: true,
-            keepBuffer: 6
-        });
-        const cartoDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            maxZoom: 19, attribution: 'CARTO Dark',
-            updateWhenIdle: true,
-            keepBuffer: 6
-        });
+
 
         // Default style layer: Google Satellite
         googleSatellite.addTo(map);
@@ -726,10 +723,7 @@
         L.control.layers({
             "🛰️ Google Satellite": googleSatellite,
             "🗺️ Google Hybrid": googleHybrid,
-            "🗺️ Google Streets": googleStreets,
-            "🌎 Esri Satellite": esriSatellite,
-            "🗺️ OSM Street": osm,
-            "🌙 Dark (CartoDB)": cartoDark
+            "🗺️ Google Streets": googleStreets
         }, null, { position: 'topright' }).addTo(map);
 
 
@@ -1320,6 +1314,8 @@
                     slider.value = 0;
                     slider.disabled = false;
                     document.getElementById('playbackPlayBtn').disabled = false;
+                    document.getElementById('playbackTimeSelect').disabled = false;
+                    document.getElementById('playbackTimeSelect').value = formatISOToTimeValue(playbackPoints[0].timestamp);
 
                     document.getElementById('playbackPointCount').textContent = `${playbackPoints.length} points`;
                     document.getElementById('playbackTimeEnd').textContent = formatISOToTime(playbackPoints[playbackPoints.length-1].timestamp);
@@ -1359,6 +1355,41 @@
             } catch {
                 return "00:00:00";
             }
+        }
+
+        function formatISOToTimeValue(isoStr) {
+            try {
+                const date = new Date(isoStr);
+                const h = date.getHours().toString().padStart(2, '0');
+                const m = date.getMinutes().toString().padStart(2, '0');
+                return `${h}:${m}`;
+            } catch {
+                return "12:00";
+            }
+        }
+
+        function jumpToPlaybackTime(timeVal) {
+            if (!playbackPoints || playbackPoints.length === 0 || !timeVal) return;
+            
+            const [h, m] = timeVal.split(':').map(Number);
+            let minDiff = Infinity;
+            let closestIdx = 0;
+            
+            playbackPoints.forEach((pt, idx) => {
+                const ptDate = new Date(pt.timestamp);
+                const ptHours = ptDate.getHours();
+                const ptMins = ptDate.getMinutes();
+                const diff = Math.abs((ptHours * 60 + ptMins) - (h * 60 + m));
+                
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    closestIdx = idx;
+                }
+            });
+            
+            playbackIndex = closestIdx;
+            updatePlaybackPosition();
+            showNotification(`Jumped to nearest playback point at ${formatISOToTime(playbackPoints[closestIdx].timestamp)}`);
         }
 
         function togglePlaybackPlaying() {
@@ -1418,6 +1449,7 @@
 
             document.getElementById('playbackSlider').value = playbackIndex;
             document.getElementById('playbackTimeCurrent').textContent = formatISOToTime(p.timestamp);
+            document.getElementById('playbackTimeSelect').value = formatISOToTimeValue(p.timestamp);
 
             const pos = [p.lat, p.lng];
             if (playbackMarker) playbackMarker.setLatLng(pos);
