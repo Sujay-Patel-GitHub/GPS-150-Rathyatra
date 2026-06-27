@@ -261,6 +261,16 @@
                             <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-500"></div>
                         </label>
                     </div>
+
+                    <div class="h-px theme-border border-b my-2"></div>
+
+                    <div class="flex items-center justify-between">
+                        <span>Snap to Road</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="snapToRoadChk" onchange="toggleSnapToRoadSetting()" class="sr-only peer">
+                            <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-500"></div>
+                        </label>
+                    </div>
                 </div>
             </div>
 
@@ -659,6 +669,8 @@
         let adminMode = false;
         let currentDetailsTab = 'overview';
         let enableCompass = true;
+        let snapToRoad = false;
+        const snapToRoadCache = {};
         let markers = {};
         let vehicleTrails = {}; 
         let rawVehicleTrails = {};
@@ -1044,9 +1056,19 @@
 
 
         // --- Initialize / Update Leaflet Markers ---
-        function initOrUpdateMarkers() {
-            vehicles.forEach((v, idx) => {
-                if (!v.lat || !v.lng) return;
+        async function initOrUpdateMarkers() {
+            for (let idx = 0; idx < vehicles.length; idx++) {
+                const v = vehicles[idx];
+                if (!v.lat || !v.lng) continue;
+
+                let displayLat = v.lat;
+                let displayLng = v.lng;
+
+                if (snapToRoad) {
+                    const snapped = await getSnappedCoordinate(v.lat, v.lng);
+                    displayLat = snapped.lat;
+                    displayLng = snapped.lng;
+                }
                 
                 // Track dynamic trails in frontend memory
                 updateTrailsMemory(v, idx);
@@ -1082,7 +1104,7 @@
                                 </tr>
                             </tbody>
                         </table>
-                        <a href="https://maps.google.com/?q=${v.lat},${v.lng}" target="_blank" style="display: block; margin-top: 10px; padding: 6px 0; background: linear-gradient(135deg, #f97316, #dc2626); color: white; border-radius: 8px; text-align: center; font-weight: 700; font-size: 10px; text-decoration: none;">
+                        <a href="https://maps.google.com/?q=${displayLat},${displayLng}" target="_blank" style="display: block; margin-top: 10px; padding: 6px 0; background: linear-gradient(135deg, #f97316, #dc2626); color: white; border-radius: 8px; text-align: center; font-weight: 700; font-size: 10px; text-decoration: none;">
                             Open in Google Maps
                         </a>
                     </div>
@@ -1090,17 +1112,17 @@
 
                 if (markers[v.device_id]) {
                     // Update existing
-                    markers[v.device_id].setLatLng([v.lat, v.lng]);
+                    markers[v.device_id].setLatLng([displayLat, displayLng]);
                     markers[v.device_id].setIcon(markerIcon);
                     markers[v.device_id].setPopupContent(popupContent);
                 } else {
                     // Create new
-                    const m = L.marker([v.lat, v.lng], { icon: markerIcon }).addTo(map);
+                    const m = L.marker([displayLat, displayLng], { icon: markerIcon }).addTo(map);
                     m.bindPopup(popupContent);
                     m.on('click', () => selectVehicle(v.device_id));
                     markers[v.device_id] = m;
                 }
-            });
+            }
         }
 
         // --- Real-time Breadcrumb Trails Memory management ---
@@ -1165,6 +1187,36 @@
         function toggleCompassSetting() {
             enableCompass = document.getElementById('enableCompassChk').checked;
             initOrUpdateMarkers();
+        }
+
+        // Snap to Road toggle handler
+        function toggleSnapToRoadSetting() {
+            snapToRoad = document.getElementById('snapToRoadChk').checked;
+            localStorage.setItem('snapToRoad', snapToRoad);
+            initOrUpdateMarkers();
+        }
+
+        // Snap to Road OSRM API handler
+        async function getSnappedCoordinate(lat, lng) {
+            const key = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+            if (snapToRoadCache[key]) {
+                return snapToRoadCache[key];
+            }
+            
+            try {
+                const response = await fetch(`https://router.project-osrm.org/nearest/v1/driving/${lng},${lat}`);
+                const data = await response.json();
+                if (data.code === 'Ok' && data.waypoints && data.waypoints.length > 0) {
+                    const snapped = data.waypoints[0].location; // [lng, lat]
+                    const result = { lat: snapped[1], lng: snapped[0] };
+                    snapToRoadCache[key] = result;
+                    return result;
+                }
+            } catch (e) {
+                console.error("OSRM snap error:", e);
+            }
+            
+            return { lat, lng }; // Fallback
         }
 
         // --- Route Recording ---
@@ -1769,6 +1821,9 @@
         }
 
         // --- Initializer ---
+        snapToRoad = localStorage.getItem('snapToRoad') === 'true';
+        document.getElementById('snapToRoadChk').checked = snapToRoad;
+
         initPlaybackSelectors();
         initOrUpdateMarkers();
         calculateProcessionHUD();

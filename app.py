@@ -1040,7 +1040,7 @@ def admin_dashboard():
                 
                 if date_str and time_str:
                     utc_time = datetime.strptime(f"{date_str} {time_str}", "%d-%m-%Y %H:%M:%S")
-                    ist_time = utc_time + timedelta(hours=5, minutes=30)
+                    ist_time = utc_time
                     
                     # Apply Dynamic Offsets
                     ist_time = apply_time_offset(ist_time, dev_id, None)
@@ -1328,7 +1328,7 @@ def get_processed_vehicles_list():
                         utc_time = datetime.strptime(f"{date_str} {time_str}", "%d-%m-%Y %H:%M:%S")
                         
                         # Convert to IST (UTC + 5:30)
-                        ist_time = utc_time + timedelta(hours=5, minutes=30)
+                        ist_time = utc_time
                         
                         # Apply Time Offset
                         ist_time = apply_time_offset(ist_time, device_id, vehicle_data)
@@ -1580,7 +1580,7 @@ def get_vehicle_gps(device_id):
                 utc_time = datetime.strptime(f"{date_str} {time_str}", "%d-%m-%Y %H:%M:%S")
                 
                 # Convert to IST (UTC + 5:30)
-                ist_time = utc_time + timedelta(hours=5, minutes=30)
+                ist_time = utc_time
                 
                 # Apply Dynamic Offsets
                 ist_time = apply_time_offset(ist_time, device_id, None)
@@ -2924,7 +2924,7 @@ def manage_rtmp():
                 time_str = location.get("time", "")
                 if date_str and time_str:
                     utc_time = datetime.strptime(f"{date_str} {time_str}", "%d-%m-%Y %H:%M:%S")
-                    ist_time = utc_time + timedelta(hours=5, minutes=30)
+                    ist_time = utc_time
                     ist_time = apply_time_offset(ist_time, device_id, None)
                     
                     threshold_sec = get_power_off_threshold() * 60
