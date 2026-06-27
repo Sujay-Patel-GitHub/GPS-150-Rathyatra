@@ -1290,11 +1290,37 @@
             };
         }
 
+        const GOOGLE_API_KEY = "AIzaSyDdklh07CfWJy9o-Trw-GE0epv_u8vLJ9o";
+
         async function getSnappedCoordinate(lat, lng) {
             const key = `${lat.toFixed(6)},${lng.toFixed(6)}`;
             if (snapToRoadCache[key]) {
                 return snapToRoadCache[key];
             }
+            
+            // 1. Try Google Roads API first for high-precision map matching
+            try {
+                const url = `https://roads.googleapis.com/v1/nearestRoads?points=${lat},${lng}&key=${GOOGLE_API_KEY}`;
+                const response = await fetch(url);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.snappedPoints && data.snappedPoints.length > 0) {
+                        const snapLat = data.snappedPoints[0].location.latitude;
+                        const snapLng = data.snappedPoints[0].location.longitude;
+                        
+                        // Calculate precise distance between raw and snapped points
+                        const dist = haversine(lat, lng, snapLat, snapLng);
+                        const result = { lat: snapLat, lng: snapLng, distance: dist };
+                        snapToRoadCache[key] = result;
+                        console.log("[Google Roads] Snapped coordinate successfully:", result);
+                        return result;
+                    }
+                }
+            } catch (e) {
+                console.warn("[Google Roads] Snapping failed, falling back to OSRM:", e);
+            }
+            
+            // 2. Fallback to free public OSRM API
             try {
                 const response = await fetch(`https://router.project-osrm.org/nearest/v1/driving/${lng},${lat}?number=1`);
                 const data = await response.json();
@@ -1303,6 +1329,7 @@
                     const distance = data.waypoints[0].distance; // distance in meters
                     const result = { lat: snapped[1], lng: snapped[0], distance: distance };
                     snapToRoadCache[key] = result;
+                    console.log("[OSRM] Snapped coordinate successfully:", result);
                     return result;
                 }
             } catch (e) {
@@ -1315,12 +1342,12 @@
             if (!snapToRoad) {
                 return { lat: rawLat, lng: rawLng };
             }
-            // Fetch nearest road coordinates via OSRM nearest service
-            const osrmSnap = await getSnappedCoordinate(rawLat, rawLng);
+            // Fetch Google/OSRM snapped coordinate
+            const snapped = await getSnappedCoordinate(rawLat, rawLng);
             
-            // Snap only if OSRM snaps successfully and is within 50 meters
-            if (osrmSnap && osrmSnap.distance <= 50) {
-                return { lat: osrmSnap.lat, lng: osrmSnap.lng };
+            // Snap to road if it is within 50 meters
+            if (snapped && snapped.distance <= 50) {
+                return { lat: snapped.lat, lng: snapped.lng };
             }
             return { lat: rawLat, lng: rawLng };
         }
