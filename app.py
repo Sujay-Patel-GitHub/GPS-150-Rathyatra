@@ -6646,7 +6646,7 @@ def serve_index_no_cache():
 @app.route("/tracking")
 @app.route("/tracking/")
 def tracking_index():
-    if session.get('user_type') != 'admin':
+    if session.get('user_type') not in ('admin', 'truck', 'akhada', 'user'):
         return redirect(url_for('login'))
     return serve_index_no_cache()
 
