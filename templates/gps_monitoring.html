@@ -465,19 +465,19 @@
             }
         }
 
-        /* Route Replay Player Bottom Bar */
+        /* Route Replay Player Bottom Bar - Light Theme */
         .playback-bar {
             position: absolute;
-            bottom: 24px;
+            bottom: 50px; /* Lifted up so it's fully visible and not cut off */
             left: 50%;
             transform: translateX(-50%);
             z-index: 1000;
-            background: rgba(17, 24, 39, 0.95);
+            background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(0, 0, 0, 0.1);
             border-radius: 12px;
             padding: 12px 24px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -494,7 +494,7 @@
         }
 
         .playback-title {
-            color: #ffffff;
+            color: #1f2937;
             font-size: 0.85rem;
             font-weight: 700;
             letter-spacing: 0.05em;
@@ -505,7 +505,7 @@
         }
 
         .playback-start-btn {
-            background: linear-gradient(135deg, #b45309 0%, #78350f 100%);
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
             color: #ffffff;
             border: none;
             padding: 8px 16px;
@@ -516,11 +516,11 @@
             text-transform: uppercase;
             letter-spacing: 0.05em;
             transition: all 0.2s ease;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15);
         }
 
         .playback-start-btn:hover {
-            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+            background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
             transform: translateY(-1px);
         }
 
@@ -530,13 +530,13 @@
             align-items: center;
             gap: 16px;
             width: 100%;
-            color: #ffffff;
+            color: #1f2937;
         }
 
         .replay-control-btn {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.05);
             border: none;
-            color: #ffffff;
+            color: #1f2937;
             width: 36px;
             height: 36px;
             border-radius: 50%;
@@ -548,30 +548,30 @@
         }
 
         .replay-control-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-            color: #f97316;
+            background: rgba(0, 0, 0, 0.1);
+            color: #ea580c;
         }
 
         .replay-time-display {
             font-family: monospace;
             font-size: 0.85rem;
-            color: #9ca3af;
+            color: #4b5563;
             min-width: 65px;
             text-align: center;
         }
 
         .replay-timeline {
             flex-grow: 1;
-            accent-color: #f97316;
+            accent-color: #ea580c;
             height: 6px;
             border-radius: 3px;
             cursor: pointer;
         }
 
         .replay-speed-select {
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            color: #ffffff;
+            background: rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            color: #1f2937;
             border-radius: 6px;
             padding: 4px 8px;
             font-size: 0.8rem;
@@ -581,14 +581,14 @@
         }
 
         .replay-speed-select option {
-            background: #111827;
-            color: #ffffff;
+            background: #ffffff;
+            color: #1f2937;
         }
 
         .replay-close-btn {
             background: transparent;
             border: none;
-            color: #9ca3af;
+            color: #4b5563;
             cursor: pointer;
             font-size: 1rem;
             transition: color 0.2s;
@@ -599,14 +599,14 @@
             color: #ef4444;
         }
 
-        /* Modern Settings Pop-up Modal */
+        /* Modern Settings Pop-up Modal - Light Theme */
         .playback-modal {
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.4);
             backdrop-filter: blur(4px);
             z-index: 9999;
             display: flex;
@@ -624,12 +624,12 @@
         }
 
         .playback-modal-content {
-            background: #111827;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: #ffffff;
+            border: 1px solid rgba(0, 0, 0, 0.1);
             border-radius: 16px;
             width: 90%;
             max-width: 450px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
             overflow: hidden;
             animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
@@ -646,16 +646,16 @@
         }
 
         .playback-modal-header {
-            background: rgba(255, 255, 255, 0.02);
+            background: rgba(0, 0, 0, 0.02);
             padding: 16px 20px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
         }
 
         .playback-modal-header h3 {
-            color: #ffffff;
+            color: #111827;
             font-size: 1rem;
             font-weight: 600;
             display: flex;
@@ -666,7 +666,7 @@
         .close-modal-btn {
             background: transparent;
             border: none;
-            color: #9ca3af;
+            color: #6b7280;
             font-size: 1.5rem;
             cursor: pointer;
             line-height: 1;
@@ -674,7 +674,7 @@
         }
 
         .close-modal-btn:hover {
-            color: #ffffff;
+            color: #111827;
         }
 
         .playback-modal-body {
@@ -691,7 +691,7 @@
         }
 
         .input-group label {
-            color: #9ca3af;
+            color: #4b5563;
             font-size: 0.8rem;
             font-weight: 600;
         }
@@ -706,8 +706,8 @@
         }
 
         .device-checkbox-container {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(0, 0, 0, 0.02);
+            border: 1px solid rgba(0, 0, 0, 0.08);
             border-radius: 8px;
             padding: 10px;
             max-height: 150px;
@@ -721,25 +721,25 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            color: #ffffff;
+            color: #1f2937;
             font-size: 0.8rem;
             cursor: pointer;
             user-select: none;
         }
 
         .device-checkbox-label input {
-            accent-color: #f97316;
+            accent-color: #ea580c;
             width: 14px;
             height: 14px;
             cursor: pointer;
         }
 
         .modern-input {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: #ffffff;
+            border: 1px solid rgba(0, 0, 0, 0.15);
             border-radius: 8px;
             padding: 10px;
-            color: #ffffff;
+            color: #1f2937;
             font-size: 0.85rem;
             outline: none;
             transition: border-color 0.2s;
@@ -747,12 +747,10 @@
         }
 
         .modern-input:focus {
-            border-color: #f97316;
+            border-color: #ea580c;
         }
 
-        /* Date picker icon styling in dark mode */
         .modern-input::-webkit-calendar-picker-indicator {
-            filter: invert(1);
             cursor: pointer;
         }
 
@@ -776,12 +774,12 @@
         }
 
         .modern-btn.primary {
-            background: #f97316;
+            background: #ea580c;
             color: #ffffff;
         }
 
         .modern-btn.primary:hover {
-            background: #ea580c;
+            background: #c2410c;
         }
     </style>
 </head>
@@ -1243,7 +1241,6 @@
 
         function focusVehicle(id, lat, lng) {
             if (!lat || !lng) return;
-            applyRoleLayout(id);
             map.flyTo([lat, lng], 15, { duration: 1.5 });
 
             // Highlight card
