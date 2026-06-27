@@ -29,9 +29,10 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #030712 !important; /* gray-950 */
+            background-color: #f3f4f6 !important; /* light gray-100 */
             padding-top: 70px !important;
             overflow: hidden !important;
+            color: #1f2937 !important; /* dark gray text */
         }
         h1, h2, h3, .font-title {
             font-family: 'Poppins', sans-serif;
@@ -42,70 +43,14 @@
             height: 6px;
         }
         ::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.02);
+            background: rgba(0, 0, 0, 0.02);
         }
         ::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.12);
+            background: rgba(0, 0, 0, 0.12);
             border-radius: 4px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.24);
-        }
-
-        /* --- Dark Theme overrides for main Navbar & Sidebar --- */
-        .navbar {
-            background: #0f172a !important; /* slate-900 */
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
-        }
-        .navbar h2, .navbar-user, #sidebarToggle {
-            color: #f3f4f6 !important;
-        }
-        #sidebarToggle, .zip-notify-btn {
-            background: rgba(255, 255, 255, 0.05) !important;
-            color: #94a3b8 !important;
-        }
-        #sidebarToggle:hover, .zip-notify-btn:hover {
-            background: rgba(255, 255, 255, 0.1) !important;
-            color: #f3f4f6 !important;
-        }
-        .zip-dropdown {
-            background: #0f172a !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;
-        }
-        .zip-dropdown-header {
-            background: rgba(255,255,255,0.03) !important;
-            border-bottom: 1px solid rgba(255,255,255,0.08) !important;
-        }
-        .zip-job-name {
-            color: #f3f4f6 !important;
-        }
-        .zip-empty {
-            color: #64748b !important;
-        }
-        .sidebar {
-            background: #0f172a !important; /* slate-900 */
-            border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
-            top: 70px !important;
-        }
-        .sidebar button {
-            color: #94a3b8 !important;
-        }
-        .sidebar button:hover {
-            background: rgba(255, 255, 255, 0.04) !important;
-            color: #f3f4f6 !important;
-        }
-        .sidebar button:hover i {
-            color: #f97316 !important;
-        }
-        .sidebar button.active {
-            background: rgba(249, 115, 22, 0.1) !important; /* Orange active highlight */
-            color: #f97316 !important;
-            border-left: 3px solid #f97316 !important;
-        }
-        .sidebar button.active i {
-            color: #f97316 !important;
+            background: rgba(0, 0, 0, 0.24);
         }
 
         /* --- Shifted Layout HUD Container --- */
@@ -124,16 +69,16 @@
 
         /* Leaflet popup customization */
         .leaflet-popup-content-wrapper {
-            background: rgba(17, 24, 39, 0.95) !important;
+            background: rgba(255, 255, 255, 0.95) !important;
             backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #f3f4f6 !important;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            color: #1f2937 !important;
             border-radius: 16px !important;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5) !important;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15) !important;
         }
         .leaflet-popup-tip {
-            background: rgba(17, 24, 39, 0.95) !important;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.95) !important;
+            border: 1px solid rgba(0, 0, 0, 0.08);
         }
         .leaflet-container {
             font-family: 'Inter', sans-serif;
@@ -144,7 +89,7 @@
         }
         /* Hide element default styles */
         input[type="range"]::-webkit-slider-runnable-track {
-            background: rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.06);
             height: 6px;
             border-radius: 3px;
         }
@@ -166,66 +111,61 @@
     {% include 'sidebar.html' %}
 
     <!-- Shifted Root Container -->
-    <div class="gps-hud-container flex bg-gray-950 text-white">
+    <div class="gps-hud-container flex bg-gray-100 text-gray-800">
 
-        <!-- Left Sidebar: Vehicle List / Procession Spacing -->
-        <aside class="w-64 shrink-0 flex flex-col h-full bg-gray-900/85 backdrop-blur-xl border-r border-white/10">
+        <!-- Left Sidebar: Vehicle List -->
+        <aside class="w-64 shrink-0 flex flex-col h-full bg-white/95 border-r border-gray-200">
             <!-- Sidebar Header -->
-            <div class="px-5 py-5 border-b border-white/10 bg-black/10">
+            <div class="px-5 py-4 border-b border-gray-200 bg-gray-50/50">
                 <div class="flex items-center gap-3 mb-1">
                     <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-base shadow-lg shadow-orange-500/20 animate-pulse">
                         🛕
                     </div>
                     <div>
-                        <h1 class="text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500 leading-tight tracking-wide">
+                        <h1 class="text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-600 leading-tight tracking-wide">
                             Rath Yatra
                         </h1>
-                        <p class="text-[10px] text-white/40 uppercase tracking-widest font-black">GPS Tracking HUD</p>
+                        <p class="text-[10px] text-gray-400 uppercase tracking-widest font-black">GPS Tracking HUD</p>
                     </div>
                 </div>
-                <div class="flex items-center justify-between text-[11px] font-bold mt-4 bg-white/5 p-2 rounded-lg border border-white/5">
-                    <span class="text-white/40">Fleet Summary</span>
-                    <span class="text-green-400 font-extrabold flex items-center gap-1.5" id="fleetSummaryCount">
-                        <span class="w-2 h-2 rounded-full bg-green-400 animate-ping" />
+                <div class="flex items-center justify-between text-[11px] font-bold mt-4 bg-white p-2 rounded-lg border border-gray-200 shadow-sm">
+                    <span class="text-gray-400">Fleet Summary</span>
+                    <span class="text-green-600 font-extrabold flex items-center gap-1.5" id="fleetSummaryCount">
+                        <span class="w-2 h-2 rounded-full bg-green-500 animate-ping" />
                         0/0 Active
                     </span>
                 </div>
             </div>
 
             <!-- Access Level Control -->
-            <div class="px-5 py-3 border-b border-white/10 bg-black/20 flex items-center justify-between">
-                <span class="text-[10px] uppercase font-black text-white/40 tracking-wider">Access Control</span>
-                <button id="adminModeBtn" onclick="toggleAdminMode()" class="px-3 py-1 rounded-full text-[10px] font-extrabold transition-all duration-200 cursor-pointer border uppercase tracking-wider bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white">
+            <div class="px-5 py-2.5 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+                <span class="text-[10px] uppercase font-black text-gray-400 tracking-wider">Access Control</span>
+                <button id="adminModeBtn" onclick="toggleAdminMode()" class="px-3 py-1 rounded-full text-[10px] font-extrabold transition-all duration-200 cursor-pointer border uppercase tracking-wider bg-white border-gray-200 text-gray-500 hover:bg-gray-50">
                     🔒 User Mode
                 </button>
             </div>
 
-            <!-- Tabs Header -->
-            <div class="flex bg-black/40 border-b border-white/10 p-2 gap-2">
-                <button onclick="switchSidebarTab('fleet')" id="tabFleetBtn" class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all bg-orange-500/20 text-orange-400 border border-orange-500/30 shadow-inner">
-                    Fleet List
-                </button>
-                <button onclick="switchSidebarTab('spacing')" id="tabSpacingBtn" class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all text-white/40 hover:text-white hover:bg-white/5">
-                    Procession Order
-                </button>
+            <!-- Search Bar Container -->
+            <div class="p-3 border-b border-gray-200 bg-white">
+                <div class="relative">
+                    <input type="text" id="vehicleSearchInput" oninput="filterFleetList()" placeholder="Search vehicle display name or ID..." class="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 pl-9 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all font-medium shadow-sm">
+                    <div class="absolute left-3 top-2.5 text-gray-400 pointer-events-none text-xs">
+                        <i class="fas fa-search"></i>
+                    </div>
+                </div>
             </div>
 
             <!-- Sidebar Scrolling Area -->
-            <div class="flex-1 overflow-y-auto scrollbar-thin relative" id="sidebarListContainer">
-                <!-- Fleet List Tab Content -->
+            <div class="flex-1 overflow-y-auto scrollbar-thin relative bg-white">
+                <!-- Fleet List Content -->
                 <div id="sidebarFleetTab" class="p-3 space-y-2.5">
                     <!-- Cards will be dynamically injected here -->
-                </div>
-
-                <!-- Procession Spacing Tab Content -->
-                <div id="sidebarSpacingTab" class="p-4 space-y-4 hidden">
-                    <!-- Spacing cards will be dynamically injected here -->
                 </div>
             </div>
 
             <!-- Sidebar Footer -->
-            <div class="px-4 py-3 border-t border-white/10 bg-black/10 shrink-0">
-                <p class="text-[10px] text-white/30 text-center uppercase font-bold tracking-widest flex items-center justify-center gap-1.5">
+            <div class="px-4 py-3 border-t border-gray-200 bg-gray-50 shrink-0">
+                <p class="text-[10px] text-gray-400 text-center uppercase font-bold tracking-widest flex items-center justify-center gap-1.5">
                     <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping" />
                     Live Telemetry Active
                 </p>
@@ -237,57 +177,40 @@
 
             <!-- Procession Analytics HUD Overlay (Top Center) -->
             <div class="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] flex gap-3.5 max-w-[95%] pointer-events-auto">
-                <!-- Procession Spread Card -->
-                <div class="bg-gray-900/90 border border-white/10 rounded-2xl p-3 px-4 shadow-2xl flex flex-col gap-0.5 min-w-[130px] backdrop-blur-xl">
-                    <span class="text-[9px] font-bold text-white/40 uppercase tracking-wider">Procession Spread</span>
+                <!-- Total Active Devices Card -->
+                <div class="bg-white border border-gray-200 rounded-2xl p-3 px-4 shadow-xl flex flex-col gap-0.5 min-w-[130px] backdrop-blur-xl">
+                    <span class="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Active Devices</span>
                     <div class="flex items-center gap-2 mt-1">
-                        <span class="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse" id="hudSpreadDot"></span>
-                        <span class="text-sm font-black text-white" id="hudSpreadVal">Offline</span>
+                        <span class="w-2.5 h-2.5 rounded-full bg-green-500" id="hudActiveDot"></span>
+                        <span class="text-sm font-black text-gray-800" id="hudActiveVal">0 Active</span>
                     </div>
                 </div>
 
                 <!-- Average Speed Card -->
-                <div class="bg-gray-900/90 border border-white/10 rounded-2xl p-3 px-4 shadow-2xl flex flex-col gap-0.5 min-w-[130px] backdrop-blur-xl">
-                    <span class="text-[9px] font-bold text-white/40 uppercase tracking-wider">Avg Speed</span>
+                <div class="bg-white border border-gray-200 rounded-2xl p-3 px-4 shadow-xl flex flex-col gap-0.5 min-w-[130px] backdrop-blur-xl">
+                    <span class="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Avg Speed</span>
                     <div class="flex items-center gap-2 mt-1">
-                        <span class="w-2.5 h-2.5 rounded-full bg-green-500" id="hudSpeedDot"></span>
-                        <span class="text-sm font-black text-white" id="hudSpeedVal">0 km/h</span>
-                    </div>
-                </div>
-
-                <!-- Next Landmark (ETA) Card -->
-                <div class="bg-gray-900/90 border border-white/10 rounded-2xl p-3 px-4 shadow-2xl flex flex-col gap-0.5 min-w-[200px] backdrop-blur-xl">
-                    <span class="text-[9px] font-bold text-white/40 uppercase tracking-wider">Next Landmark (ETA)</span>
-                    <div class="flex items-center gap-2 mt-1">
-                        <span class="w-2.5 h-2.5 rounded-full bg-blue-500" id="hudLandmarkDot"></span>
-                        <span class="text-sm font-black text-white truncate max-w-[180px]" id="hudLandmarkVal">Waiting for GPS...</span>
+                        <span class="w-2.5 h-2.5 rounded-full bg-blue-500" id="hudSpeedDot"></span>
+                        <span class="text-sm font-black text-gray-800" id="hudSpeedVal">0 km/h</span>
                     </div>
                 </div>
             </div>
 
             <!-- Floating Settings Card (Top-Left of map) -->
-            <div class="absolute top-4 left-4 z-[1000] bg-gray-900/90 border border-white/10 rounded-2xl p-4 shadow-2xl backdrop-blur-xl w-60">
-                <h3 class="text-xs font-black uppercase text-white/40 tracking-wider mb-3">Dashboard Settings</h3>
-                <div class="space-y-3.5 text-xs font-semibold">
-                    <div class="flex items-center justify-between">
-                        <span>Snap to Road</span>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="snapToRoadChk" checked onchange="toggleSnappingSetting()" class="sr-only peer">
-                            <div class="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-500"></div>
-                        </label>
-                    </div>
-
+            <div class="absolute top-4 left-4 z-[1000] bg-white border border-gray-200 rounded-2xl p-4 shadow-xl backdrop-blur-xl w-60">
+                <h3 class="text-xs font-black uppercase text-gray-400 tracking-wider mb-3">Dashboard Settings</h3>
+                <div class="space-y-3.5 text-xs font-semibold text-gray-700">
                     <div class="flex items-center justify-between">
                         <span>Enable Compass</span>
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" id="enableCompassChk" checked onchange="toggleCompassSetting()" class="sr-only peer">
-                            <div class="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-500"></div>
+                            <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-500"></div>
                         </label>
                     </div>
 
-                    <div class="h-px bg-white/10 my-2"></div>
+                    <div class="h-px bg-gray-100 my-2"></div>
 
-                    <button id="recordRouteBtn" onclick="toggleRouteRecording()" class="w-full py-2 bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 active:scale-[0.98] transition-all rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer">
+                    <button id="recordRouteBtn" onclick="toggleRouteRecording()" class="w-full py-2 bg-red-50 hover:bg-red-100 border border-red-200 text-red-500 active:scale-[0.98] transition-all rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer">
                         <span class="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
                         <span id="recordRouteBtnText">Record Route</span>
                     </button>
@@ -303,34 +226,34 @@
             <div id="map" class="w-full h-full flex-1"></div>
 
             <!-- Floating Route Replay Player panel (Bottom Center of Map) -->
-            <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000] bg-gray-900/90 border border-white/10 rounded-2xl p-4 shadow-2xl backdrop-blur-xl w-[600px] max-w-[95%]">
-                <div class="flex items-center justify-between border-b border-white/5 pb-2.5 mb-3">
+            <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000] bg-white border border-gray-200 rounded-2xl p-4 shadow-xl backdrop-blur-xl w-[600px] max-w-[95%]">
+                <div class="flex items-center justify-between border-b border-gray-100 pb-2.5 mb-3 text-gray-800">
                     <div class="flex items-center gap-2.5">
-                        <span class="text-xs font-black uppercase text-white/40 tracking-wider">Route Replay Player</span>
-                        <span id="playbackStatusBadge" class="text-[9px] bg-white/5 border border-white/10 px-2 py-0.5 rounded-full text-white/50 font-bold uppercase tracking-wider">Stopped</span>
+                        <span class="text-xs font-black uppercase text-gray-400 tracking-wider">Route Replay Player</span>
+                        <span id="playbackStatusBadge" class="text-[9px] bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-full text-gray-500 font-bold uppercase tracking-wider">Stopped</span>
                     </div>
                     <!-- Controls -->
                     <div class="flex items-center gap-2">
-                        <select id="playbackDeviceSelect" class="bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white/80 font-bold focus:outline-none focus:border-orange-500 cursor-pointer">
+                        <select id="playbackDeviceSelect" class="bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-[11px] text-gray-700 font-bold focus:outline-none focus:border-orange-500 cursor-pointer">
                             <option value="">Select Device...</option>
                         </select>
-                        <input type="date" id="playbackDateSelect" class="bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white/80 font-bold focus:outline-none focus:border-orange-500 cursor-pointer">
+                        <input type="date" id="playbackDateSelect" class="bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-[11px] text-gray-700 font-bold focus:outline-none focus:border-orange-500 cursor-pointer">
                         <button onclick="loadHistoryPlayback()" id="loadHistoryBtn" class="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-[10px] px-3 py-1.5 rounded-lg cursor-pointer transition-all">
                             Load
                         </button>
                     </div>
                 </div>
 
-                <div class="flex items-center gap-4">
+                <div class="flex items-center gap-4 text-gray-800">
                     <!-- Play / Pause Button -->
-                    <button onclick="togglePlaybackPlaying()" id="playbackPlayBtn" disabled class="w-10 h-10 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 text-white flex items-center justify-center cursor-pointer transition-all disabled:opacity-30 disabled:cursor-not-allowed shrink-0 text-sm">
+                    <button onclick="togglePlaybackPlaying()" id="playbackPlayBtn" disabled class="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 flex items-center justify-center cursor-pointer transition-all disabled:opacity-30 disabled:cursor-not-allowed shrink-0 text-sm">
                         <i class="fas fa-play" id="playbackPlayIcon"></i>
                     </button>
 
                     <!-- scrubbing Slider -->
                     <div class="flex-1">
-                        <input type="range" id="playbackSlider" min="0" max="100" value="0" disabled oninput="onPlaybackSliderInput(this.value)" class="w-full bg-white/10 rounded-lg cursor-pointer">
-                        <div class="flex items-center justify-between text-[10px] text-white/35 font-mono mt-1">
+                        <input type="range" id="playbackSlider" min="0" max="100" value="0" disabled oninput="onPlaybackSliderInput(this.value)" class="w-full bg-gray-200 rounded-lg cursor-pointer">
+                        <div class="flex items-center justify-between text-[10px] text-gray-400 font-mono mt-1">
                             <span id="playbackTimeCurrent">00:00:00</span>
                             <span id="playbackPointCount">0 points</span>
                             <span id="playbackTimeEnd">00:00:00</span>
@@ -338,11 +261,11 @@
                     </div>
 
                     <!-- Speed selector -->
-                    <div class="flex items-center bg-black/40 border border-white/10 rounded-xl p-0.5 shrink-0">
-                        <button onclick="setPlaybackSpeed(1)" class="playback-speed-btn px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all text-white/40 hover:text-white" id="speedBtn-1">1x</button>
-                        <button onclick="setPlaybackSpeed(2)" class="playback-speed-btn px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all bg-orange-500/20 text-orange-400 border border-orange-500/30" id="speedBtn-2">2x</button>
-                        <button onclick="setPlaybackSpeed(5)" class="playback-speed-btn px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all text-white/40 hover:text-white" id="speedBtn-5">5x</button>
-                        <button onclick="setPlaybackSpeed(10)" class="playback-speed-btn px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all text-white/40 hover:text-white" id="speedBtn-10">10x</button>
+                    <div class="flex items-center bg-gray-50 border border-gray-200 rounded-xl p-0.5 shrink-0">
+                        <button onclick="setPlaybackSpeed(1)" class="playback-speed-btn px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all text-gray-400 hover:text-gray-800" id="speedBtn-1">1x</button>
+                        <button onclick="setPlaybackSpeed(2)" class="playback-speed-btn px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all bg-orange-500/20 text-orange-500 border border-orange-500/30" id="speedBtn-2">2x</button>
+                        <button onclick="setPlaybackSpeed(5)" class="playback-speed-btn px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all text-gray-400 hover:text-gray-800" id="speedBtn-5">5x</button>
+                        <button onclick="setPlaybackSpeed(10)" class="playback-speed-btn px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all text-gray-400 hover:text-gray-800" id="speedBtn-10">10x</button>
                     </div>
                 </div>
             </div>
@@ -350,34 +273,34 @@
         </main>
 
         <!-- Right Sidebar: Details Panel -->
-        <aside class="w-72 shrink-0 flex flex-col h-full bg-gray-900/85 backdrop-blur-xl border-l border-white/10">
+        <aside class="w-72 shrink-0 flex flex-col h-full bg-white/95 border-l border-gray-200">
             <!-- Details Tabs Header -->
-            <div class="flex border-b border-white/10 bg-black/25 shrink-0">
-                <button onclick="switchDetailsTab('overview')" id="tabOverviewBtn" class="flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-all duration-200 border-b-2 text-orange-500 border-orange-500 bg-white/5">
+            <div class="flex border-b border-gray-200 bg-gray-50/50 shrink-0">
+                <button onclick="switchDetailsTab('overview')" id="tabOverviewBtn" class="flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-all duration-200 border-b-2 text-orange-500 border-orange-500 bg-white">
                     📊 Overview
                 </button>
-                <button onclick="switchDetailsTab('cameras')" id="tabCamerasBtn" class="flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-all duration-200 border-b-2 text-white/40 border-transparent hover:text-white/80 hover:bg-white/2 hidden">
+                <button onclick="switchDetailsTab('cameras')" id="tabCamerasBtn" class="flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-all duration-200 border-b-2 text-gray-400 border-transparent hover:text-gray-600 hover:bg-gray-50 hidden">
                     📹 Cameras
                 </button>
-                <button onclick="switchDetailsTab('alerts')" id="tabAlertsBtn" class="flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-all duration-200 border-b-2 text-white/40 border-transparent hover:text-white/80 hover:bg-white/2">
+                <button onclick="switchDetailsTab('alerts')" id="tabAlertsBtn" class="flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-all duration-200 border-b-2 text-gray-400 border-transparent hover:text-gray-600 hover:bg-gray-50">
                     ⚠️ Alerts Log
                 </button>
             </div>
 
             <!-- Details Scrolling Content -->
-            <div class="flex-1 overflow-y-auto scrollbar-thin flex flex-col relative" id="detailsScrollingArea">
+            <div class="flex-1 overflow-y-auto scrollbar-thin flex flex-col relative bg-white text-gray-800" id="detailsScrollingArea">
                 
                 <!-- Overview Tab Content -->
                 <div id="detailsOverviewTab" class="flex-1 flex flex-col min-h-0">
                     
                     <!-- Empty State -->
                     <div id="detailsEmptyState" class="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center py-20">
-                        <div class="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center text-3xl">
+                        <div class="w-16 h-16 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-center text-3xl">
                             🗺️
                         </div>
                         <div>
-                            <p class="text-white/60 font-medium text-sm">No vehicle selected</p>
-                            <p class="text-white/30 text-xs mt-1">
+                            <p class="text-gray-600 font-semibold text-sm">No vehicle selected</p>
+                            <p class="text-gray-400 text-xs mt-1">
                                 Click a vehicle in the sidebar or tap a map marker
                             </p>
                         </div>
@@ -386,7 +309,7 @@
                     <!-- Selected details container (hidden by default) -->
                     <div id="detailsSelectedContainer" class="hidden flex-1 flex flex-col">
                         <!-- Details Panel Name Header -->
-                        <div class="px-5 py-5 border-b border-white/10">
+                        <div class="px-5 py-5 border-b border-gray-200">
                             <div class="flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-xl shrink-0 shadow-lg shadow-orange-500/20">
                                     🚌
@@ -394,25 +317,25 @@
                                 <div class="flex-1 min-w-0">
                                     <div class="flex items-center gap-2">
                                         <!-- Normal Name view -->
-                                        <h2 id="detailsDeviceTitle" class="text-base font-bold text-white truncate">Truck 1</h2>
+                                        <h2 id="detailsDeviceTitle" class="text-base font-bold text-gray-950 truncate">Truck 1</h2>
                                         <!-- Edit button (visible in admin mode) -->
-                                        <button onclick="startEditingDisplayName()" id="detailsEditNameBtn" class="text-white/40 hover:text-white text-xs cursor-pointer select-none shrink-0 hidden">
+                                        <button onclick="startEditingDisplayName()" id="detailsEditNameBtn" class="text-gray-400 hover:text-gray-700 text-xs cursor-pointer select-none shrink-0 hidden">
                                             ✏️ Edit
                                         </button>
                                     </div>
                                     <!-- Inline Edit Name Input (hidden by default) -->
                                     <div id="detailsEditNameBox" class="hidden flex items-center gap-1 mt-1">
-                                        <input type="text" id="detailsEditNameInput" class="bg-white/5 border border-white/20 rounded-lg py-1 px-2 text-xs text-white focus:outline-none focus:border-orange-500 w-full">
+                                        <input type="text" id="detailsEditNameInput" class="bg-gray-50 border border-gray-200 rounded-lg py-1 px-2 text-xs text-gray-800 focus:outline-none focus:border-orange-500 w-full">
                                         <button onclick="saveDisplayNameOverride()" class="bg-green-500 hover:bg-green-600 text-white font-bold text-[10px] px-2.5 py-1.5 rounded-lg cursor-pointer">
                                             Save
                                         </button>
-                                        <button onclick="cancelEditingDisplayName()" class="bg-white/5 hover:bg-white/10 text-white/60 font-bold text-[10px] px-2.5 py-1.5 rounded-lg cursor-pointer">
+                                        <button onclick="cancelEditingDisplayName()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-[10px] px-2.5 py-1.5 rounded-lg cursor-pointer">
                                             Cancel
                                         </button>
                                     </div>
 
                                     <div class="flex flex-wrap items-center gap-2 mt-0.5">
-                                        <div id="detailsStatusBadge" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-500/20 text-gray-400">
+                                        <div id="detailsStatusBadge" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 border border-gray-200">
                                             <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
                                             Offline
                                         </div>
@@ -425,209 +348,169 @@
                         <div class="px-5 py-4 space-y-4">
                             
                             <!-- Real-time Compass & Speedometer Widget -->
-                            <div class="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-around gap-4 shadow-lg shadow-black/20 backdrop-blur-md">
+                            <div class="p-4 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-around gap-4 shadow-sm backdrop-blur-md">
                                 <!-- Dial -->
-                                <div id="compassWidgetDial" class="relative w-24 h-24 rounded-full border-2 border-white/20 flex items-center justify-center bg-gray-950/40">
+                                <div id="compassWidgetDial" class="relative w-24 h-24 rounded-full border-2 border-gray-200 flex items-center justify-center bg-white shadow-inner">
                                     <span class="absolute top-1 text-[9px] font-black text-red-500">N</span>
-                                    <span class="absolute right-1.5 text-[9px] font-bold text-white/50">E</span>
-                                    <span class="absolute bottom-1 text-[9px] font-bold text-white/50">S</span>
-                                    <span class="absolute left-1.5 text-[9px] font-bold text-white/50">W</span>
-                                    <div class="absolute inset-0.5 rounded-full border border-dashed border-white/10 pointer-events-none"></div>
+                                    <span class="absolute right-1.5 text-[9px] font-bold text-gray-400">E</span>
+                                    <span class="absolute bottom-1 text-[9px] font-bold text-gray-400">S</span>
+                                    <span class="absolute left-1.5 text-[9px] font-bold text-gray-400">W</span>
+                                    <div class="absolute inset-0.5 rounded-full border border-dashed border-gray-200 pointer-events-none"></div>
                                     <!-- Needle rotation -->
                                     <div id="compassNeedleRotator" class="absolute w-full h-full flex items-center justify-center compass-needle">
                                         <div class="w-1.5 h-16 relative flex flex-col items-center">
                                             <div class="w-0 h-0 border-l-[3px] border-l-transparent border-r-[3px] border-r-transparent border-b-[24px] border-b-red-500"></div>
-                                            <div class="w-0 h-0 border-l-[3px] border-l-transparent border-r-[3px] border-r-transparent border-t-[24px] border-t-white/60 mt-[8px]"></div>
-                                            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white shadow border border-black/40"></div>
+                                            <div class="w-0 h-0 border-l-[3px] border-l-transparent border-r-[3px] border-r-transparent border-t-[24px] border-t-gray-400 mt-[8px]"></div>
+                                            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white shadow border border-gray-300"></div>
                                         </div>
                                     </div>
                                 </div>
                                 <!-- Text details -->
                                 <div class="flex-1 flex flex-col justify-center">
-                                    <p class="text-[10px] text-white/40 uppercase tracking-widest font-semibold">Real-time Bearing</p>
-                                    <p id="detailsBearingText" class="text-xl font-bold text-white font-mono mt-0.5">0.0°</p>
-                                    <p id="detailsCardinalText" class="text-xs text-orange-400 font-semibold mt-0.5 flex items-center gap-1">
+                                    <p class="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Real-time Bearing</p>
+                                    <p id="detailsBearingText" class="text-xl font-bold text-gray-800 font-mono mt-0.5">0.0°</p>
+                                    <p id="detailsCardinalText" class="text-xs text-orange-600 font-semibold mt-0.5 flex items-center gap-1">
                                         🧭 N (North)
                                     </p>
-                                    <div class="h-px bg-white/10 my-2"></div>
-                                    <p class="text-[10px] text-white/40 uppercase tracking-widest font-semibold">Movement State</p>
-                                    <p id="detailsMovementText" class="text-xs text-white font-medium mt-0.5 flex items-center gap-1.5">
-                                        <span class="w-2 h-2 rounded-full bg-gray-500"></span>
+                                    <div class="h-px bg-gray-200 my-2"></div>
+                                    <p class="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Movement State</p>
+                                    <p id="detailsMovementText" class="text-xs text-gray-700 font-medium mt-0.5 flex items-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-gray-400"></span>
                                         Stationary (0.0 km/h)
                                     </p>
                                 </div>
                             </div>
 
-                            <!-- Route Status Snapping Alert Box -->
-                            <div class="p-4 rounded-2xl bg-white/5 border border-white/10 shadow-lg shadow-black/20 backdrop-blur-md space-y-3">
-                                <div class="flex items-center justify-between border-b border-white/5 pb-2">
-                                    <h3 class="text-xs font-bold text-white/80">Route Status</h3>
-                                    <span class="text-[9px] text-white/40 uppercase tracking-widest font-bold">Alert HUD</span>
-                                </div>
-
-                                <div id="detailsRouteAlert" class="p-3 rounded-xl flex items-center justify-between transition-all bg-green-500/10 border border-green-500/25">
-                                    <div class="flex items-center gap-2">
-                                        <span id="detailsRouteAlertIcon" class="text-base">✅</span>
-                                        <div>
-                                            <p class="text-[10px] text-green-400 font-black uppercase tracking-wider" id="detailsRouteAlertHeader">Device Status</p>
-                                            <p class="text-xs font-extrabold text-white" id="detailsRouteAlertBody">Within Route Range</p>
-                                        </div>
-                                    </div>
-                                    <span id="detailsRouteAlertBadge" class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wide bg-green-500 text-gray-950">
-                                        NORMAL
-                                    </span>
-                                </div>
-
-                                <div class="flex items-center justify-between pt-1 text-xs">
-                                    <span class="text-white/50 font-medium">Distance to Route</span>
-                                    <span id="detailsDistanceToRouteVal" class="font-bold text-white font-mono bg-white/5 px-2.5 py-1 rounded-lg border border-white/5">
-                                        📏 0 m
-                                    </span>
-                                </div>
-                            </div>
-
                             <!-- Detail Statistics Grid Card -->
-                            <div class="p-4 rounded-2xl bg-white/3 border border-white/5 shadow-md space-y-1">
-                                <div class="flex items-center justify-between py-3 border-b border-white/8">
-                                    <span class="text-xs text-white/50 uppercase tracking-wider font-medium">Vehicle ID</span>
-                                    <span id="statVehicleId" class="text-sm text-white font-semibold">—</span>
+                            <div class="p-4 rounded-2xl bg-white border border-gray-200 shadow-sm space-y-1">
+                                <div class="flex items-center justify-between py-3 border-b border-gray-100">
+                                    <span class="text-xs text-gray-400 uppercase tracking-wider font-semibold">Vehicle ID</span>
+                                    <span id="statVehicleId" class="text-sm text-gray-700 font-bold">—</span>
                                 </div>
-                                <div class="flex items-center justify-between py-3 border-b border-white/8">
-                                    <span class="text-xs text-white/50 uppercase tracking-wider font-medium">Tracking Mode</span>
-                                    <span id="statTrackingMode" class="text-sm text-white font-semibold">—</span>
+                                <div class="flex items-center justify-between py-3 border-b border-gray-100">
+                                    <span class="text-xs text-gray-400 uppercase tracking-wider font-semibold">Tracking Mode</span>
+                                    <span id="statTrackingMode" class="text-sm text-gray-700 font-bold">—</span>
                                 </div>
-                                <div class="flex items-center justify-between py-3 border-b border-white/8">
-                                    <span class="text-xs text-white/50 uppercase tracking-wider font-medium">Snapped Lat</span>
-                                    <span id="statSnappedLat" class="text-sm text-white font-semibold font-mono">—</span>
+                                <div class="flex items-center justify-between py-3 border-b border-gray-100">
+                                    <span class="text-xs text-gray-400 uppercase tracking-wider font-semibold">GPS Lat</span>
+                                    <span id="statRawLat" class="text-sm text-gray-700 font-bold font-mono">—</span>
                                 </div>
-                                <div class="flex items-center justify-between py-3 border-b border-white/8">
-                                    <span class="text-xs text-white/50 uppercase tracking-wider font-medium">Snapped Lng</span>
-                                    <span id="statSnappedLng" class="text-sm text-white font-semibold font-mono">—</span>
+                                <div class="flex items-center justify-between py-3 border-b border-gray-100">
+                                    <span class="text-xs text-gray-400 uppercase tracking-wider font-semibold">GPS Lng</span>
+                                    <span id="statRawLng" class="text-sm text-gray-700 font-bold font-mono">—</span>
                                 </div>
-                                <div class="flex items-center justify-between py-3 border-b border-white/8">
-                                    <span class="text-xs text-white/50 uppercase tracking-wider font-medium">Raw GPS Lat</span>
-                                    <span id="statRawLat" class="text-sm text-white font-semibold font-mono">—</span>
+                                <div class="flex items-center justify-between py-3 border-b border-gray-100">
+                                    <span class="text-xs text-gray-400 uppercase tracking-wider font-semibold">Satellites</span>
+                                    <span id="statSatellites" class="text-sm text-gray-700 font-bold">—</span>
                                 </div>
-                                <div class="flex items-center justify-between py-3 border-b border-white/8">
-                                    <span class="text-xs text-white/50 uppercase tracking-wider font-medium">Raw GPS Lng</span>
-                                    <span id="statRawLng" class="text-sm text-white font-semibold font-mono">—</span>
-                                </div>
-                                <div class="flex items-center justify-between py-3 border-b border-white/8">
-                                    <span class="text-xs text-white/50 uppercase tracking-wider font-medium">GPS Drift (Error)</span>
-                                    <span id="statDrift" class="text-sm text-white font-semibold">—</span>
-                                </div>
-                                <div class="flex items-center justify-between py-3 border-b border-white/8">
-                                    <span class="text-xs text-white/50 uppercase tracking-wider font-medium">Satellites</span>
-                                    <span id="statSatellites" class="text-sm text-white font-semibold">—</span>
-                                </div>
-                                <div class="flex items-center justify-between py-3 border-b border-white/8">
-                                    <span class="text-xs text-white/50 uppercase tracking-wider font-medium">HDOP</span>
-                                    <span id="statHdop" class="text-sm text-white font-semibold font-mono">—</span>
+                                <div class="flex items-center justify-between py-3 border-b border-gray-100">
+                                    <span class="text-xs text-gray-400 uppercase tracking-wider font-semibold">HDOP</span>
+                                    <span id="statHdop" class="text-sm text-gray-700 font-bold font-mono">—</span>
                                 </div>
                                 <div class="flex items-center justify-between py-3">
-                                    <span class="text-xs text-white/50 uppercase tracking-wider font-medium">Last Update</span>
-                                    <span id="statLastUpdated" class="text-sm text-white font-semibold">—</span>
+                                    <span class="text-xs text-gray-400 uppercase tracking-wider font-semibold">Last Update</span>
+                                    <span id="statLastUpdated" class="text-sm text-gray-700 font-bold text-right">—</span>
                                 </div>
                             </div>
 
                             <!-- Export Trail Section -->
-                            <div class="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2.5">
+                            <div class="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2.5">
                                 <div>
-                                    <p class="text-xs text-white/80 font-bold">Export Trail Data</p>
-                                    <p class="text-[10px] text-white/40 mt-0.5 leading-relaxed">
+                                    <p class="text-xs text-gray-700 font-bold">Export Trail Data</p>
+                                    <p class="text-[10px] text-gray-400 mt-0.5 leading-relaxed">
                                         Download the current breadcrumb trail for Google Maps or Google Earth.
                                     </p>
                                 </div>
                                 <div class="flex gap-1.5">
-                                    <button onclick="exportTrailData('csv')" class="flex-1 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-extrabold text-[10px] rounded-lg cursor-pointer transition-all text-center">
+                                    <button onclick="exportTrailData('csv')" class="flex-1 py-1.5 bg-white hover:bg-gray-100 border border-gray-200 text-gray-700 font-extrabold text-[10px] rounded-lg cursor-pointer transition-all text-center shadow-sm">
                                         CSV
                                     </button>
-                                    <button onclick="exportTrailData('gpx')" class="flex-1 py-1.5 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 text-orange-400 font-extrabold text-[10px] rounded-lg cursor-pointer transition-all text-center">
+                                    <button onclick="exportTrailData('gpx')" class="flex-1 py-1.5 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-600 font-extrabold text-[10px] rounded-lg cursor-pointer transition-all text-center shadow-sm">
                                         GPX
                                     </button>
-                                    <button onclick="exportTrailData('kml')" class="flex-1 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-400 font-extrabold text-[10px] rounded-lg cursor-pointer transition-all text-center">
+                                    <button onclick="exportTrailData('kml')" class="flex-1 py-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 font-extrabold text-[10px] rounded-lg cursor-pointer transition-all text-center shadow-sm">
                                         KML
                                     </button>
                                 </div>
                             </div>
 
                             <!-- Static OSM Map Tile Preview Link -->
-                            <a id="osmTilePreviewLink" href="#" target="_blank" rel="noopener noreferrer" class="block rounded-2xl overflow-hidden border border-white/10 relative group shadow-md">
+                            <a id="osmTilePreviewLink" href="#" target="_blank" rel="noopener noreferrer" class="block rounded-2xl overflow-hidden border border-gray-200 relative group shadow-sm">
                                 <img id="osmTilePreviewImg" src="https://tile.openstreetmap.org/15/18260/12182.png" alt="Map tile" class="w-full h-36 object-cover" style="image-rendering: crisp-edges;">
-                                <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                     <span class="text-white text-xs font-semibold bg-black/60 px-3 py-1.5 rounded-full">
                                         Open in OpenStreetMap →
                                     </span>
                                 </div>
                                 <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                    <span class="text-2xl drop-shadow-lg" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));">📍</span>
+                                    <span class="text-2xl drop-shadow-lg" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">📍</span>
                                 </div>
                             </a>
 
                             <!-- Heading Calibration Controls -->
-                            <div class="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
+                            <div class="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-3">
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <p class="text-xs text-white/80 font-bold">IMU & Compass Calibration</p>
-                                        <p class="text-[10px] text-white/40 mt-0.5 leading-relaxed">
+                                        <p class="text-xs text-gray-700 font-bold">IMU & Compass Calibration</p>
+                                        <p class="text-[10px] text-gray-400 mt-0.5 leading-relaxed">
                                             Aligns the internal gyroscope to match the current direction of physical travel.
                                         </p>
                                     </div>
-                                    <span id="calibrationPendingBadge" class="text-[10px] text-orange-400 bg-orange-400/10 px-2 py-0.5 rounded-full font-semibold animate-pulse hidden">
+                                    <span id="calibrationPendingBadge" class="text-[10px] text-orange-600 bg-orange-100 border border-orange-200 px-2 py-0.5 rounded-full font-semibold animate-pulse hidden">
                                         Pending...
                                     </span>
                                 </div>
 
                                 <div class="space-y-1.5">
-                                    <label class="text-[10px] text-white/40 uppercase tracking-widest font-semibold block">Alignment Direction</label>
-                                    <select id="alignmentDirectionSelect" onchange="onAlignmentDirectionChange(this.value)" class="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-2.5 text-xs text-white focus:outline-none focus:border-orange-500 font-medium cursor-pointer">
-                                        <option value="auto" class="bg-gray-950 text-white">Auto (Keep Current / Auto-align on Drive)</option>
-                                        <option value="0" class="bg-gray-950 text-white">North (0° - facing forward along road)</option>
-                                        <option value="90" class="bg-gray-950 text-white">East (90°)</option>
-                                        <option value="180" class="bg-gray-950 text-white">South (180°)</option>
-                                        <option value="270" class="bg-gray-950 text-white">West (270°)</option>
-                                        <option value="custom" class="bg-gray-950 text-white">Custom Angle...</option>
+                                    <label class="text-[10px] text-gray-400 uppercase tracking-widest font-semibold block">Alignment Direction</label>
+                                    <select id="alignmentDirectionSelect" onchange="onAlignmentDirectionChange(this.value)" class="w-full bg-white border border-gray-200 rounded-lg py-2 px-2.5 text-xs text-gray-700 focus:outline-none focus:border-orange-500 font-medium cursor-pointer shadow-sm">
+                                        <option value="auto">Auto (Keep Current / Auto-align on Drive)</option>
+                                        <option value="0">North (0° - facing forward along road)</option>
+                                        <option value="90">East (90°)</option>
+                                        <option value="180">South (180°)</option>
+                                        <option value="270">West (270°)</option>
+                                        <option value="custom">Custom Angle...</option>
                                     </select>
                                 </div>
 
                                 <div id="customAngleInputBox" class="space-y-1 hidden">
-                                    <label class="text-[10px] text-white/40 uppercase tracking-widest font-semibold block">Custom Degree (0-359°)</label>
-                                    <input type="number" id="customAngleInput" min="0" max="359" value="0" class="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-2.5 text-xs text-white font-mono focus:outline-none focus:border-orange-500">
+                                    <label class="text-[10px] text-gray-400 uppercase tracking-widest font-semibold block">Custom Degree (0-359°)</label>
+                                    <input type="number" id="customAngleInput" min="0" max="359" value="0" class="w-full bg-white border border-gray-200 rounded-lg py-2 px-2.5 text-xs text-gray-700 font-mono focus:outline-none focus:border-orange-500">
                                 </div>
 
-                                <button onclick="triggerCalibration()" id="calibrateBtn" class="w-full py-2.5 px-3 rounded-lg text-xs font-bold transition-all duration-200 flex items-center justify-center gap-2 border bg-white/5 border-white/10 hover:bg-white/10 text-white cursor-pointer active:scale-[0.98]">
+                                <button onclick="triggerCalibration()" id="calibrateBtn" class="w-full py-2.5 px-3 rounded-lg text-xs font-bold transition-all duration-200 flex items-center justify-center gap-2 border bg-white border-gray-200 hover:bg-gray-50 text-gray-700 cursor-pointer active:scale-[0.98] shadow-sm">
                                     ⚙ Align Sensors & Gyro
                                 </button>
                             </div>
 
                             <!-- Live sensor ESP parameters tuning box (Visible in admin mode) -->
-                            <div id="detailsAdminConfigBox" class="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3 hidden">
-                                <div class="flex items-center justify-between border-b border-white/5 pb-2">
-                                    <h3 class="text-xs font-bold text-white/80">Sensor Tuning Parameters</h3>
-                                    <span class="text-[10px] text-white/40 font-mono">ESP8266 Live</span>
+                            <div id="detailsAdminConfigBox" class="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-3 hidden">
+                                <div class="flex items-center justify-between border-b border-gray-200 pb-2">
+                                    <h3 class="text-xs font-bold text-gray-700">Sensor Tuning Parameters</h3>
+                                    <span class="text-[10px] text-gray-400 font-mono">ESP8266 Live</span>
                                 </div>
                                 <div class="space-y-3.5 text-xs font-medium">
                                     <div class="space-y-1">
-                                        <label class="text-[10px] text-white/40 uppercase tracking-wider block">Kalman Noise Q</label>
-                                        <input type="number" id="configKalmanQ" step="0.000001" value="0.000005" class="w-full bg-white/5 border border-white/10 rounded-lg py-1.5 px-2 text-xs text-white font-mono focus:outline-none focus:border-orange-500">
+                                        <label class="text-[10px] text-gray-400 uppercase tracking-wider block">Kalman Noise Q</label>
+                                        <input type="number" id="configKalmanQ" step="0.000001" value="0.000005" class="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-2 text-xs text-gray-700 font-mono focus:outline-none focus:border-orange-500 shadow-sm">
                                     </div>
                                     <div class="space-y-1">
-                                        <label class="text-[10px] text-white/40 uppercase tracking-wider block">Kalman Noise R</label>
-                                        <input type="number" id="configKalmanR" step="0.00001" value="0.00005" class="w-full bg-white/5 border border-white/10 rounded-lg py-1.5 px-2 text-xs text-white font-mono focus:outline-none focus:border-orange-500">
+                                        <label class="text-[10px] text-gray-400 uppercase tracking-wider block">Kalman Noise R</label>
+                                        <input type="number" id="configKalmanR" step="0.00001" value="0.00005" class="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-2 text-xs text-gray-700 font-mono focus:outline-none focus:border-orange-500 shadow-sm">
                                     </div>
                                     <div class="space-y-1">
-                                        <label class="text-[10px] text-white/40 uppercase tracking-wider block">Motion Threshold</label>
-                                        <input type="number" id="configMotionThresh" value="800" class="w-full bg-white/5 border border-white/10 rounded-lg py-1.5 px-2 text-xs text-white font-mono focus:outline-none focus:border-orange-500">
+                                        <label class="text-[10px] text-gray-400 uppercase tracking-wider block">Motion Threshold</label>
+                                        <input type="number" id="configMotionThresh" value="800" class="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-2 text-xs text-gray-700 font-mono focus:outline-none focus:border-orange-500 shadow-sm">
                                     </div>
                                     <div class="space-y-1">
-                                        <label class="text-[10px] text-white/40 uppercase tracking-wider block">Lock Radius (meters)</label>
-                                        <input type="number" id="configLockRadius" value="15" class="w-full bg-white/5 border border-white/10 rounded-lg py-1.5 px-2 text-xs text-white font-mono focus:outline-none focus:border-orange-500">
+                                        <label class="text-[10px] text-gray-400 uppercase tracking-wider block">Lock Radius (meters)</label>
+                                        <input type="number" id="configLockRadius" value="15" class="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-2 text-xs text-gray-700 font-mono focus:outline-none focus:border-orange-500 shadow-sm">
                                     </div>
                                     <div class="flex gap-2 pt-1">
-                                        <button onclick="saveVehicleConfig()" class="flex-1 py-2 bg-green-500 hover:bg-green-600 text-white font-bold rounded-lg cursor-pointer transition-all text-center">
+                                        <button onclick="saveVehicleConfig()" class="flex-1 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg cursor-pointer transition-all text-center shadow-sm">
                                             Save Config
                                         </button>
-                                        <button onclick="resetVehicleConfig()" class="flex-1 py-2 bg-white/5 hover:bg-white/10 text-white/60 font-bold rounded-lg cursor-pointer transition-all text-center border border-white/10">
+                                        <button onclick="resetVehicleConfig()" class="flex-1 py-2 bg-white hover:bg-gray-50 text-gray-500 font-bold rounded-lg cursor-pointer transition-all text-center border border-gray-200 shadow-sm">
                                             Reset
                                         </button>
                                     </div>
@@ -641,39 +524,39 @@
                 <!-- Cameras Tab Content -->
                 <div id="detailsCamerasTab" class="flex-1 overflow-y-auto px-5 py-4 scrollbar-thin space-y-4 hidden">
                     <!-- Front Camera Stream card -->
-                    <div class="p-4 rounded-2xl bg-white/5 border border-white/10 shadow-lg shadow-black/20 backdrop-blur-md space-y-3">
+                    <div class="p-4 rounded-2xl bg-gray-50 border border-gray-200 shadow-sm space-y-3">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
                                 <span class="text-lg">📹</span>
                                 <div>
-                                    <h3 class="text-xs font-bold text-white">Front Camera</h3>
-                                    <p class="text-[10px] text-white/45 font-mono select-all">rtmp://103.250.160.75:1935/live/26_pilab</p>
+                                    <h3 class="text-xs font-bold text-gray-700">Front Camera</h3>
+                                    <p class="text-[10px] text-gray-400 font-mono select-all">rtmp://103.250.160.75:1935/live/26_pilab</p>
                                 </div>
                             </div>
-                            <span class="text-[9px] text-red-400 bg-red-400/10 px-2.5 py-0.5 rounded-full font-semibold animate-pulse">Live</span>
+                            <span class="text-[9px] text-red-500 bg-red-100 border border-red-200 px-2.5 py-0.5 rounded-full font-semibold animate-pulse shadow-sm">Live</span>
                         </div>
-                        <video id="frontCameraVideo" controls autoplay muted playsinline class="w-full h-auto rounded-xl border border-white/10 bg-black aspect-video shadow-md focus:outline-none"></video>
+                        <video id="frontCameraVideo" controls autoplay muted playsinline class="w-full h-auto rounded-xl border border-gray-200 bg-black aspect-video shadow-md focus:outline-none"></video>
                     </div>
 
                     <!-- Back Camera Stream card -->
-                    <div class="p-4 rounded-2xl bg-white/5 border border-white/10 shadow-lg shadow-black/20 backdrop-blur-md space-y-3">
+                    <div class="p-4 rounded-2xl bg-gray-50 border border-gray-200 shadow-sm space-y-3">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
                                 <span class="text-lg">📹</span>
                                 <div>
-                                    <h3 class="text-xs font-bold text-white">Back Camera</h3>
-                                    <p class="text-[10px] text-white/45 font-mono select-all">rtmp://103.250.160.75:1935/live/26_gan_mansa_gj01ht7750-b</p>
+                                    <h3 class="text-xs font-bold text-gray-700">Back Camera</h3>
+                                    <p class="text-[10px] text-gray-400 font-mono select-all">rtmp://103.250.160.75:1935/live/26_gan_mansa_gj01ht7750-b</p>
                                 </div>
                             </div>
-                            <span class="text-[9px] text-red-400 bg-red-400/10 px-2.5 py-0.5 rounded-full font-semibold animate-pulse">Live</span>
+                            <span class="text-[9px] text-red-500 bg-red-100 border border-red-200 px-2.5 py-0.5 rounded-full font-semibold animate-pulse shadow-sm">Live</span>
                         </div>
-                        <video id="backCameraVideo" controls autoplay muted playsinline class="w-full h-auto rounded-xl border border-white/10 bg-black aspect-video shadow-md focus:outline-none"></video>
+                        <video id="backCameraVideo" controls autoplay muted playsinline class="w-full h-auto rounded-xl border border-gray-200 bg-black aspect-video shadow-md focus:outline-none"></video>
                     </div>
                 </div>
 
                 <!-- Alerts Log Tab Content -->
                 <div id="detailsAlertsTab" class="flex-1 overflow-y-auto px-5 py-4 scrollbar-thin space-y-3 hidden">
-                    <p class="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Live Notifications</p>
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Live Notifications</p>
                     <div id="alertsLogContainer" class="space-y-2.5">
                         <!-- Alerts dynamically populated -->
                     </div>
@@ -712,16 +595,13 @@
         // --- Config parameters ---
         let selectedId = null;
         let adminMode = false;
-        let currentSidebarTab = 'fleet';
         let currentDetailsTab = 'overview';
-        let snapToRoad = true;
         let enableCompass = true;
         let markers = {};
         let vehicleTrails = {}; 
         let rawVehicleTrails = {};
         let trailPolylines = {};
         let rawTrailPolylines = {};
-        let spacingPolylines = [];
 
         // --- Settings & Recording state ---
         let recordingRoute = false;
@@ -739,77 +619,53 @@
         let playbackMarker = null;
         let playbackPathLine = null;
 
-        // --- Yatra official route coordinates (Ahmedabad OLD City campus route) ---
-        const YATRA_ROUTE = [
-            [23.026546076995007, 72.54619270563127],
-            [23.026649753979722, 72.54627853631975],
-            [23.02673615140607, 72.54635632038118],
-            [23.02683982824458, 72.54644483327867],
-            [23.02691635157425, 72.54651188850404],
-            [23.026980532397907, 72.5465950369835],
-            [23.027012622798264, 72.54666477441789],
-            [23.027017559782273, 72.54674524068834],
-            [23.026995343352855, 72.54681497812273],
-            [23.026955847469342, 72.54689812660219],
-            [23.02692128856177, 72.54694104194643],
-            [23.026881792656553, 72.54689812660219],
-            [23.026802800811414, 72.54688471555711],
-            [23.026713934930292, 72.5468820333481],
-            [23.02661025799494, 72.546863257885],
-            [23.026546076995007, 72.54688739776613],
-            [23.026472021957122, 72.54690617322923],
-            [23.026395498375223, 72.54690617322923],
-            [23.026348596803558, 72.54692494869234],
-            [23.026301695215576, 72.54693835973741],
-            [23.026242451081117, 72.54694104194643],
-            [23.02618814393498, 72.54694908857347],
-            [23.02614124229118, 72.5469544529915],
-            [23.026086935104285, 72.54693835973741],
-            [23.026040033425257, 72.54690885543825]
-        ];
-
-        // --- Geofenced Landmarks ---
-        const LANDMARKS = [
-            { name: "Start Point (Jamalpur)", coords: [23.026546, 72.546192], radius: 15, color: "#10b981" },
-            { name: "Anant Surya Hall", coords: [23.026916, 72.546511], radius: 15, color: "#3b82f6" },
-            { name: "Girls Hostel Crossing", coords: [23.026995, 72.546814], radius: 20, color: "#ef4444" },
-            { name: "Saraspur Junction", coords: [23.026040, 72.546908], radius: 15, color: "#f59e0b" }
-        ];
-
         // --- Map Initialization ---
         const map = L.map('map', {
-            center: [23.0265, 72.5465],
-            zoom: 17,
-            zoomControl: false
+            center: [23.0225, 72.5714], // Default to center of Ahmedabad
+            zoom: 13,
+            zoomControl: false,
+            preferCanvas: true
         });
 
         // Add Leaflet Zoom Control to Bottom Right
         L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-        // Tile Layers
+        // Tile Layers (Configured with buffers to load fast and smoothly)
         const googleSatellite = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
             maxZoom: 20,
             subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-            attribution: 'Google Satellite'
+            attribution: 'Google Satellite',
+            updateWhenIdle: true,
+            keepBuffer: 6
         });
         const googleHybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
             maxZoom: 20,
             subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-            attribution: 'Google Hybrid'
+            attribution: 'Google Hybrid',
+            updateWhenIdle: true,
+            keepBuffer: 6
         });
         const googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
             maxZoom: 20,
             subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-            attribution: 'Google Streets'
+            attribution: 'Google Streets',
+            updateWhenIdle: true,
+            keepBuffer: 6
         });
         const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Esri Satellite'
+            attribution: 'Esri Satellite',
+            updateWhenIdle: true,
+            keepBuffer: 6
         });
         const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19, attribution: 'OpenStreetMap'
+            maxZoom: 19, attribution: 'OpenStreetMap',
+            updateWhenIdle: true,
+            keepBuffer: 6
         });
         const cartoDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            maxZoom: 19, attribution: 'CARTO Dark'
+            maxZoom: 19, attribution: 'CARTO Dark',
+            updateWhenIdle: true,
+            keepBuffer: 6
         });
 
         // Default style layer: Google Satellite
@@ -825,168 +681,55 @@
             "🌙 Dark (CartoDB)": cartoDark
         }, null, { position: 'topright' }).addTo(map);
 
-        // Draw Official Yatra Route Polylines
-        // 1. Raw dash line
-        L.polyline(YATRA_ROUTE, {
-            color: "#f59e0b",
-            weight: 2,
-            opacity: 0.8,
-            dashArray: "6, 4",
-            lineJoin: "round",
-            lineCap: "round"
-        }).addTo(map);
 
-        // 2. Snapped outer corridor
-        L.polyline(YATRA_ROUTE, {
-            color: "#a855f7",
-            weight: 80,
-            opacity: 0.15,
-            lineJoin: "round",
-            lineCap: "round"
-        }).addTo(map);
-
-        // 3. Glowing border
-        L.polyline(YATRA_ROUTE, {
-            color: "#1d4ed8",
-            weight: 9,
-            opacity: 0.3,
-            lineJoin: "round",
-            lineCap: "round"
-        }).addTo(map);
-
-        // 4. Centerline
-        L.polyline(YATRA_ROUTE, {
-            color: "#3b82f6",
-            weight: 5,
-            opacity: 0.9,
-            lineJoin: "round",
-            lineCap: "round"
-        }).addTo(map);
-
-        // Draw Landmark Geofence Circles
-        LANDMARKS.forEach(l => {
-            L.circle(l.coords, {
-                radius: l.radius,
-                color: l.color,
-                fillColor: l.color,
-                fillOpacity: 0.1,
-                weight: 1.5,
-                dashArray: "6, 4",
-                opacity: 0.7
-            }).addTo(map).bindTooltip(`🏰 ${l.name}`, { permanent: true, direction: 'top', className: 'text-[9px] font-bold bg-gray-900 border border-white/10 text-white rounded px-1' });
-        });
-
-
-        // --- Haversine Distance Calculation (meters) ---
-        function haversine(lat1, lng1, lat2, lng2) {
-            const rad = Math.PI / 180;
-            const dLat = (lat2 - lat1) * rad;
-            const dLng = (lng2 - lng1) * rad;
-            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                      Math.cos(lat1 * rad) * Math.cos(lat2 * rad) *
-                      Math.sin(dLng / 2) * Math.sin(dLng / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return 6371000 * c; // Earth radius in meters
-        }
-
-        // --- Snapping Algorithm math ---
-        function closestPointOnSegment(pLat, pLng, aLat, aLng, bLat, bLng) {
-            const rad = Math.PI / 180;
-            const cosLat = Math.cos(((aLat + bLat) / 2) * rad);
-            
-            const ax = 0, ay = 0;
-            const bx = (bLng - aLng) * rad * 6371000 * cosLat;
-            const by = (bLat - aLat) * rad * 6371000;
-            const px = (pLng - aLng) * rad * 6371000 * cosLat;
-            const py = (pLat - aLat) * rad * 6371000;
-
-            const dx = bx - ax, dy = by - ay;
-            const lenSq = dx * dx + dy * dy;
-
-            let t = 0;
-            if (lenSq > 0) {
-                t = ((px - ax) * dx + (py - ay) * dy) / lenSq;
-                t = Math.max(0, Math.min(1, t)); // clamp
-            }
-
-            const snapX = ax + t * dx;
-            const snapY = ay + t * dy;
-
-            const snapLat = aLat + (snapY / 6371000) * (180 / Math.PI);
-            const snapLng = aLng + (snapX / (6371000 * cosLat)) * (180 / Math.PI);
-
-            return { lat: snapLat, lng: snapLng, t };
-        }
-
-        function snapToRoute(lat, lng) {
-            const route = YATRA_ROUTE;
-            const OFF_ROUTE_THRESHOLD = 50; // meters
-
-            const cumDist = [0];
-            for (let i = 1; i < route.length; i++) {
-                cumDist.push(cumDist[i - 1] + haversine(route[i-1][0], route[i-1][1], route[i][0], route[i][1]));
-            }
-
-            let bestDist = Infinity;
-            let bestSnap = { lat, lng, t: 0 };
-            let bestSeg = 0;
-
-            for (let i = 0; i < route.length - 1; i++) {
-                const snap = closestPointOnSegment(lat, lng, route[i][0], route[i][1], route[i+1][0], route[i+1][1]);
-                const dist = haversine(lat, lng, snap.lat, snap.lng);
-                if (dist < bestDist) {
-                    bestDist = dist;
-                    bestSnap = snap;
-                    bestSeg = i;
-                }
-            }
-
-            const isOffRoute = bestDist > OFF_ROUTE_THRESHOLD;
-            const segLen = haversine(route[bestSeg][0], route[bestSeg][1], route[bestSeg+1][0], route[bestSeg+1][1]);
-            const routeMeters = cumDist[bestSeg] + bestSnap.t * segLen;
-
-            return {
-                snappedLat: bestSnap.lat,
-                snappedLng: bestSnap.lng,
-                distanceMeters: Math.round(bestDist),
-                routeMeters: Math.round(routeMeters),
-                segmentIdx: bestSeg,
-                offRoute: isOffRoute
-            };
-        }
-
-        // --- Custom Rotatable Nav Arrow icon creator ---
+        // --- Custom Distinct Marker icon creator ---
         function makeVehicleIcon(vehicle, isSelected) {
-            const color = vehicle.is_power_off ? "#6b7280" : (vehicle.is_estimated || vehicle.has_gps === false ? "#f59e0b" : "#22c55e");
+            const online = !vehicle.is_power_off;
+            const color = online ? (vehicle.is_estimated || vehicle.has_gps === false ? "#f59e0b" : "#10b981") : "#6b7280";
             const scale = isSelected ? 1.25 : 1;
             const size = Math.round(40 * scale);
             const rot = enableCompass ? (vehicle.bearing || 0) : 0;
             const labelNum = vehicle.device_id ? (vehicle.device_id.match(/\d+/) || [vehicle.device_id])[0] : "";
             
+            // Determine vehicle type icon
+            let centerEmoji = "🚚"; // Default truck
+            const name = (vehicle.display_name || vehicle.device_id || "").toLowerCase();
+            if (name.includes('akhada') || name.includes('ak')) {
+                centerEmoji = "🚩";
+            } else if (name.includes('rath')) {
+                centerEmoji = "🛕";
+            } else if (name.includes('truck') || name.includes('tr')) {
+                centerEmoji = "🚚";
+            }
+
             const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 40 40">
                 <defs>
                   <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-                    <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="rgba(0,0,0,0.4)"/>
+                    <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="rgba(0,0,0,0.3)"/>
                   </filter>
                   <radialGradient id="beamGrad" cx="50%" cy="100%" r="100%">
-                    <stop offset="0%" stop-color="${color}" stop-opacity="0.6" />
-                    <stop offset="60%" stop-color="${color}" stop-opacity="0.2" />
+                    <stop offset="0%" stop-color="${color}" stop-opacity="0.5" />
+                    <stop offset="60%" stop-color="${color}" stop-opacity="0.15" />
                     <stop offset="100%" stop-color="${color}" stop-opacity="0" />
                   </radialGradient>
                 </defs>
                 
-                ${isSelected ? `<circle cx="20" cy="20" r="19" fill="none" stroke="${color}" stroke-width="1.5" opacity="0.3" />` : ''}
+                ${isSelected ? `<circle cx="20" cy="20" r="19" fill="none" stroke="${color}" stroke-width="1.5" opacity="0.4" />` : ''}
                 
+                <!-- Direction overlay pointer -->
                 <g transform="rotate(${rot} 20 20)">
-                  <!-- direction flashlight beam -->
                   ${rot !== 0 ? `<path d="M20 20 L11.5 5.3 A17 17 0 0 1 28.5 5.3 Z" fill="url(#beamGrad)" />` : ''}
-                  
-                  <!-- Core navigation circle -->
-                  <circle cx="20" cy="20" r="8.5" fill="${color}" stroke="white" stroke-width="2" filter="url(#shadow)" />
-                  
-                  <!-- White navigation arrowhead -->
-                  <path fill="white" d="M20 14.5 l3.5 7 -3.5 -1.8 -3.5 1.8 Z" />
+                  <path fill="${color}" d="M20 7 L23 11 L17 11 Z" filter="url(#shadow)" />
                 </g>
+                
+                <!-- Saffron/Orange glow if Rath/Akhada, green if truck -->
+                <circle cx="20" cy="20" r="12" fill="${color}" fill-opacity="0.1" />
+
+                <!-- Core navigation circle -->
+                <circle cx="20" cy="20" r="9" fill="white" stroke="${color}" stroke-width="2.2" filter="url(#shadow)" />
+                
+                <!-- Center Emoji -->
+                <text x="20" y="23.5" font-size="11" text-anchor="middle" font-family="Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji">${centerEmoji}</text>
                 
                 ${vehicle.is_estimated ? `
                   <circle cx="31" cy="9" r="5" fill="#f97316" stroke="white" stroke-width="1"/>
@@ -994,8 +737,8 @@
                 ` : ''}
                 ${labelNum ? `
                 <g>
-                  <rect x="11" y="28" width="18" height="9" rx="2.5" fill="white" stroke="${color}" stroke-width="1" />
-                  <text x="20" y="35.5" font-family="system-ui, -apple-system, sans-serif" font-size="7.5" font-weight="900" fill="#111827" text-anchor="middle">${labelNum}</text>
+                  <rect x="11" y="29" width="18" height="9" rx="2" fill="white" stroke="${color}" stroke-width="0.8" />
+                  <text x="20" y="36.5" font-family="system-ui, -apple-system, sans-serif" font-size="7.5" font-weight="900" fill="#111827" text-anchor="middle">${labelNum}</text>
                 </g>
                 ` : ''}
             </svg>`;
@@ -1010,28 +753,6 @@
         }
 
 
-        // --- Sidebar Tab Switches ---
-        function switchSidebarTab(tabName) {
-            currentSidebarTab = tabName;
-            const fleetBtn = document.getElementById('tabFleetBtn');
-            const spacingBtn = document.getElementById('tabSpacingBtn');
-            const fleetTab = document.getElementById('sidebarFleetTab');
-            const spacingTab = document.getElementById('sidebarSpacingTab');
-
-            if (tabName === 'fleet') {
-                fleetBtn.className = "flex-1 py-1.5 text-xs font-bold rounded-lg transition-all bg-orange-500/20 text-orange-400 border border-orange-500/30 shadow-inner";
-                spacingBtn.className = "flex-1 py-1.5 text-xs font-bold rounded-lg transition-all text-white/40 hover:text-white hover:bg-white/5";
-                fleetTab.classList.remove('hidden');
-                spacingTab.classList.add('hidden');
-            } else {
-                spacingBtn.className = "flex-1 py-1.5 text-xs font-bold rounded-lg transition-all bg-orange-500/20 text-orange-400 border border-orange-500/30 shadow-inner";
-                fleetBtn.className = "flex-1 py-1.5 text-xs font-bold rounded-lg transition-all text-white/40 hover:text-white hover:bg-white/5";
-                spacingTab.classList.remove('hidden');
-                fleetTab.classList.add('hidden');
-                renderSpacingTab();
-            }
-        }
-
         // --- Details panel Tab Switches ---
         function switchDetailsTab(tabName) {
             currentDetailsTab = tabName;
@@ -1044,7 +765,7 @@
 
             // Reset buttons style
             [overviewBtn, camerasBtn, alertsBtn].forEach(btn => {
-                btn.className = "flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-all duration-200 border-b-2 text-white/40 border-transparent hover:text-white/80 hover:bg-white/2";
+                btn.className = "flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-all duration-200 border-b-2 text-gray-400 border-transparent hover:text-gray-600 hover:bg-gray-50";
             });
             [overviewTab, camerasTab, alertsTab].forEach(tab => {
                 tab.classList.add('hidden');
@@ -1052,14 +773,14 @@
 
             // Set active
             if (tabName === 'overview') {
-                overviewBtn.className = "flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-all duration-200 border-b-2 text-orange-500 border-orange-500 bg-white/5";
+                overviewBtn.className = "flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-all duration-200 border-b-2 text-orange-500 border-orange-500 bg-white";
                 overviewTab.classList.remove('hidden');
             } else if (tabName === 'cameras') {
-                camerasBtn.className = "flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-all duration-200 border-b-2 text-orange-500 border-orange-500 bg-white/5";
+                camerasBtn.className = "flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-all duration-200 border-b-2 text-orange-500 border-orange-500 bg-white";
                 camerasTab.classList.remove('hidden');
                 initHlsCameras();
             } else {
-                alertsBtn.className = "flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-all duration-200 border-b-2 text-orange-500 border-orange-500 bg-white/5";
+                alertsBtn.className = "flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-all duration-200 border-b-2 text-orange-500 border-orange-500 bg-white";
                 alertsTab.classList.remove('hidden');
             }
         }
@@ -1079,44 +800,46 @@
                 card.onclick = () => selectVehicle(v.device_id);
                 card.className = `w-full text-left p-4 rounded-xl border transition-all duration-200 cursor-pointer group relative overflow-hidden ${
                     isSelected
-                        ? "bg-orange-500/10 border-orange-500/60 shadow-lg shadow-orange-500/10"
-                        : "bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10 hover:scale-[1.01] hover:-translate-y-0.5"
+                        ? "bg-orange-50/70 border-orange-300 shadow-sm"
+                        : "bg-gray-50/50 border-gray-100 hover:bg-gray-100 hover:scale-[1.01] hover:-translate-y-0.5"
                 }`;
+                card.setAttribute('data-name', label.toLowerCase());
+                card.setAttribute('data-id', v.device_id.toLowerCase());
 
                 card.innerHTML = `
                     <div class="flex items-start justify-between gap-2">
                         <div class="flex items-center gap-3 min-w-0">
                             <span class="text-2xl transition-transform duration-200 group-hover:scale-110">🚛</span>
                             <div class="min-w-0">
-                                <p class="font-bold text-white text-sm truncate">${label}</p>
-                                <p class="text-[10px] text-white/35 font-mono tracking-wider mt-0.5">${v.device_id}</p>
+                                <p class="font-bold text-gray-800 text-sm truncate">${label}</p>
+                                <p class="text-[10px] text-gray-400 font-mono tracking-wider mt-0.5">${v.device_id}</p>
                             </div>
                         </div>
 
                         <!-- Status badge -->
                         <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide shrink-0 border ${
                             online 
-                                ? "bg-green-500/10 border-green-500/20 text-green-400 shadow-[0_0_8px_rgba(34,197,94,0.15)]" 
-                                : "bg-gray-500/10 border-gray-500/20 text-gray-400"
+                                ? "bg-green-50 border-green-200 text-green-700 shadow-sm" 
+                                : "bg-gray-100 border-gray-200 text-gray-500"
                         }">
-                            <span class="w-1.5 h-1.5 rounded-full ${online ? "bg-green-400 animate-pulse shadow-[0_0_4px_#22c55e]" : "bg-gray-400"}" />
+                            <span class="w-1.5 h-1.5 rounded-full ${online ? "bg-green-500 animate-pulse shadow-[0_0_4px_#22c55e]" : "bg-gray-400"}" />
                             ${online ? "Online" : "Offline"}
                         </div>
                     </div>
 
                     <!-- Stats Details Grid -->
-                    <div class="mt-3.5 space-y-1 text-xs border-t border-white/5 pt-2.5 opacity-85">
-                        <div class="flex items-center justify-between text-[11px] text-white/40 font-medium">
+                    <div class="mt-3.5 space-y-1 text-xs border-t border-gray-100 pt-2.5 opacity-85">
+                        <div class="flex items-center justify-between text-[11px] text-gray-400 font-semibold">
                             <span>Last update</span>
-                            <span class="text-white/70 font-semibold">${v.last_updated_time || 'No data'}</span>
+                            <span class="text-gray-600 font-bold">${v.last_updated_time || 'No data'}</span>
                         </div>
-                        <div class="flex items-center justify-between text-[11px] text-white/40 font-medium">
+                        <div class="flex items-center justify-between text-[11px] text-gray-400 font-semibold">
                             <span>Speed</span>
-                            <span class="text-white/80 font-bold font-mono">${(v.speed || 0).toFixed(1)} km/h</span>
+                            <span class="text-gray-700 font-extrabold font-mono">${(v.speed || 0).toFixed(1)} km/h</span>
                         </div>
-                        <div class="flex items-center justify-between text-[11px] text-white/40 font-medium">
+                        <div class="flex items-center justify-between text-[11px] text-gray-400 font-semibold">
                             <span>Sats / HDOP</span>
-                            <span class="text-white/80 font-semibold font-mono">${v.satellites || 0}sats · ${(v.hdop || 1.0).toFixed(1)}</span>
+                            <span class="text-gray-700 font-bold font-mono">${v.satellites || 0}sats · ${(v.hdop || 1.0).toFixed(1)}</span>
                         </div>
                     </div>
                 `;
@@ -1126,125 +849,26 @@
             // Update fleet count summary
             const activeCount = vehicles.filter(v => !v.is_power_off).length;
             document.getElementById('fleetSummaryCount').innerHTML = `
-                <span class="w-2 h-2 rounded-full bg-green-400 animate-ping"></span>
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-ping"></span>
                 ${activeCount}/${vehicles.length} Active
             `;
         }
 
-        // --- Render Procession spacing order Tab ---
-        function renderSpacingTab() {
-            const container = document.getElementById('sidebarSpacingTab');
-            container.innerHTML = '';
-
-            const ordered = getOrderedVehicles();
-
-            if (!selectedId) {
-                container.innerHTML = `
-                    <div class="p-5 text-center border border-dashed border-white/10 rounded-xl bg-white/5 text-white/40 text-xs font-bold uppercase tracking-wider">
-                        Select a vehicle from Fleet List to view spacing
-                    </div>
-                `;
-                return;
+        // --- Client-side search filters ---
+        function filterFleetList() {
+            const query = document.getElementById('vehicleSearchInput').value.toLowerCase().trim();
+            const cards = document.getElementById('sidebarFleetTab').children;
+            
+            for (let card of cards) {
+                const name = card.getAttribute('data-name') || '';
+                const id = card.getAttribute('data-id') || '';
+                
+                if (name.includes(query) || id.includes(query)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
             }
-
-            const selectedIdx = ordered.findIndex(t => t.device_id === selectedId);
-            if (selectedIdx === -1) {
-                container.innerHTML = `
-                    <div class="p-5 text-center border border-dashed border-white/10 rounded-xl bg-white/5 text-white/40 text-xs font-bold uppercase tracking-wider">
-                        Selected vehicle is currently offline or lacks coordinates
-                    </div>
-                `;
-                return;
-            }
-
-            const selected = ordered[selectedIdx];
-            const frontTruck = selectedIdx > 0 ? ordered[selectedIdx - 1] : null;
-            const backTruck = selectedIdx < ordered.length - 1 ? ordered[selectedIdx + 1] : null;
-
-            let frontDistance = frontTruck ? (frontTruck.routeMeters - selected.routeMeters) : null;
-            let backDistance = backTruck ? (selected.routeMeters - backTruck.routeMeters) : null;
-
-            let contentHtml = `
-                <p class="text-[10px] font-black text-white/40 uppercase tracking-widest">
-                    Telemetry Spacing
-                </p>
-                <div class="flex flex-col gap-2.5">
-            `;
-
-            // Front Neighbor
-            if (frontTruck) {
-                const label = frontTruck.display_name || frontTruck.device_id;
-                const statusStr = frontDistance < 25 ? 'Close!' : (frontDistance > 200 ? 'Gap!' : 'Stable');
-                const badgeColor = frontDistance < 25 ? 'border-red-500 text-red-400 bg-red-500/10 animate-pulse' : (frontDistance > 200 ? 'border-orange-500 text-orange-400 bg-orange-500/10' : 'border-green-500 text-green-400 bg-green-500/10');
-                const cardColor = frontDistance < 25 ? 'bg-red-500/10 border-red-500/30' : (frontDistance > 200 ? 'bg-orange-500/10 border-orange-500/30' : 'bg-green-500/10 border-green-500/30');
-
-                contentHtml += `
-                    <div class="p-3 rounded-xl border flex items-center justify-between transition-all ${cardColor}">
-                        <div>
-                            <p class="text-[9px] text-white/40 uppercase tracking-wider font-bold">Front Neighbor</p>
-                            <p class="text-[11px] text-white/80 font-bold truncate max-w-[120px]">${label}</p>
-                            <p class="text-xs font-black text-white font-mono mt-0.5">${Math.max(0, Math.round(frontDistance))} m</p>
-                        </div>
-                        <div class="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wide border ${badgeColor}">
-                            ${statusStr}
-                        </div>
-                    </div>
-                `;
-            } else {
-                contentHtml += `
-                    <div class="p-2.5 rounded-xl bg-white/3 border border-dashed border-white/10 text-center text-[10px] text-white/40 font-bold uppercase tracking-wider">
-                        Leading Yatra Procession
-                    </div>
-                `;
-            }
-
-            // Back Neighbor
-            if (backTruck) {
-                const label = backTruck.display_name || backTruck.device_id;
-                const statusStr = backDistance < 25 ? 'Close!' : (backDistance > 200 ? 'Gap!' : 'Stable');
-                const badgeColor = backDistance < 25 ? 'border-red-500 text-red-400 bg-red-500/10 animate-pulse' : (backDistance > 200 ? 'border-orange-500 text-orange-400 bg-orange-500/10' : 'border-green-500 text-green-400 bg-green-500/10');
-                const cardColor = backDistance < 25 ? 'bg-red-500/10 border-red-500/30' : (backDistance > 200 ? 'bg-orange-500/10 border-orange-500/30' : 'bg-green-500/10 border-green-500/30');
-
-                contentHtml += `
-                    <div class="p-3 rounded-xl border flex items-center justify-between transition-all ${cardColor}">
-                        <div>
-                            <p class="text-[9px] text-white/40 uppercase tracking-wider font-bold">Back Neighbor</p>
-                            <p class="text-[11px] text-white/80 font-bold truncate max-w-[120px]">${label}</p>
-                            <p class="text-xs font-black text-white font-mono mt-0.5">${Math.max(0, Math.round(backDistance))} m</p>
-                        </div>
-                        <div class="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wide border ${badgeColor}">
-                            ${statusStr}
-                        </div>
-                    </div>
-                `;
-            } else {
-                contentHtml += `
-                    <div class="p-2.5 rounded-xl bg-white/3 border border-dashed border-white/10 text-center text-[10px] text-white/40 font-bold uppercase tracking-wider">
-                        Rear Yatra Boundary
-                    </div>
-                `;
-            }
-
-            contentHtml += `</div>`;
-            container.innerHTML = contentHtml;
-        }
-
-        // --- Helper to get ordered active vehicles along snapped route ---
-        function getOrderedVehicles() {
-            return vehicles
-                .filter(v => v.lat && v.lng)
-                .map(v => {
-                    const snap = snapToRoute(v.lat, v.lng);
-                    return {
-                        ...v,
-                        routeMeters: snap.routeMeters,
-                        offRoute: snap.offRoute,
-                        distanceMeters: snap.distanceMeters,
-                        snappedLat: snap.snappedLat,
-                        snappedLng: snap.snappedLng
-                    };
-                })
-                .sort((a, b) => b.routeMeters - a.routeMeters); // front first
         }
 
 
@@ -1252,16 +876,10 @@
         function selectVehicle(id) {
             selectedId = selectedId === id ? null : id;
             renderFleetList();
-            if (currentSidebarTab === 'spacing') renderSpacingTab();
-
-            // Clear previous spacing polylines
-            spacingPolylines.forEach(p => map.removeLayer(p));
-            spacingPolylines = [];
 
             if (selectedId) {
                 const v = vehicles.find(x => x.device_id === selectedId);
                 if (v && v.lat && v.lng) {
-                    // Center map on target preserving zoom level if deeply zoomed in
                     const targetZoom = Math.max(map.getZoom(), 17);
                     map.flyTo([v.lat, v.lng], targetZoom, { animate: true, duration: 1.0 });
                     
@@ -1293,9 +911,6 @@
                 document.getElementById('tabCamerasBtn').classList.add('hidden');
                 if (currentDetailsTab === 'cameras') switchDetailsTab('overview');
             }
-
-            // Redraw spacing polylines
-            drawSpacingPolylines();
         }
 
         // --- Populate Details overview panel data ---
@@ -1308,10 +923,10 @@
             const statusBadge = document.getElementById('detailsStatusBadge');
             const online = !v.is_power_off;
             if (online) {
-                statusBadge.className = "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-500/20 text-green-400";
-                statusBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span> Online`;
+                statusBadge.className = "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-50 border border-green-200 text-green-700";
+                statusBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Online`;
             } else {
-                statusBadge.className = "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-500/20 text-gray-400";
+                statusBadge.className = "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-50 border border-gray-200 text-gray-500";
                 statusBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span> Offline`;
             }
 
@@ -1337,44 +952,16 @@
             const isMoving = v.speed > 0.1;
             const movementText = document.getElementById('detailsMovementText');
             if (isMoving) {
-                movementText.innerHTML = `<span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span> Moving at ${(v.speed || 0).toFixed(1)} km/h`;
+                movementText.innerHTML = `<span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Moving at ${(v.speed || 0).toFixed(1)} km/h`;
             } else {
-                movementText.innerHTML = `<span class="w-2 h-2 rounded-full bg-gray-500"></span> Stationary (0.0 km/h)`;
+                movementText.innerHTML = `<span class="w-2 h-2 rounded-full bg-gray-400"></span> Stationary (0.0 km/h)`;
             }
-
-            // Snapping & Route Alert box
-            const snap = snapToRoute(v.lat, v.lng);
-            const routeAlert = document.getElementById('detailsRouteAlert');
-            const routeIcon = document.getElementById('detailsRouteAlertIcon');
-            const routeHeader = document.getElementById('detailsRouteAlertHeader');
-            const routeBody = document.getElementById('detailsRouteAlertBody');
-            const routeBadge = document.getElementById('detailsRouteAlertBadge');
-
-            if (snap.offRoute) {
-                routeAlert.className = "p-3 rounded-xl flex items-center justify-between transition-all bg-red-500/10 border border-red-500/25 animate-pulse";
-                routeIcon.textContent = "⚠️";
-                routeHeader.className = "text-[10px] text-red-400 font-black uppercase tracking-wider";
-                routeBody.textContent = "Out of Range (Off Route)";
-                routeBadge.className = "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wide bg-red-500 text-gray-950";
-                routeBadge.textContent = "ALERT";
-            } else {
-                routeAlert.className = "p-3 rounded-xl flex items-center justify-between transition-all bg-green-500/10 border border-green-500/25";
-                routeIcon.textContent = "✅";
-                routeHeader.className = "text-[10px] text-green-400 font-black uppercase tracking-wider";
-                routeBody.textContent = "Within Route Range";
-                routeBadge.className = "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wide bg-green-500 text-gray-950";
-                routeBadge.textContent = "NORMAL";
-            }
-            document.getElementById('detailsDistanceToRouteVal').textContent = `📏 ${snap.distanceMeters} m`;
 
             // Stats grid table
             document.getElementById('statVehicleId').textContent = v.device_id;
             document.getElementById('statTrackingMode').textContent = v.is_estimated ? "⚠️ IMU Estimated" : "🛰️ GPS Active";
-            document.getElementById('statSnappedLat').textContent = snap.snappedLat.toFixed(6);
-            document.getElementById('statSnappedLng').textContent = snap.snappedLng.toFixed(6);
             document.getElementById('statRawLat').textContent = v.lat.toFixed(6);
             document.getElementById('statRawLng').textContent = v.lng.toFixed(6);
-            document.getElementById('statDrift').textContent = `${snap.distanceMeters} meters`;
             document.getElementById('statSatellites').textContent = `${v.satellites || 0} sats`;
             document.getElementById('statHdop').textContent = (v.hdop || 1.0).toFixed(2);
             document.getElementById('statLastUpdated').textContent = `${v.last_updated_date} ${v.last_updated_time}`;
@@ -1409,61 +996,6 @@
             }
         }
 
-        // --- Dynamic Spacing Polylines ---
-        function drawSpacingPolylines() {
-            spacingPolylines.forEach(p => map.removeLayer(p));
-            spacingPolylines = [];
-
-            if (!selectedId) return;
-
-            const ordered = getOrderedVehicles();
-            const idx = ordered.findIndex(t => t.device_id === selectedId);
-            if (idx === -1) return;
-
-            const selected = ordered[idx];
-            const neighbors = [];
-            if (idx > 0) neighbors.push(ordered[idx - 1]);
-            if (idx < ordered.length - 1) neighbors.push(ordered[idx + 1]);
-
-            neighbors.forEach(n => {
-                const pts = [
-                    [selected.lat, selected.lng],
-                    [n.lat, n.lng]
-                ];
-                // Amber connection lines
-                const outerLine = L.polyline(pts, {
-                    color: "#facc15",
-                    weight: 8,
-                    opacity: 0.3,
-                    lineJoin: "round"
-                }).addTo(map);
-
-                const innerLine = L.polyline(pts, {
-                    color: "#eab308",
-                    weight: 4,
-                    opacity: 0.9,
-                    dashArray: "8, 8",
-                    lineJoin: "round"
-                }).addTo(map);
-
-                const dist = haversine(selected.lat, selected.lng, n.lat, n.lng);
-                const midPoint = [
-                    (selected.lat + n.lat) / 2,
-                    (selected.lng + n.lng) / 2
-                ];
-
-                const tooltipMarker = L.marker(midPoint, { icon: L.divIcon({ className: "hidden" }) })
-                    .addTo(map)
-                    .bindTooltip(`Dist: ${Math.round(dist)}m`, {
-                        permanent: true,
-                        direction: 'bottom',
-                        className: 'bg-gray-900/90 text-yellow-400 border border-yellow-500/50 font-black text-[10px] px-2 py-1 rounded shadow-lg backdrop-blur-sm'
-                    });
-
-                spacingPolylines.push(outerLine, innerLine, tooltipMarker);
-            });
-        }
-
 
         // --- Initialize / Update Leaflet Markers ---
         function initOrUpdateMarkers() {
@@ -1478,33 +1010,33 @@
                 const label = v.display_name || v.device_id;
 
                 const popupContent = `
-                    <div style="font-family: 'Inter', sans-serif; min-width: 200px; color: #fff;">
+                    <div style="font-family: 'Inter', sans-serif; min-width: 200px; color: #1f2937;">
                         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                             <span style="font-size: 20px;">🚛</span>
                             <div>
-                                <h4 style="margin: 0; font-weight: 800; font-size: 13px; color: #fff;">${label}</h4>
-                                <p style="margin: 2px 0 0; font-size: 9px; font-weight: 800; text-transform: uppercase; color: ${!v.is_power_off ? '#22c55e' : '#9ca3af'}">
+                                <h4 style="margin: 0; font-weight: 800; font-size: 13px; color: #111827;">${label}</h4>
+                                <p style="margin: 2px 0 0; font-size: 9px; font-weight: 800; text-transform: uppercase; color: ${!v.is_power_off ? '#16a34a' : '#6b7280'}">
                                     ${!v.is_power_off ? '● Online' : '○ Offline'}
                                 </p>
                             </div>
                         </div>
                         <table style="width: 100%; font-size: 11px; border-collapse: collapse;">
                             <tbody>
-                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.06)">
-                                    <td style="color: rgba(255,255,255,0.5); padding: 4px 0;">Speed</td>
-                                    <td style="text-align: right; font-weight: 700;">${(v.speed || 0).toFixed(1)} km/h</td>
+                                <tr style="border-bottom: 1px solid rgba(0,0,0,0.06)">
+                                    <td style="color: #6b7280; padding: 4px 0;">Speed</td>
+                                    <td style="text-align: right; font-weight: 700; color: #111827;">${(v.speed || 0).toFixed(1)} km/h</td>
                                 </tr>
-                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.06)">
-                                    <td style="color: rgba(255,255,255,0.5); padding: 4px 0;">Satellites</td>
-                                    <td style="text-align: right; font-weight: 700;">${v.satellites || 0}</td>
+                                <tr style="border-bottom: 1px solid rgba(0,0,0,0.06)">
+                                    <td style="color: #6b7280; padding: 4px 0;">Satellites</td>
+                                    <td style="text-align: right; font-weight: 700; color: #111827;">${v.satellites || 0}</td>
                                 </tr>
-                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.06)">
-                                    <td style="color: rgba(255,255,255,0.5); padding: 4px 0;">HDOP</td>
-                                    <td style="text-align: right; font-weight: 700;">${(v.hdop || 1.0).toFixed(1)}</td>
+                                <tr style="border-bottom: 1px solid rgba(0,0,0,0.06)">
+                                    <td style="color: #6b7280; padding: 4px 0;">HDOP</td>
+                                    <td style="text-align: right; font-weight: 700; color: #111827;">${(v.hdop || 1.0).toFixed(1)}</td>
                                 </tr>
                             </tbody>
                         </table>
-                        <a href="https://maps.google.com/?q=${v.lat},\dots" target="_blank" style="display: block; margin-top: 10px; padding: 6px 0; background: linear-gradient(135deg, #f97316, #dc2626); color: white; border-radius: 8px; text-align: center; font-weight: 700; font-size: 10px; text-decoration: none;">
+                        <a href="https://maps.google.com/?q=${v.lat},${v.lng}" target="_blank" style="display: block; margin-top: 10px; padding: 6px 0; background: linear-gradient(135deg, #f97316, #dc2626); color: white; border-radius: 8px; text-align: center; font-weight: 700; font-size: 10px; text-decoration: none;">
                             Open in Google Maps
                         </a>
                     </div>
@@ -1528,9 +1060,7 @@
         // --- Real-time Breadcrumb Trails Memory management ---
         function updateTrailsMemory(v, idx) {
             const id = v.device_id;
-            const snap = snapToRoute(v.lat, v.lng);
 
-            if (!vehicleTrails[id]) vehicleTrails[id] = [];
             if (!rawVehicleTrails[id]) rawVehicleTrails[id] = [];
 
             const lastRaw = rawVehicleTrails[id][rawVehicleTrails[id].length - 1];
@@ -1538,12 +1068,10 @@
 
             if (moved && !v.is_power_off) {
                 rawVehicleTrails[id].push([v.lat, v.lng]);
-                vehicleTrails[id].push([snap.snappedLat, snap.snappedLng]);
 
                 // Limit length
                 if (rawVehicleTrails[id].length > 200) {
                     rawVehicleTrails[id].shift();
-                    vehicleTrails[id].shift();
                 }
             }
 
@@ -1554,24 +1082,11 @@
 
             // 1. Raw dashed trail
             if (rawTrailPolylines[id]) map.removeLayer(rawTrailPolylines[id]);
-            if (snapToRoad && rawVehicleTrails[id].length >= 2) {
+            if (rawVehicleTrails[id].length >= 2) {
                 rawTrailPolylines[id] = L.polyline(rawVehicleTrails[id], {
                     color: color,
-                    weight: isSelected ? 2.5 : 1.5,
-                    opacity: isSelected ? 0.4 : 0.25,
-                    dashArray: "5, 5",
-                    lineJoin: "round"
-                }).addTo(map);
-            }
-
-            // 2. Snapped solid trail
-            if (trailPolylines[id]) map.removeLayer(trailPolylines[id]);
-            const activeTrailCoords = snapToRoad ? vehicleTrails[id] : rawVehicleTrails[id];
-            if (activeTrailCoords.length >= 2) {
-                trailPolylines[id] = L.polyline(activeTrailCoords, {
-                    color: color,
-                    weight: isSelected ? 5 : 3,
-                    opacity: isSelected ? 0.9 : 0.6,
+                    weight: isSelected ? 4 : 2,
+                    opacity: isSelected ? 0.8 : 0.5,
                     lineJoin: "round"
                 }).addTo(map);
             }
@@ -1580,26 +1095,10 @@
 
         // --- Procession HUD calculations ---
         function calculateProcessionHUD() {
-            const ordered = getOrderedVehicles();
+            // 1. Total Active Devices Count
+            const activeCount = vehicles.filter(v => !v.is_power_off).length;
+            document.getElementById('hudActiveVal').textContent = `${activeCount} Active`;
             
-            // 1. Procession Spread
-            const spreadValEl = document.getElementById('hudSpreadVal');
-            const spreadDot = document.getElementById('hudSpreadDot');
-            if (ordered.length >= 2) {
-                const spreadMeters = ordered[0].routeMeters - ordered[ordered.length - 1].routeMeters;
-                const text = spreadMeters >= 1000 ? `\TokenSpread.toFixed(2)} km` : `${Math.round(spreadMeters)} m`;
-                // custom fallback logic
-                const t = (spreadMeters/1000).toFixed(2);
-                spreadValEl.textContent = spreadMeters >= 1000 ? `${t} km` : `${Math.round(spreadMeters)} m`;
-                spreadDot.className = "w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse";
-            } else if (ordered.length === 1) {
-                spreadValEl.textContent = "Unified";
-                spreadDot.className = "w-2.5 h-2.5 rounded-full bg-green-500";
-            } else {
-                spreadValEl.textContent = "Offline";
-                spreadDot.className = "w-2.5 h-2.5 rounded-full bg-gray-500";
-            }
-
             // 2. Avg Speed
             const speedValEl = document.getElementById('hudSpeedVal');
             const speedDot = document.getElementById('hudSpeedDot');
@@ -1607,63 +1106,13 @@
             if (activeFleet.length > 0) {
                 const avgSpeed = activeFleet.reduce((sum, v) => sum + (v.speed || 0), 0) / activeFleet.length;
                 speedValEl.textContent = `${Math.round(avgSpeed)} km/h`;
-                speedDot.className = "w-2.5 h-2.5 rounded-full bg-green-500";
+                speedDot.className = "w-2.5 h-2.5 rounded-full bg-blue-500";
             } else {
                 speedValEl.textContent = "0 km/h";
-                speedDot.className = "w-2.5 h-2.5 rounded-full bg-gray-500";
-            }
-
-            // 3. Next Landmark & ETA
-            const landmarkValEl = document.getElementById('hudLandmarkVal');
-            const landmarkDot = document.getElementById('hudLandmarkDot');
-            if (ordered.length > 0) {
-                const lead = ordered[0];
-                
-                // Snap landmarks and sort them
-                const snappedLandmarks = LANDMARKS.map(l => {
-                    const snap = snapToRoute(l.coords[0], l.coords[1]);
-                    return { ...l, routeMeters: snap.routeMeters };
-                }).sort((a,b) => a.routeMeters - b.routeMeters);
-
-                // Find first landmark ahead
-                let nextL = snappedLandmarks.find(l => l.routeMeters > lead.routeMeters);
-                if (nextL) {
-                    const remaining = nextL.routeMeters - lead.routeMeters;
-                    const speedMps = Math.max(lead.speed, 5) / 3.6;
-                    const etaSeconds = remaining / speedMps;
-                    const etaMins = Math.round(etaSeconds / 60);
-                    const etaStr = etaMins > 120 ? "> 2h" : (etaMins > 0 ? `${etaMins}m` : "Arriving");
-                    
-                    landmarkValEl.textContent = `${nextL.name.split(" ")[0]} (${etaStr})`;
-                    landmarkDot.className = "w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse";
-                } else {
-                    landmarkValEl.textContent = "Yatra Complete";
-                    landmarkDot.className = "w-2.5 h-2.5 rounded-full bg-green-500";
-                }
-            } else {
-                landmarkValEl.textContent = "Waiting for GPS...";
-                landmarkDot.className = "w-2.5 h-2.5 rounded-full bg-gray-500";
+                speedDot.className = "w-2.5 h-2.5 rounded-full bg-gray-400";
             }
         }
 
-
-        // --- Settings Action Handlers ---
-        function toggleSnappingSetting() {
-            snapToRoad = document.getElementById('snapToRoadChk').checked;
-            
-            // Clear and force update markers/trails
-            Object.keys(trailPolylines).forEach(k => {
-                map.removeLayer(trailPolylines[k]);
-                delete trailPolylines[k];
-            });
-            Object.keys(rawTrailPolylines).forEach(k => {
-                map.removeLayer(rawTrailPolylines[k]);
-                delete rawTrailPolylines[k];
-            });
-
-            initOrUpdateMarkers();
-            if (selectedId) selectVehicle(selectedId);
-        }
 
         // Compass Display toggle handler
         function toggleCompassSetting() {
@@ -1680,7 +1129,7 @@
                 recordingRoute = true;
                 recordingSeconds = 0;
                 recordingPoints = [];
-                btn.className = "w-full py-2 bg-red-600 border border-red-500 text-white animate-pulse hover:bg-red-700 active:scale-[0.98] transition-all rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer";
+                btn.className = "w-full py-2 bg-red-500 border border-red-400 text-white animate-pulse hover:bg-red-600 active:scale-[0.98] transition-all rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer";
                 
                 recordingTimer = setInterval(() => {
                     recordingSeconds++;
@@ -1701,7 +1150,7 @@
                 recordingRoute = false;
                 clearInterval(recordingTimer);
                 btnText.textContent = "Record Route";
-                btn.className = "w-full py-2 bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 active:scale-[0.98] transition-all rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer";
+                btn.className = "w-full py-2 bg-red-50 hover:bg-red-100 border border-red-200 text-red-500 active:scale-[0.98] transition-all rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer";
                 
                 if (recordingPoints.length > 0) {
                     saveRecordedRoute();
@@ -1712,7 +1161,7 @@
         function formatSeconds(sec) {
             const m = Math.floor(sec / 60).toString().padStart(2, '0');
             const s = (sec % 60).toString().padStart(2, '0');
-            return `${m}:\dots`;
+            return `${m}:${s}`;
         }
 
         // Save recorded history coordinates to DB and download CSV
@@ -1730,7 +1179,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `recorded_path_\dots.csv`;
+            a.download = `recorded_path_${device_id}_${new Date().toISOString().slice(0, 10)}.csv`;
             a.click();
             URL.revokeObjectURL(url);
 
@@ -1774,7 +1223,7 @@
                     const opt = document.createElement('option');
                     opt.value = v.device_id;
                     opt.textContent = v.display_name || v.device_id;
-                    opt.className = "bg-gray-950 text-white";
+                    opt.className = "bg-white text-gray-800";
                     select.appendChild(opt);
                 }
             });
@@ -1825,13 +1274,13 @@
                     document.getElementById('playbackTimeCurrent').textContent = formatISOToTime(playbackPoints[0].timestamp);
 
                     document.getElementById('playbackStatusBadge').textContent = "Loaded";
-                    document.getElementById('playbackStatusBadge').className = "text-[9px] bg-blue-500/20 border border-blue-500/30 px-2 py-0.5 rounded-full text-blue-400 font-bold uppercase tracking-wider animate-pulse";
+                    document.getElementById('playbackStatusBadge').className = "text-[9px] bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full text-blue-700 font-bold uppercase tracking-wider animate-pulse shadow-sm";
 
                     // Draw playback path on map
                     if (playbackPathLine) map.removeLayer(playbackPathLine);
                     const pts = playbackPoints.map(p => [p.lat, p.lng]);
                     playbackPathLine = L.polyline(pts, {
-                        color: "#facc15",
+                        color: "#f97316",
                         weight: 4,
                         opacity: 0.8,
                         dashArray: "5, 5"
@@ -1841,7 +1290,7 @@
                     if (playbackMarker) map.removeLayer(playbackMarker);
                     playbackMarker = L.marker(pts[0], {
                         icon: L.divIcon({
-                            html: `<div class="w-6 h-6 rounded-full bg-yellow-400 border-2 border-white shadow-lg flex items-center justify-center"><i class="fas fa-play text-gray-900 text-[10px]"></i></div>`,
+                            html: `<div class="w-6 h-6 rounded-full bg-orange-500 border-2 border-white shadow-lg flex items-center justify-center"><i class="fas fa-play text-white text-[10px]"></i></div>`,
                             iconSize: [24, 24],
                             iconAnchor: [12, 12]
                         })
@@ -1868,7 +1317,7 @@
                 playbackIsPlaying = true;
                 playIcon.className = "fas fa-pause";
                 statusBadge.textContent = "Playing";
-                statusBadge.className = "text-[9px] bg-green-500/20 border border-green-500/30 px-2 py-0.5 rounded-full text-green-400 font-bold uppercase tracking-wider";
+                statusBadge.className = "text-[9px] bg-green-50 border border-green-200 px-2 py-0.5 rounded-full text-green-700 font-bold uppercase tracking-wider shadow-sm";
                 
                 playbackTimer = setInterval(() => {
                     playbackIndex++;
@@ -1886,16 +1335,16 @@
                 clearInterval(playbackTimer);
                 playIcon.className = "fas fa-play";
                 statusBadge.textContent = "Paused";
-                statusBadge.className = "text-[9px] bg-yellow-500/20 border border-yellow-500/30 px-2 py-0.5 rounded-full text-yellow-400 font-bold uppercase tracking-wider";
+                statusBadge.className = "text-[9px] bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-amber-700 font-bold uppercase tracking-wider shadow-sm";
             }
         }
 
         function setPlaybackSpeed(spd) {
             playbackSpeed = spd;
             document.querySelectorAll('.playback-speed-btn').forEach(btn => {
-                btn.className = "playback-speed-btn px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all text-white/40 hover:text-white";
+                btn.className = "playback-speed-btn px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all text-gray-400 hover:text-gray-800";
             });
-            document.getElementById(`speedBtn-${spd}`).className = "playback-speed-btn px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all bg-orange-500/20 text-orange-400 border border-orange-500/30";
+            document.getElementById(`speedBtn-${spd}`).className = "playback-speed-btn px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all bg-orange-500/20 text-orange-500 border border-orange-500/30";
 
             if (playbackIsPlaying) {
                 // Restart interval with new speed
@@ -1993,7 +1442,7 @@
             }
 
             const btn = document.getElementById('calibrateBtn');
-            btn.innerHTML = `<span class="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></span> Aligning...`;
+            btn.innerHTML = `<span class="w-3.5 h-3.5 border-2 border-gray-400 border-t-gray-800 rounded-full animate-spin"></span> Aligning...`;
 
             fetch('/api/calibrate_vehicle', {
                 method: 'POST',
@@ -2101,12 +1550,12 @@
 
             if (adminMode) {
                 btn.textContent = "🔓 Admin Mode";
-                btn.className = "px-3 py-1 rounded-full text-[10px] font-extrabold transition-all duration-200 cursor-pointer border uppercase tracking-wider bg-red-500/20 border-red-500/30 text-red-400 hover:bg-red-500/30 shadow-[0_0_10px_rgba(239,68,68,0.1)]";
+                btn.className = "px-3 py-1 rounded-full text-[10px] font-extrabold transition-all duration-200 cursor-pointer border uppercase tracking-wider bg-red-50 border-red-200 text-red-600 hover:bg-red-100 shadow-[0_0_10px_rgba(239,68,68,0.05)]";
                 if (selectedId) editNameBtn.classList.remove('hidden');
                 configBox.classList.remove('hidden');
             } else {
                 btn.textContent = "🔒 User Mode";
-                btn.className = "px-3 py-1 rounded-full text-[10px] font-extrabold transition-all duration-200 cursor-pointer border uppercase tracking-wider bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white";
+                btn.className = "px-3 py-1 rounded-full text-[10px] font-extrabold transition-all duration-200 cursor-pointer border uppercase tracking-wider bg-white border-gray-200 text-gray-500 hover:bg-gray-50";
                 editNameBtn.classList.add('hidden');
                 cancelEditingDisplayName();
                 configBox.classList.add('hidden');
@@ -2117,7 +1566,7 @@
         // --- CSV / GPX / KML File Exporters ---
         function exportTrailData(type) {
             if (!selectedId) return;
-            const coords = snapToRoad ? (vehicleTrails[selectedId] || []) : (rawVehicleTrails[selectedId] || []);
+            const coords = rawVehicleTrails[selectedId] || [];
             if (coords.length === 0) {
                 alert("No trail coordinates recorded in memory yet!");
                 return;
@@ -2128,7 +1577,7 @@
             if (type === 'csv') {
                 let csv = "index,latitude,longitude,speed_kmh,timestamp\n";
                 coords.forEach((p, i) => {
-                    csv += `${i + 1},\dots,\dots,\dots\n`;
+                    csv += `${i + 1},${p[0]},${p[1]},0,${new Date(Date.now() - (coords.length - i) * 5000).toISOString()}\n`;
                 });
                 triggerFileDownload(csv, `trail_${selectedId}_${sid}.csv`, 'text/csv');
             } 
@@ -2155,7 +1604,7 @@
                 kml += `      <LineString>\n`;
                 kml += `        <coordinates>\n`;
                 coords.forEach(p => {
-                    kml += `          ${p[1]},\dots,0\n`;
+                    kml += `          ${p[1]},${p[0]},0\n`;
                 });
                 kml += `        </coordinates>\n`;
                 kml += `      </LineString>\n`;
@@ -2179,15 +1628,14 @@
 
         // --- Notification helper ---
         function showNotification(msg) {
-            // Check if alert list exists, else we write notifications there
             const container = document.getElementById('alertsLogContainer');
             const alertCard = document.createElement('div');
-            alertCard.className = "p-3 rounded-xl bg-orange-500/10 border border-orange-500/25 text-xs text-orange-300 flex items-start gap-2.5 shadow-md";
+            alertCard.className = "p-3 rounded-xl bg-orange-50 border border-orange-200 text-xs text-orange-700 flex items-start gap-2.5 shadow-sm";
             alertCard.innerHTML = `
                 <span class="text-base leading-none">🔔</span>
                 <div>
                     <p class="font-bold">System Notification</p>
-                    <p class="text-orange-300/80 mt-0.5 leading-relaxed">${msg}</p>
+                    <p class="text-orange-600 mt-0.5 leading-relaxed">${msg}</p>
                 </div>
             `;
             container.prepend(alertCard);
@@ -2219,11 +1667,19 @@
 
                     // Re-render lists
                     renderFleetList();
-                    if (currentSidebarTab === 'spacing') renderSpacingTab();
+                    filterFleetList(); // Apply current search query filter
 
-                    // HUD spread and ETA
+                    // HUD calculations
                     calculateProcessionHUD();
                 });
+        }
+
+        // --- Center map on the first active coordinates initially ---
+        function centerOnFirstActive() {
+            const active = vehicles.find(v => v.lat && v.lng && !v.is_power_off) || vehicles.find(v => v.lat && v.lng);
+            if (active) {
+                map.setView([active.lat, active.lng], 15);
+            }
         }
 
 
@@ -2232,7 +1688,7 @@
         initOrUpdateMarkers();
         initPlaybackSelectors();
         calculateProcessionHUD();
-        setTimeout(centerOnSelectedOrFirst, 500);
+        centerOnFirstActive();
 
         // Run auto refresh every 2.5 seconds
         setInterval(refreshLocations, 2500);
