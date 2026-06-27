@@ -2,7 +2,7 @@
 // Real-time Firebase subscription for all 150 vehicles.
 // Subscribes to the /vehicles node once and returns raw data (no filters, no snapping).
 
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 
 import { ACTIVE_VEHICLE_IDS, OFFLINE_THRESHOLD_SECONDS, ALERT, YATRA_ROUTE, DEVICE_TO_DISPLAY_MAP, LANDMARKS, TRUCK_PHONES } from "../lib/constants";
 import { parseTimestamp } from "../utils/formatters";
