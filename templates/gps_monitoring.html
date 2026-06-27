@@ -278,34 +278,6 @@
             flex: 1;
         }
 
-        /* Akhada split: camera left, map right */
-        .camera-panel {
-            display: none;
-            width: 50%;
-            height: 100%;
-            background: #000;
-            flex-shrink: 0;
-            position: relative;
-        }
-        .camera-panel iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-        .camera-panel .cam-label {
-            position: absolute;
-            top: 10px;
-            left: 12px;
-            background: rgba(0,0,0,.55);
-            color: #fff;
-            font-size: 0.75rem;
-            font-weight: 600;
-            padding: 3px 10px;
-            border-radius: 20px;
-        }
-        .map-container.akhada-mode .camera-panel { display: flex; flex-direction: column; }
-        .map-container.akhada-mode #map { width: 50%; }
-
         /* Floating Vehicle List */
         .vehicle-list-overlay {
             position: absolute;
@@ -865,11 +837,6 @@
 
             <!-- Full Screen Map Area -->
             <div class="map-container" id="mapContainer">
-                <!-- Camera panel (shown for AKHADA role) -->
-                <div class="camera-panel" id="cameraPanel">
-                    <span class="cam-label"><i class="fas fa-video"></i> Live Camera</span>
-                    <iframe id="cameraFrame" src="about:blank" allowfullscreen></iframe>
-                </div>
                 <div id="map"></div>
 
                 <!-- Toggle Button (Visible when overlay hidden) -->
@@ -1029,25 +996,6 @@
         let vehicles = JSON.parse(document.getElementById('vehicles-data').textContent);
         const assignMap = JSON.parse(document.getElementById('assign-data').textContent);
         let markers = {};
-
-        function applyRoleLayout(truckId) {
-            const info = assignMap[truckId] || {};
-            const role = (info.role || '').toUpperCase();
-            const container = document.getElementById('mapContainer');
-            const cameraPanel = document.getElementById('cameraPanel');
-            const cameraFrame = document.getElementById('cameraFrame');
-
-            if (role === 'AKHADA_USER') {
-                const rtmp = info.front_rtmp || '';
-                cameraFrame.src = rtmp ? '/stream_player?src=' + encodeURIComponent(rtmp) : 'about:blank';
-                container.classList.add('akhada-mode');
-            } else {
-                // TRUCK_USER or anything else → full screen map
-                container.classList.remove('akhada-mode');
-                cameraFrame.src = 'about:blank';
-            }
-            setTimeout(() => map.invalidateSize(), 320);
-        }
 
         // --- Helper Functions ---
         function updateStats() {
@@ -1294,8 +1242,8 @@
 
         function focusVehicle(id, lat, lng) {
             if (!lat || !lng) return;
-            applyRoleLayout(id);
-            map.flyTo([lat, lng], 15, { duration: 1.5 });
+            const targetZoom = Math.max(map.getZoom(), 15);
+            map.flyTo([lat, lng], targetZoom, { duration: 1.5 });
 
             // Highlight card
             document.querySelectorAll('.vehicle-card').forEach(c => c.classList.remove('active'));
