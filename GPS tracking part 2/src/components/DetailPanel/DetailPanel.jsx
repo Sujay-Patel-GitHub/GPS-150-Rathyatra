@@ -164,14 +164,18 @@ export function DetailPanel({ vehicleId, data, useCompass, onToggleCompass, admi
 
   // Subscribe to global config from Firebase
   useEffect(() => {
-    const configRef = fbRef(db, "config");
-    const handleValue = (snapshot) => {
-      setGlobalConfig(snapshot.val());
-    };
-    onValue(configRef, handleValue);
-    return () => {
-      off(configRef, "value", handleValue);
-    };
+    try {
+      const configRef = fbRef(db, "config");
+      const handleValue = (snapshot) => {
+        setGlobalConfig(snapshot.val());
+      };
+      onValue(configRef, handleValue);
+      return () => {
+        off(configRef, "value", handleValue);
+      };
+    } catch (e) {
+      console.warn("Skipping Firebase config subscription:", e);
+    }
   }, []);
 
   // Sync form values when vehicle selection, config scope, global config or local config changes
@@ -939,8 +943,7 @@ export function DetailPanel({ vehicleId, data, useCompass, onToggleCompass, admi
               <button
                 onClick={async () => {
                   try {
-                    const logsDbRef = fbRef(db, "logs");
-                    await set(logsDbRef, null);
+                    await fetch("/api/v1/tracking/logs", { method: "DELETE" });
                   } catch (e) {
                     console.error("Failed to clear logs:", e);
                   }

@@ -436,7 +436,12 @@ export function MapView({
   playbackSpeed = 2,
   onPlaybackSpeedChange = () => {},
   processionAnalytics = null,
-  recordings = {},
+  playbackVehicleId = "",
+  onPlaybackVehicleIdChange = () => {},
+  playbackDate = "",
+  onPlaybackDateChange = () => {},
+  loadingPlayback = false,
+  onLoadPlayback = () => {},
   selectedRecordingKey = "",
   onSelectedRecordingKeyChange = () => {},
   playbackRoutePoints = [],
@@ -1191,37 +1196,46 @@ export function MapView({
             <div className="w-full flex flex-col gap-4 animate-slide-in">
               
               {/* Row 1: Recording Selector & Device ID Info */}
-              <div className="flex items-center justify-between gap-3 bg-white/3 border border-white/5 rounded-xl p-3">
-                <div className="flex flex-col gap-1 flex-1 min-w-0">
-                  <label className="text-[9px] text-white/40 font-bold uppercase tracking-wider">Recorded Session</label>
-                  <select
-                    value={selectedRecordingKey}
-                    onChange={(e) => onSelectedRecordingKeyChange(e.target.value)}
-                    className="bg-gray-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-orange-500 cursor-pointer w-full transition-all"
-                  >
-                    {(() => {
-                      const filteredRecordings = selectedId 
-                        ? (recordings[selectedId] ? { [selectedId]: recordings[selectedId] } : {})
-                        : recordings;
-                      
-                      const options = Object.entries(filteredRecordings).flatMap(([vehicleId, sessions]) => 
-                        Object.entries(sessions).map(([sessionId, session]) => (
-                          <option key={`${vehicleId}/${sessionId}`} value={`${vehicleId}/${sessionId}`}>
-                            {vehicleId} — {sessionId.replace("session_", "").split("T")[0]} ({session.pointCount} pts)
-                          </option>
-                        ))
-                      );
+              <div className="flex flex-col gap-3 bg-white/3 border border-white/5 rounded-xl p-3">
+                <div className="flex flex-wrap md:flex-nowrap items-end gap-3 w-full">
+                  <div className="flex flex-col gap-1 flex-1 min-w-0 w-full">
+                    <label className="text-[9px] text-white/40 font-bold uppercase tracking-wider">Select Vehicle</label>
+                    <select
+                      value={playbackVehicleId}
+                      onChange={(e) => onPlaybackVehicleIdChange(e.target.value)}
+                      className="bg-gray-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-orange-500 cursor-pointer w-full transition-all"
+                    >
+                      <option value="">-- Choose Truck --</option>
+                      {Object.keys(vehicles).sort().map(vid => (
+                        <option key={vid} value={vid}>{vehicles[vid]?.display_name || vid}</option>
+                      ))}
+                    </select>
+                  </div>
 
-                      return options.length > 0 
-                        ? options 
-                        : <option value="">{selectedId ? `No recordings found for ${selectedId}` : "No recordings"}</option>;
-                    })()}
-                  </select>
+                  <div className="flex flex-col gap-1 shrink-0 w-full md:w-36">
+                    <label className="text-[9px] text-white/40 font-bold uppercase tracking-wider">Select Date</label>
+                    <input
+                      type="date"
+                      value={playbackDate}
+                      onChange={(e) => onPlaybackDateChange(e.target.value)}
+                      className="bg-gray-900 border border-white/10 rounded-lg px-2.5 py-1 text-xs font-bold text-white focus:outline-none focus:border-orange-500 cursor-pointer w-full transition-all"
+                    />
+                  </div>
+
+                  <button
+                    onClick={() => onLoadPlayback(playbackVehicleId, playbackDate)}
+                    disabled={loadingPlayback}
+                    className="px-4 py-2 text-xs font-extrabold rounded-lg bg-orange-500 hover:bg-orange-600 text-white disabled:opacity-50 cursor-pointer shrink-0 transition-all uppercase tracking-wider w-full md:w-auto shadow-md"
+                  >
+                    {loadingPlayback ? "Loading..." : "Load"}
+                  </button>
                 </div>
 
-                <div className="flex flex-col justify-center items-end text-right border-l border-white/10 pl-3 shrink-0">
-                  <span className="text-[9px] text-white/40 font-bold uppercase tracking-wider">Active Device</span>
-                  <span className="text-sm font-black text-orange-400">{selectedRecordVehicleId || "—"}</span>
+                <div className="flex items-center justify-between border-t border-white/10 pt-2 w-full">
+                  <span className="text-[9px] text-white/40 font-bold uppercase tracking-wider">Active Device: <span className="text-orange-400 font-extrabold">{selectedRecordVehicleId || "None"}</span></span>
+                  {playbackRoutePoints.length > 0 && (
+                    <span className="text-[9px] text-white/40 font-bold uppercase tracking-wider">Total Points: <span className="text-white font-extrabold">{playbackRoutePoints.length}</span></span>
+                  )}
                 </div>
               </div>
 

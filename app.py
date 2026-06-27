@@ -1829,7 +1829,7 @@ def get_devices_list():
 
 @app.route("/api/get_map_recordings_data")
 def get_map_recordings_data():
-    if session.get('user_type') != 'admin':
+    if session.get('user_type') not in ('admin', 'truck', 'akhada', 'user'):
         return jsonify({"error": "Unauthorized"}), 403
         
     device_id = request.args.get('device_id')

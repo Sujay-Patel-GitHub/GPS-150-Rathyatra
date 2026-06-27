@@ -3,8 +3,6 @@
 // Subscribes to the /vehicles node once and returns raw data (no filters, no snapping).
 
 import { useEffect, useState, useRef, useMemo } from "react";
-import { ref, onValue, off, set } from "firebase/database";
-import { db } from "../lib/firebase";
 import { ACTIVE_VEHICLE_IDS, OFFLINE_THRESHOLD_SECONDS, ALERT, YATRA_ROUTE, DEVICE_TO_DISPLAY_MAP, LANDMARKS, TRUCK_PHONES } from "../lib/constants";
 import { parseTimestamp } from "../utils/formatters";
 import { snapToRoute, haversine } from "../utils/routeSnap";
@@ -668,19 +666,21 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
         }
         
         if (logMsg) {
-          try {
-            const logTime = Date.now();
-            const logRef = ref(db, `logs/${logTime}`);
-            set(logRef, {
-              timestamp: new Date().toISOString(),
-              type,
-              severity,
-              message: logMsg,
-              vehicleId: id
-            });
-          } catch (err) {
-            console.error("Failed to write status log to Firebase:", err);
-          }
+          const logTime = Date.now();
+          fetch("/api/v1/tracking/logs", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              key: String(logTime),
+              log: {
+                timestamp: new Date().toISOString(),
+                type,
+                severity,
+                message: logMsg,
+                vehicleId: id
+              }
+            })
+          }).catch(err => console.error("Failed to post status log to MongoDB:", err));
         }
       }
       prevStatusesRef.current[id] = newStatus;
@@ -728,20 +728,16 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
         });
       });
 
-    // ── Helper: push a message to Firebase SMS queue ─────────────────────────
-    const sendSmsToFirebase = (phone, message, vehicleId, lat, lng, type) => {
-      const msgId = `msg_${type}_${vehicleId}_${Date.now()}`;
-      const queueUrl = `https://aidatasave-adfe6-default-rtdb.firebaseio.com/sms_queue/${msgId}.json`;
-      fetch(queueUrl, {
-        method: "PUT",
+    // ── Helper: push a message to local SMS queue ─────────────────────────
+    const sendSms = (phone, message, vehicleId, lat, lng, type) => {
+      fetch("/api/v1/tracking/sms_queue", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           to: phone,
           message,
-          status: "pending",
           lat,
-          lng,
-          timestamp: new Date().toISOString()
+          lng
         })
       })
         .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
@@ -778,22 +774,24 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
         if (phone) {
           const message = "the truck is outside track ";
           console.log(`[SMS Queue] Triggering off-route SMS for ${id}`);
-          sendSmsToFirebase(phone, message, id, v.lat, v.lng, "off_route");
+          sendSms(phone, message, id, v.lat, v.lng, "off_route");
 
-          // Write persistent log to Firebase
-          try {
-            const logTime = Date.now();
-            const logRef = ref(db, `logs/${logTime}`);
-            set(logRef, {
-              timestamp: new Date().toISOString(),
-              type: "OFF_ROUTE",
-              severity: "critical",
-              message: `${id} went off-route (${Math.round(v.distanceMeters)}m). SMS queued to ${phone}.`,
-              vehicleId: id
-            });
-          } catch (logErr) {
-            console.error("Failed to write off-route log to Firebase:", logErr);
-          }
+          // Write persistent log to MongoDB
+          const logTime = Date.now();
+          fetch("/api/v1/tracking/logs", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              key: String(logTime),
+              log: {
+                timestamp: new Date().toISOString(),
+                type: "OFF_ROUTE",
+                severity: "critical",
+                message: `${id} went off-route (${Math.round(v.distanceMeters)}m). SMS queued to ${phone}.`,
+                vehicleId: id
+              }
+            })
+          }).catch(err => console.error("Failed to post off-route log to MongoDB:", err));
         }
       } else if (!isOffRouteAlert && prevOffRoute) {
         try {
@@ -802,20 +800,22 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
           console.error("Failed to save off-route state:", err);
         }
 
-        // Write persistent recovery log to Firebase
-        try {
-          const logTime = Date.now();
-          const logRef = ref(db, `logs/${logTime}`);
-          set(logRef, {
-            timestamp: new Date().toISOString(),
-            type: "ON_ROUTE",
-            severity: "normal",
-            message: `${id} returned to the route.`,
-            vehicleId: id
-          });
-        } catch (logErr) {
-          console.error("Failed to write on-route log to Firebase:", logErr);
-        }
+        // Write persistent recovery log to MongoDB
+        const logTime = Date.now();
+        fetch("/api/v1/tracking/logs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            key: String(logTime),
+            log: {
+              timestamp: new Date().toISOString(),
+              type: "ON_ROUTE",
+              severity: "normal",
+              message: `${id} returned to the route.`,
+              vehicleId: id
+            }
+          })
+        }).catch(err => console.error("Failed to post on-route log to MongoDB:", err));
       }
 
       // ── Every-60-second "on track" heartbeat SMS ────────────────────────────
@@ -827,7 +827,7 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
           lastOnTrackSmsRef.current[id] = now;
           let phone = TRUCK_PHONES[id] || "8469091377";
           if (phone && !phone.startsWith("+")) phone = "+91" + phone;
-          sendSmsToFirebase(phone, "the truck is on track ", id, v.lat, v.lng, "on_track");
+          sendSms(phone, "the truck is on track ", id, v.lat, v.lng, "on_track");
           console.log(`[SMS] On-track heartbeat sent for ${id}`);
         }
       }

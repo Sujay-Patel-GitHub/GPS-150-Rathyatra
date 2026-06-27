@@ -8,8 +8,6 @@ import { MapView } from "./components/MapView/MapView";
 import { DetailPanel } from "./components/DetailPanel/DetailPanel";
 import { LoadingScreen } from "./components/LoadingScreen/LoadingScreen";
 import { YATRA_ROUTE, LANDMARKS, vehicleLabels } from "./lib/constants";
-import { ref as fbRef, onValue } from "firebase/database";
-import { db } from "./lib/firebase";
 import { haversine, fetchLiveDistanceRoute } from "./utils/routeSnap";
 
 export default function App() {
@@ -38,127 +36,72 @@ export default function App() {
   const [playbackIndex, setPlaybackIndex] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState(2);
   const [playbackIsPlaying, setPlaybackIsPlaying] = useState(false);
-  const [recordings, setRecordings] = useState({});
-  const [selectedRecordingKey, setSelectedRecordingKey] = useState(""); // "vehicleId/sessionId"
+  const [playbackVehicleId, setPlaybackVehicleId] = useState("");
+  const [playbackDate, setPlaybackDate] = useState(() => {
+    // Current IST date
+    const d = new Date();
+    const ist = new Date(d.getTime() + 5.5 * 3600 * 1000);
+    return ist.toISOString().split("T")[0];
+  });
+  const [loadingPlayback, setLoadingPlayback] = useState(false);
+  const [playbackRoutePoints, setPlaybackRoutePoints] = useState([]);
+  const [selectedRecordVehicleId, setSelectedRecordVehicleId] = useState("");
+  const [selectedRecordingKey, setSelectedRecordingKey] = useState(""); // Set to "mongo" when mongo playback loads
 
-  // Subscribe to persistent logs from Firebase
+  // Default playback vehicle ID to selected vehicle in sidebar
+  useEffect(() => {
+    if (selectedId && !playbackVehicleId) {
+      setPlaybackVehicleId(selectedId);
+    }
+  }, [selectedId]);
+
+  const loadMongoPlayback = async (vehicleId, dateStr) => {
+    if (!vehicleId || !dateStr) {
+      alert("Please select a vehicle and a date first.");
+      return;
+    }
+    setLoadingPlayback(true);
+    try {
+      const res = await fetch(`/api/get_map_recordings_data?device_id=${encodeURIComponent(vehicleId)}&date=${encodeURIComponent(dateStr)}`);
+      const data = await res.json();
+      if (data.points && data.points.length > 0) {
+        setPlaybackRoutePoints(data.points);
+        setPlaybackIndex(0);
+        setSelectedRecordVehicleId(vehicleId);
+        setPlaybackIsPlaying(true);
+        setSelectedRecordingKey("mongo");
+      } else {
+        alert(`No GPS coordinates found for "${vehicleId}" on ${dateStr} in MongoDB.`);
+        setPlaybackRoutePoints([]);
+        setPlaybackIndex(0);
+        setPlaybackIsPlaying(false);
+        setSelectedRecordingKey("");
+      }
+    } catch (e) {
+      console.error("Failed to load playback data:", e);
+      alert("Connection error: Failed to fetch playback data from MongoDB.");
+    } finally {
+      setLoadingPlayback(false);
+    }
+  };
+
+  // Poll persistent logs from MongoDB
   const [logs, setLogs] = useState({});
   useEffect(() => {
-    const logsRef = fbRef(db, "logs");
-    const unsubLogs = onValue(logsRef, (snap) => {
-      setLogs(snap.val() || {});
-    });
-    return () => unsubLogs();
+    const fetchLogs = async () => {
+      try {
+        const res = await fetch("/api/v1/tracking/logs");
+        const data = await res.json();
+        setLogs(data || {});
+      } catch (e) {
+        console.error("Failed to fetch logs:", e);
+      }
+    };
+    fetchLogs();
+    const interval = setInterval(fetchLogs, 10000);
+    return () => clearInterval(interval);
   }, []);
 
-  // Subscribe to custom recorded sessions from Firebase during playback mode
-  useEffect(() => {
-    const recRef = fbRef(db, "recordings");
-    const histRef = fbRef(db, "history");
-
-    let recData = {};
-    let histData = {};
-
-    const updateCombined = () => {
-      const isValidLatLng = (lat, lng) => {
-        return typeof lat === "number" && typeof lng === "number" &&
-               lat > 8.0 && lat < 38.0 &&
-               lng > 68.0 && lng < 98.0;
-      };
-
-      const combined = { ...recData };
-      
-      Object.keys(histData).forEach(vid => {
-        if (!combined[vid]) combined[vid] = {};
-        
-        const keys = Object.keys(histData[vid]);
-        if (keys.length > 0 && (keys[0].startsWith("history_") || keys[0].startsWith("_history_"))) {
-           // The history node contains a flat list of points for this vehicle
-           const pts = Object.values(histData[vid])
-             .filter(p => p && isValidLatLng(p.lat, p.lng))
-             .sort((a, b) => {
-               const tA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-               const tB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-               return tA - tB;
-             });
-           if (pts.length > 0) {
-             combined[vid]["Full History"] = {
-               points: pts,
-               pointCount: pts.length
-             };
-           }
-        } else {
-          // Standard session format
-          keys.forEach(sid => {
-            const session = histData[vid][sid];
-            
-            if (Array.isArray(session)) {
-              const pts = session
-                .filter(p => p && isValidLatLng(p.lat, p.lng))
-                .sort((a, b) => {
-                  const tA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-                  const tB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-                  return tA - tB;
-                });
-              combined[vid][sid] = { points: pts, pointCount: pts.length };
-            } 
-            else if (typeof session === 'object' && !session.points) {
-              const pts = Object.values(session)
-                .filter(p => p && isValidLatLng(p.lat, p.lng))
-                .sort((a, b) => {
-                  const tA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-                  const tB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-                  return tA - tB;
-                });
-              if (pts.length > 0) {
-                combined[vid][sid] = { points: pts, pointCount: pts.length };
-              }
-            }
-            else if (session && session.points) {
-              const pts = session.points
-                .filter(p => p && isValidLatLng(p.lat, p.lng))
-                .sort((a, b) => {
-                  const tA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-                  const tB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-                  return tA - tB;
-                });
-              combined[vid][sid] = { ...session, points: pts, pointCount: pts.length };
-            }
-          });
-        }
-      });
-      setRecordings(combined);
-    };
-
-    const unsub1 = onValue(recRef, (snap) => {
-      recData = snap.val() || {};
-      updateCombined();
-    });
-
-    const unsub2 = onValue(histRef, (snap) => {
-      histData = snap.val() || {};
-      updateCombined();
-    });
-
-    return () => {
-      unsub1();
-      unsub2();
-    };
-  }, []);
-  // Extract selected recording details
-  const [selectedRecordVehicleId, selectedRecordSessionId] = useMemo(() => {
-    if (!selectedRecordingKey || selectedRecordingKey === "yatra") return [null, null];
-    const parts = selectedRecordingKey.split("/");
-    if (parts.length === 2) return [parts[0], parts[1]];
-    return [null, null];
-  }, [selectedRecordingKey]);
-
-  // Selected simulation path points (loaded from recording)
-  const playbackRoutePoints = useMemo(() => {
-    if (!selectedRecordVehicleId || !selectedRecordSessionId) return [];
-    const session = recordings[selectedRecordVehicleId]?.[selectedRecordSessionId];
-    return session?.points || [];
-  }, [selectedRecordVehicleId, selectedRecordSessionId, recordings]);
 
   const [hidePlaybackTrail, setHidePlaybackTrail] = useState(false);
 
@@ -835,7 +778,12 @@ export default function App() {
           playbackSpeed={playbackSpeed}
           onPlaybackSpeedChange={setPlaybackSpeed}
           processionAnalytics={processionAnalytics}
-          recordings={recordings}
+          playbackVehicleId={playbackVehicleId}
+          onPlaybackVehicleIdChange={setPlaybackVehicleId}
+          playbackDate={playbackDate}
+          onPlaybackDateChange={setPlaybackDate}
+          loadingPlayback={loadingPlayback}
+          onLoadPlayback={loadMongoPlayback}
           selectedRecordingKey={selectedRecordingKey}
           onSelectedRecordingKeyChange={setSelectedRecordingKey}
           playbackRoutePoints={playbackRoutePoints}
