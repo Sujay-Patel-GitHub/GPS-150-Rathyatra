@@ -1216,11 +1216,9 @@
             const device_id = selectedId || vehicles[0].device_id;
             
             // Format CSV
-            let csv = "index,latitude,longitude,speed_kmh,timestamp
-";
+            let csv = "index,latitude,longitude,speed_kmh,timestamp\n";
             recordingPoints.forEach((p, idx) => {
-                csv += `${idx + 1},${p.lat},${p.lng},${p.speed},${p.timestamp}
-`;
+                csv += `${idx + 1},${p.lat},${p.lng},${p.speed},${p.timestamp}\n`;
             });
 
             // Trigger download
@@ -1663,63 +1661,41 @@
             const sid = new Date().toISOString().replace(/[:.]/g, "-");
 
             if (type === 'csv') {
-                let csv = "index,latitude,longitude,speed_kmh,timestamp
-";
+                let csv = "index,latitude,longitude,speed_kmh,timestamp\n";
                 coords.forEach((p, i) => {
-                    csv += `${i + 1},${p[0]},${p[1]},0,${new Date(Date.now() - (coords.length - i) * 5000).toISOString()}
-`;
+                    csv += `${i + 1},${p[0]},${p[1]},0,${new Date(Date.now() - (coords.length - i) * 5000).toISOString()}\n`;
                 });
                 triggerFileDownload(csv, `trail_${selectedId}_${sid}.csv`, 'text/csv');
             } 
             else if (type === 'gpx') {
-                let gpx = `<?xml version="1.0" encoding="UTF-8"?>
-`;
-                gpx += `<gpx version="1.1" creator="Rath Yatra GPS Tracker" xmlns="http://www.topografix.com/GPX/1/1">
-`;
-                gpx += `  <metadata><name>Trail for ${selectedId}</name></metadata>
-`;
-                gpx += `  <trk>
-`;
-                gpx += `    <trkseg>
-`;
+                let gpx = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+                gpx += `<gpx version="1.1" creator="Rath Yatra GPS Tracker" xmlns="http://www.topografix.com/GPX/1/1">\n`;
+                gpx += `  <metadata><name>Trail for ${selectedId}</name></metadata>\n`;
+                gpx += `  <trk>\n`;
+                gpx += `    <trkseg>\n`;
                 coords.forEach(p => {
-                    gpx += `      <trkpt lat="${p[0]}" lon="${p[1]}"></trkpt>
-`;
+                    gpx += `      <trkpt lat="${p[0]}" lon="${p[1]}"></trkpt>\n`;
                 });
-                gpx += `    </trkseg>
-`;
-                gpx += `  </trk>
-`;
+                gpx += `    </trkseg>\n`;
+                gpx += `  </trk>\n`;
                 gpx += `</gpx>`;
                 triggerFileDownload(gpx, `trail_${selectedId}_${sid}.gpx`, 'application/gpx+xml');
             } 
             else {
-                let kml = `<?xml version="1.0" encoding="UTF-8"?>
-`;
-                kml += `<kml xmlns="http://www.opengis.net/kml/2.2">
-`;
-                kml += `  <Document>
-`;
-                kml += `    <name>${selectedId} Trail</name>
-`;
-                kml += `    <Placemark>
-`;
-                kml += `      <LineString>
-`;
-                kml += `        <coordinates>
-`;
+                let kml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+                kml += `<kml xmlns="http://www.opengis.net/kml/2.2">\n`;
+                kml += `  <Document>\n`;
+                kml += `    <name>${selectedId} Trail</name>\n`;
+                kml += `    <Placemark>\n`;
+                kml += `      <LineString>\n`;
+                kml += `        <coordinates>\n`;
                 coords.forEach(p => {
-                    kml += `          ${p[1]},${p[0]},0
-`;
+                    kml += `          ${p[1]},${p[0]},0\n`;
                 });
-                kml += `        </coordinates>
-`;
-                kml += `      </LineString>
-`;
-                kml += `    </Placemark>
-`;
-                kml += `  </Document>
-`;
+                kml += `        </coordinates>\n`;
+                kml += `      </LineString>\n`;
+                kml += `    </Placemark>\n`;
+                kml += `  </Document>\n`;
                 kml += `</kml>`;
                 triggerFileDownload(kml, `trail_${selectedId}_${sid}.kml`, 'application/vnd.google-earth.kml+xml');
             }
