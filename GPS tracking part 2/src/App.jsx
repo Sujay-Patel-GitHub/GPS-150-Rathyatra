@@ -51,16 +51,16 @@ export default function App() {
   const [selectedRecordVehicleId, setSelectedRecordVehicleId] = useState("");
   const [selectedRecordingKey, setSelectedRecordingKey] = useState(""); // Set to "mongo" when mongo playback loads
 
-  // Default playback vehicle ID to selected vehicle in sidebar or first available device
+  // Default playback vehicle ID once on entering playback mode
   useEffect(() => {
-    if (playbackMode) {
+    if (playbackMode && !playbackVehicleId) {
       if (selectedId) {
         setPlaybackVehicleId(selectedId);
-      } else if (!playbackVehicleId && deviceList.length > 0) {
-        setPlaybackVehicleId(deviceList[0]);
+      } else {
+        setPlaybackVehicleId("TRUCK_1");
       }
     }
-  }, [playbackMode, selectedId, deviceList]);
+  }, [playbackMode]);
 
   const loadMongoPlayback = async (vehicleId, dateStr, startTime, endTime) => {
     if (!vehicleId || !dateStr) {
@@ -122,22 +122,6 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch full device list for playback selection
-  const [deviceList, setDeviceList] = useState([]);
-  useEffect(() => {
-    const fetchDevices = async () => {
-      try {
-        const res = await fetch("/api/get_devices_list");
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          setDeviceList(data);
-        }
-      } catch (e) {
-        console.error("Failed to fetch device list:", e);
-      }
-    };
-    fetchDevices();
-  }, []);
 
 
   const [hidePlaybackTrail, setHidePlaybackTrail] = useState(false);
@@ -805,7 +789,6 @@ export default function App() {
           selectedRecordingKey={selectedRecordingKey}
           onSelectedRecordingKeyChange={setSelectedRecordingKey}
           selectedRecordVehicleId={selectedRecordVehicleId}
-          deviceList={deviceList}
           totalRawPoints={totalRawPoints}
         />
       </div>
