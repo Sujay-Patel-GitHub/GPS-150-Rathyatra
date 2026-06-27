@@ -12,17 +12,41 @@ export function parseTimestamp(ts) {
   if (typeof ts === "number") return new Date(ts);
   if (typeof ts !== "string") {
     try {
-      return new Date(ts);
+      const d = new Date(ts);
+      return isNaN(d.getTime()) ? new Date(0) : d;
     } catch {
       return new Date(0);
     }
   }
-  // Replace space with T and append Z to mark as UTC
-  try {
-    return new Date(ts.replace(" ", "T") + "Z");
-  } catch {
-    return new Date(0);
+
+  let cleaned = ts.trim();
+  if (!cleaned) return new Date(0);
+
+  // If it doesn't contain T, replace space with T
+  if (!cleaned.includes("T") && cleaned.includes(" ")) {
+    cleaned = cleaned.replace(" ", "T");
   }
+
+  // If it doesn't end with Z and doesn't have an offset (+/-), append Z
+  if (!cleaned.endsWith("Z") && !cleaned.includes("+") && !/-\d{2}:\d{2}$/.test(cleaned)) {
+    cleaned = cleaned + "Z";
+  }
+
+  try {
+    const d = new Date(cleaned);
+    if (!isNaN(d.getTime())) {
+      return d;
+    }
+  } catch {}
+
+  try {
+    const d = new Date(ts);
+    if (!isNaN(d.getTime())) {
+      return d;
+    }
+  } catch {}
+
+  return new Date(0);
 }
 
 /**
@@ -30,7 +54,10 @@ export function parseTimestamp(ts) {
  */
 export function timeAgo(ts) {
   const date = parseTimestamp(ts);
+  if (isNaN(date.getTime()) || date.getTime() === 0) return "No data";
+  
   const diffSec = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (isNaN(diffSec)) return "No data";
 
   if (diffSec < 5) return "Just now";
   if (diffSec < 60) return `${diffSec}s ago`;
@@ -44,15 +71,19 @@ export function timeAgo(ts) {
  */
 export function formatDateTime(ts) {
   const date = parseTimestamp(ts);
-  if (date.getTime() === 0) return "—";
-  return date.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
+  if (isNaN(date.getTime()) || date.getTime() === 0) return "—";
+  try {
+    return date.toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  } catch {
+    return "—";
+  }
 }
 
 /**
