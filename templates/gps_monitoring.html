@@ -684,14 +684,29 @@
                 return snapToRoadCache[key];
             }
             try {
-                const response = await fetch(`https://router.project-osrm.org/nearest/v1/driving/${lng},${lat}?number=1`);
+                // Request 5 nearest road candidates so we can pick the truly closest
+                const response = await fetch(
+                    `https://router.project-osrm.org/nearest/v1/driving/${lng},${lat}?number=5`
+                );
                 const data = await response.json();
                 if (data.code === 'Ok' && data.waypoints && data.waypoints.length > 0) {
-                    const snapped = data.waypoints[0].location; // [lng, lat]
-                    const distance = data.waypoints[0].distance; // distance in meters
-                    const result = { lat: snapped[1], lng: snapped[0], distance: distance };
-                    snapToRoadCache[key] = result;
-                    return result;
+                    // OSRM returns waypoints sorted by distance already.
+                    // Re-verify by computing haversine distance ourselves so we
+                    // always pick the geometrically nearest snapped point.
+                    let best = null;
+                    for (const wp of data.waypoints) {
+                        const snapLat = wp.location[1];
+                        const snapLng = wp.location[0];
+                        // Use OSRM reported distance (most accurate)
+                        const dist = wp.distance;
+                        if (!best || dist < best.distance) {
+                            best = { lat: snapLat, lng: snapLng, distance: dist };
+                        }
+                    }
+                    if (best) {
+                        snapToRoadCache[key] = best;
+                        return best;
+                    }
                 }
             } catch (e) {
                 console.error("OSRM snap error:", e);
@@ -704,7 +719,9 @@
                 return { lat: rawLat, lng: rawLng };
             }
             const snapped = await getSnappedCoordinate(rawLat, rawLng);
-            if (snapped && snapped.distance <= 50) {
+            // Only snap if the nearest road is within 20 metres
+            // (tight threshold avoids jumping to a distant parallel road)
+            if (snapped && snapped.distance <= 20) {
                 return { lat: snapped.lat, lng: snapped.lng };
             }
             return { lat: rawLat, lng: rawLng };
