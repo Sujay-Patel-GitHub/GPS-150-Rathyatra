@@ -342,13 +342,33 @@ export function DetailPanel({ vehicleId, data, useCompass, onToggleCompass, admi
                   <div className="flex flex-wrap items-center gap-2 mt-0.5">
                     <div
                       className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold
-                      ${data.online ? "bg-green-500/20 text-green-400" : "bg-gray-500/20 text-gray-400"}`}
+                      ${data.status === "online" 
+                        ? "bg-green-500/20 text-green-400" 
+                        : data.status === "weak"
+                        ? "bg-amber-500/20 text-amber-400"
+                        : data.status === "jammed"
+                        ? "bg-red-500/20 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.15)]"
+                        : "bg-gray-500/20 text-gray-400"}`}
                     >
                       <span
-                        className={`w-1.5 h-1.5 rounded-full ${data.online ? "bg-green-400 animate-pulse" : "bg-gray-400"
-                          }`}
+                        className={`w-1.5 h-1.5 rounded-full 
+                          ${data.status === "online" 
+                            ? "bg-green-400 animate-pulse" 
+                            : data.status === "weak"
+                            ? "bg-amber-400"
+                            : data.status === "jammed"
+                            ? "bg-red-400"
+                            : "bg-gray-400"}`}
                       />
-                      {data.online ? "Online" : "Offline"}
+                      {data.status === "online" 
+                        ? "Online" 
+                        : data.status === "weak" 
+                        ? "Weak Signal" 
+                        : data.status === "jammed" 
+                        ? "Jammed" 
+                        : data.status === "lost" 
+                        ? "Signal Low" 
+                        : "Offline"}
                     </div>
                     {data.is_estimated && data.online && (
                       <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-500/20 text-orange-400 animate-pulse">

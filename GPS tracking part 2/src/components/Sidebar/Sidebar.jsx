@@ -6,7 +6,7 @@ import { vehicleLabels, vehicleIcons } from "../../lib/constants";
 import { haversine } from "../../utils/routeSnap";
 
 function VehicleCard({ vehicleId, data, isSelected, onSelect }) {
-  const online = data?.online ?? false;
+  const status = data?.status ?? "offline";
   const label = data?.display_name || vehicleLabels[vehicleId] || vehicleId;
   const icon = vehicleIcons[vehicleId] ?? "🚛";
 
@@ -32,14 +32,33 @@ function VehicleCard({ vehicleId, data, isSelected, onSelect }) {
         {/* Status badge */}
         <div
           className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide shrink-0 border
-            ${online 
+            ${status === "online" 
               ? "bg-green-500/10 border-green-500/20 text-green-400 shadow-[0_0_8px_rgba(34,197,94,0.15)]" 
+              : status === "weak"
+              ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
+              : status === "jammed"
+              ? "bg-red-500/10 border-red-500/20 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.15)]"
               : "bg-gray-500/10 border-gray-500/20 text-gray-400"}`}
         >
           <span
-            className={`w-1.5 h-1.5 rounded-full ${online ? "bg-green-400 animate-pulse shadow-[0_0_4px_#22c55e]" : "bg-gray-400"}`}
+            className={`w-1.5 h-1.5 rounded-full 
+              ${status === "online" 
+                ? "bg-green-400 animate-pulse shadow-[0_0_4px_#22c55e]" 
+                : status === "weak"
+                ? "bg-amber-400"
+                : status === "jammed"
+                ? "bg-red-400 shadow-[0_0_4px_#ef4444]"
+                : "bg-gray-400"}`}
           />
-          {online ? "Online" : "Offline"}
+          {status === "online" 
+            ? "Online" 
+            : status === "weak" 
+            ? "Weak" 
+            : status === "jammed" 
+            ? "Jammed" 
+            : status === "lost" 
+            ? "Signal Low" 
+            : "Offline"}
         </div>
       </div>
 

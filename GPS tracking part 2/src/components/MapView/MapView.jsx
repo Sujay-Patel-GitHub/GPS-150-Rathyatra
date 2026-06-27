@@ -173,9 +173,23 @@ function VehiclePopup({ vehicleId, data }) {
             fontWeight: 800,
             textTransform: "uppercase",
             letterSpacing: "0.05em",
-            color: data.online ? "#4ade80" : "#9ca3af"
+            color: data.status === "online" 
+              ? "#4ade80" 
+              : data.status === "weak"
+              ? "#fbbf24"
+              : data.status === "jammed"
+              ? "#f87171"
+              : "#9ca3af"
           }}>
-            {data.online ? "● Online" : "○ Offline"}
+            {data.status === "online" 
+              ? "● Online" 
+              : data.status === "weak" 
+              ? "● Weak Signal" 
+              : data.status === "jammed" 
+              ? "● Jammed" 
+              : data.status === "lost" 
+              ? "○ Signal Low" 
+              : "○ Offline"}
             {data.is_estimated && data.online && (
               <span style={{ color: "#fb923c", marginLeft: 8 }}>
                 ⚠️ IMU Est.

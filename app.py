@@ -16,7 +16,7 @@ mimetypes.add_type("text/css", ".css")
 import zipfile
 import io
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # --- IMPORT DATABASE & FIREBASE CONFIG ---
 from mongodb import col_godown, col_transporters, col_drivers, col_shopkeepers, col_vehicles, col_settings, col_gps_recordings, col_map_recordings, col_sos_logs, col_gps_live, col_test
@@ -6719,7 +6719,12 @@ def api_tracking_vehicles():
             # format timestamp from updated_at (which is in UTC)
             updated_at = doc.get("updated_at")
             if updated_at:
-                timestamp_str = updated_at.strftime("%Y-%m-%d %H:%M:%S")
+                if hasattr(updated_at, "tzinfo") and updated_at.tzinfo is not None:
+                    utc_time = updated_at.astimezone(timezone.utc).replace(tzinfo=None)
+                else:
+                    offset = datetime.now() - datetime.utcnow()
+                    utc_time = updated_at - offset
+                timestamp_str = utc_time.strftime("%Y-%m-%d %H:%M:%S")
             else:
                 timestamp_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
                 

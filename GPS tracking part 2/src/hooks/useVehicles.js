@@ -14,14 +14,13 @@ const MAX_TRAIL = 300;
 
 
 function getStatus(data) {
-  // No Firebase data at all — device never connected
+  // No data at all — device never connected
   if (!data || typeof data.lat !== "number") return "offline";
 
   const age = (Date.now() - parseTimestamp(data.timestamp).getTime()) / 1000;
 
-  // 1. Age/Inactivity checks must come first to detect disconnects
-  if (age > OFFLINE_THRESHOLD_SECONDS) return "offline";
-  if (age > ALERT.SIGNAL_LOST_SEC) return "lost";
+  // 1. Inactivity checks: if no update for more than 2 minutes, signal is lost/low
+  if (age > 120) return "lost";
 
   // 2. Active status flags
   if (data.is_jammed) return "jammed";
