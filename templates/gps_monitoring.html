@@ -1315,40 +1315,16 @@
             if (!snapToRoad) {
                 return { lat: rawLat, lng: rawLng };
             }
-            
-            // 1. Try Yatra Route snapping first
-            const yatraSnap = snapToRoute(rawLat, rawLng, YATRA_ROUTE);
-            
-            // 2. Fetch OSRM Road snapping in parallel
+            // Fetch nearest road coordinates via OSRM nearest service
             const osrmSnap = await getSnappedCoordinate(rawLat, rawLng);
             
-            // 3. Dual-snapping decision matrix (matching the React codebase)
-            let bestLat = rawLat;
-            let bestLng = rawLng;
-            
-            // 1. OSRM within 5m, or OSRM within 35m and closer than the Yatra route
-            if (osrmSnap && (osrmSnap.distance <= 5 || (osrmSnap.distance <= 35 && (!yatraSnap || osrmSnap.distance < yatraSnap.distanceMeters)))) {
-                bestLat = osrmSnap.lat;
-                bestLng = osrmSnap.lng;
+            // Snap only if OSRM snaps successfully and is within 50 meters
+            if (osrmSnap && osrmSnap.distance <= 50) {
+                return { lat: osrmSnap.lat, lng: osrmSnap.lng };
             }
-            // 2. Yatra Route (Main Road) within 35 meters
-            else if (yatraSnap && yatraSnap.distanceMeters <= 35) {
-                bestLat = yatraSnap.snappedLat;
-                bestLng = yatraSnap.snappedLng;
-            }
-            // 3. Fallback to OSRM Nearest API (up to 35 meters)
-            else if (osrmSnap && osrmSnap.distance <= 35) {
-                bestLat = osrmSnap.lat;
-                bestLng = osrmSnap.lng;
-            }
-            // 4. Fallback to Yatra Route (up to 35 meters)
-            else if (yatraSnap && yatraSnap.distanceMeters <= 35) {
-                bestLat = yatraSnap.snappedLat;
-                bestLng = yatraSnap.snappedLng;
-            }
-            
-            return { lat: bestLat, lng: bestLng };
+            return { lat: rawLat, lng: rawLng };
         }
+
 
         // --- Route Recording ---
         function toggleRouteRecording() {
