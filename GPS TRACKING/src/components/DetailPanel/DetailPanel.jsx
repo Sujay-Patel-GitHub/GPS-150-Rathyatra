@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { ref as fbRef, set, onValue, off } from "firebase/database";
-import { db } from "../../lib/firebase";
+
 import { DISPLAY_TO_DEVICE_MAP, LANDMARKS } from "../../lib/constants";
 import { haversine } from "../../utils/routeSnap";
 import { fmtCoord, fmtSpeed, formatDateTime } from "../../utils/formatters";
@@ -119,7 +118,7 @@ function EmptyState() {
   );
 }
 
-export function DetailPanel({ vehicleId, data, useCompass, onToggleCompass, adminMode = false, logs = {}, onSelectVehicle }) {
+export function DetailPanel({ vehicleId, data, useCompass, onToggleCompass, adminMode = false, logs = {}, onSelectVehicle, globalConfig }) {
   const [activeTab, setActiveTab] = useState("details"); // "details" or "logs"
   const [calibrating, setCalibrating] = useState(false);
   const [calibrated, setCalibrated] = useState(false);
@@ -140,8 +139,13 @@ export function DetailPanel({ vehicleId, data, useCompass, onToggleCompass, admi
   const handleSaveName = async () => {
     setSavingName(true);
     try {
-      const nameRef = fbRef(db, `vehicle_details/${vehicleId}/display_name`);
-      await set(nameRef, editName.trim() || null);
+      const cleanName = editName.trim() || null;
+      const res = await fetch("/api/save_vehicle_display_name", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device_id: vehicleId, display_name: cleanName })
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
       setIsEditingName(false);
     } catch (e) {
       console.error("Failed to save display name:", e);
@@ -151,7 +155,6 @@ export function DetailPanel({ vehicleId, data, useCompass, onToggleCompass, admi
   };
 
   // Live sensor & filter config tuning state
-  const [globalConfig, setGlobalConfig] = useState(null);
   const [configScope, setConfigScope] = useState("vehicle"); // "vehicle" or "global"
   const [kalmanQ, setKalmanQ] = useState(0.000005);
   const [kalmanR, setKalmanR] = useState(0.00005);
@@ -161,18 +164,6 @@ export function DetailPanel({ vehicleId, data, useCompass, onToggleCompass, admi
   const [configSaved, setConfigSaved] = useState(false);
   const [resettingConfig, setResettingConfig] = useState(false);
   const [configReset, setConfigReset] = useState(false);
-
-  // Subscribe to global config from Firebase
-  useEffect(() => {
-    const configRef = fbRef(db, "config");
-    const handleValue = (snapshot) => {
-      setGlobalConfig(snapshot.val());
-    };
-    onValue(configRef, handleValue);
-    return () => {
-      off(configRef, "value", handleValue);
-    };
-  }, []);
 
   // Sync form values when vehicle selection, config scope, global config or local config changes
   useEffect(() => {
@@ -201,12 +192,20 @@ export function DetailPanel({ vehicleId, data, useCompass, onToggleCompass, admi
       };
 
       if (configScope === "global") {
-        const configRef = fbRef(db, "config");
-        await set(configRef, payload);
+        const res = await fetch("/api/save_global_config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ config: payload })
+        });
+        if (!res.ok) throw new Error("HTTP " + res.status);
       } else {
         const targetId = DISPLAY_TO_DEVICE_MAP[vehicleId] || vehicleId;
-        const vehicleConfigRef = fbRef(db, `vehicles/${targetId}/config`);
-        await set(vehicleConfigRef, payload);
+        const res = await fetch("/api/save_config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ vehicle_id: targetId, config: payload })
+        });
+        if (!res.ok) throw new Error("HTTP " + res.status);
       }
 
       setConfigSaved(true);
@@ -223,8 +222,12 @@ export function DetailPanel({ vehicleId, data, useCompass, onToggleCompass, admi
     setConfigReset(false);
     try {
       const targetId = DISPLAY_TO_DEVICE_MAP[vehicleId] || vehicleId;
-      const vehicleConfigRef = fbRef(db, `vehicles/${targetId}/config`);
-      await set(vehicleConfigRef, null); // Deletes the vehicle override
+      const res = await fetch("/api/save_config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vehicle_id: targetId, config: null })
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
 
       setConfigReset(true);
       setTimeout(() => setConfigReset(false), 3000);
@@ -246,11 +249,13 @@ export function DetailPanel({ vehicleId, data, useCompass, onToggleCompass, admi
         angle = Number(alignmentAngle);
       }
 
-      // Write target alignment angle directly to calibrate_pending (map display ID back to physical device database key)
       const targetId = DISPLAY_TO_DEVICE_MAP[vehicleId] || vehicleId;
-
-      const vehicleRef = fbRef(db, `vehicles/${targetId}/calibrate_pending`);
-      await set(vehicleRef, angle);
+      const res = await fetch("/api/calibrate_vehicle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device_id: targetId, angle: angle })
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
 
       // Simulation delay for user visual feedback
       await new Promise((resolve) => setTimeout(resolve, 1500));
@@ -919,8 +924,7 @@ export function DetailPanel({ vehicleId, data, useCompass, onToggleCompass, admi
               <button
                 onClick={async () => {
                   try {
-                    const logsDbRef = fbRef(db, "logs");
-                    await set(logsDbRef, null);
+                    await fetch("/api/v1/tracking/logs", { method: "DELETE" });
                   } catch (e) {
                     console.error("Failed to clear logs:", e);
                   }

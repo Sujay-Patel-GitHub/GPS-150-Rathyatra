@@ -8,13 +8,11 @@ import { MapView } from "./components/MapView/MapView";
 import { DetailPanel } from "./components/DetailPanel/DetailPanel";
 import { LoadingScreen } from "./components/LoadingScreen/LoadingScreen";
 import { YATRA_ROUTE, LANDMARKS, vehicleLabels } from "./lib/constants";
-import { ref as fbRef, onValue } from "firebase/database";
-import { db } from "./lib/firebase";
 import { haversine, fetchLiveDistanceRoute } from "./utils/routeSnap";
 
 export default function App() {
-  // Route drawn exactly on YATRA_ROUTE coordinates — no OSRM road snapping
-  const roadRoute = YATRA_ROUTE;
+  // Route state (starts empty, user selects manually on map)
+  const [roadRoute, setRoadRoute] = useState([]);
   const [useSnapping, setUseSnapping] = useState(true);
   const [isAndroidAuto, setIsAndroidAuto] = useState(false);
   const [mapRotationMode, setMapRotationMode] = useState("course-up"); // "course-up" or "north-up"
@@ -25,7 +23,7 @@ export default function App() {
   const [distanceTarget, setDistanceTarget] = useState("");
   const [adminMode, setAdminMode] = useState(false);
 
-  const { vehicles: firebaseVehicles, alerts, loading, error } = useVehicles(roadRoute, useSnapping);
+  const { vehicles: firebaseVehicles, alerts, loading, error, globalConfig } = useVehicles(roadRoute, useSnapping);
   const firebaseVehiclesRef = useRef(firebaseVehicles);
   useEffect(() => {
     firebaseVehiclesRef.current = firebaseVehicles;
@@ -41,110 +39,99 @@ export default function App() {
   const [recordings, setRecordings] = useState({});
   const [selectedRecordingKey, setSelectedRecordingKey] = useState(""); // "vehicleId/sessionId"
 
-  // Subscribe to persistent logs from Firebase
+  // Poll persistent logs from MongoDB
   const [logs, setLogs] = useState({});
   useEffect(() => {
-    const logsRef = fbRef(db, "logs");
-    const unsubLogs = onValue(logsRef, (snap) => {
-      setLogs(snap.val() || {});
-    });
-    return () => unsubLogs();
+    let active = true;
+    const fetchLogs = async () => {
+      try {
+        const res = await fetch("/api/v1/tracking/logs");
+        if (res.ok) {
+          const data = await res.json();
+          if (active) setLogs(data || {});
+        }
+      } catch (e) {
+        console.error("Failed to fetch logs:", e);
+      }
+    };
+    fetchLogs();
+    const interval = setInterval(fetchLogs, 2000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, []);
 
-  // Subscribe to custom recorded sessions from Firebase during playback mode
+  const availableDates = useMemo(() => {
+    const list = [];
+    for (let i = 0; i < 14; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split("T")[0]; // YYYY-MM-DD
+      list.push(dateStr);
+    }
+    return list;
+  }, []);
+
+  // Update recordings list when selected vehicle changes
   useEffect(() => {
-    const recRef = fbRef(db, "recordings");
-    const histRef = fbRef(db, "history");
-
-    let recData = {};
-    let histData = {};
-
-    const updateCombined = () => {
-      const isValidLatLng = (lat, lng) => {
-        return typeof lat === "number" && typeof lng === "number" &&
-               lat > 8.0 && lat < 38.0 &&
-               lng > 68.0 && lng < 98.0;
+    if (!selectedId) return;
+    
+    // Initialize sessions for selectedId with empty points
+    const sessions = {};
+    availableDates.forEach(date => {
+      sessions[date] = {
+        points: [],
+        pointCount: "Select to load"
       };
+    });
+    
+    setRecordings(prev => ({
+      ...prev,
+      [selectedId]: sessions
+    }));
+  }, [selectedId, availableDates]);
 
-      const combined = { ...recData };
-      
-      Object.keys(histData).forEach(vid => {
-        if (!combined[vid]) combined[vid] = {};
-        
-        const keys = Object.keys(histData[vid]);
-        if (keys.length > 0 && (keys[0].startsWith("history_") || keys[0].startsWith("_history_"))) {
-           // The history node contains a flat list of points for this vehicle
-           const pts = Object.values(histData[vid])
-             .filter(p => p && isValidLatLng(p.lat, p.lng))
-             .sort((a, b) => {
-               const tA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-               const tB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-               return tA - tB;
-             });
-           if (pts.length > 0) {
-             combined[vid]["Full History"] = {
-               points: pts,
-               pointCount: pts.length
-             };
-           }
-        } else {
-          // Standard session format
-          keys.forEach(sid => {
-            const session = histData[vid][sid];
-            
-            if (Array.isArray(session)) {
-              const pts = session
-                .filter(p => p && isValidLatLng(p.lat, p.lng))
-                .sort((a, b) => {
-                  const tA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-                  const tB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-                  return tA - tB;
-                });
-              combined[vid][sid] = { points: pts, pointCount: pts.length };
-            } 
-            else if (typeof session === 'object' && !session.points) {
-              const pts = Object.values(session)
-                .filter(p => p && isValidLatLng(p.lat, p.lng))
-                .sort((a, b) => {
-                  const tA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-                  const tB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-                  return tA - tB;
-                });
-              if (pts.length > 0) {
-                combined[vid][sid] = { points: pts, pointCount: pts.length };
+  // Lazy load points when a specific recording date/session is selected
+  useEffect(() => {
+    if (!selectedRecordVehicleId || !selectedRecordSessionId) return;
+    
+    // Check if we already have the points loaded
+    const session = recordings[selectedRecordVehicleId]?.[selectedRecordSessionId];
+    if (session && session.points && session.points.length > 0) return;
+    
+    let active = true;
+    const loadSessionPoints = async () => {
+      try {
+        const res = await fetch(`/api/get_map_recordings_data?device_id=${selectedRecordVehicleId}&date=${selectedRecordSessionId}`);
+        if (res.ok) {
+          const pts = await res.json();
+          if (!active) return;
+          const formattedPts = pts.map(p => ({
+            lat: p.lat,
+            lng: p.lng,
+            speed: p.speed,
+            timestamp: p.timestamp
+          }));
+          
+          setRecordings(prev => ({
+            ...prev,
+            [selectedRecordVehicleId]: {
+              ...(prev[selectedRecordVehicleId] || {}),
+              [selectedRecordSessionId]: {
+                points: formattedPts,
+                pointCount: formattedPts.length
               }
             }
-            else if (session && session.points) {
-              const pts = session.points
-                .filter(p => p && isValidLatLng(p.lat, p.lng))
-                .sort((a, b) => {
-                  const tA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-                  const tB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-                  return tA - tB;
-                });
-              combined[vid][sid] = { ...session, points: pts, pointCount: pts.length };
-            }
-          });
+          }));
         }
-      });
-      setRecordings(combined);
+      } catch (err) {
+        console.error("Failed to load recording points:", err);
+      }
     };
-
-    const unsub1 = onValue(recRef, (snap) => {
-      recData = snap.val() || {};
-      updateCombined();
-    });
-
-    const unsub2 = onValue(histRef, (snap) => {
-      histData = snap.val() || {};
-      updateCombined();
-    });
-
-    return () => {
-      unsub1();
-      unsub2();
-    };
-  }, []);
+    loadSessionPoints();
+    return () => { active = false; };
+  }, [selectedRecordVehicleId, selectedRecordSessionId]);
   // Extract selected recording details
   const [selectedRecordVehicleId, selectedRecordSessionId] = useMemo(() => {
     if (!selectedRecordingKey || selectedRecordingKey === "yatra") return [null, null];
@@ -657,7 +644,8 @@ export default function App() {
             selectedId={selectedId}
             onVehicleSelect={handleSelect}
             yatraRoute={roadRoute}
-            rawYatraRoute={YATRA_ROUTE}
+            rawYatraRoute={roadRoute}
+            onRouteGenerate={setRoadRoute}
             useSnapping={useSnapping}
             onToggleSnapping={setUseSnapping}
             useCompass={useCompass}
@@ -818,7 +806,8 @@ export default function App() {
           selectedId={selectedId}
           onVehicleSelect={handleSelect}
           yatraRoute={roadRoute}
-          rawYatraRoute={YATRA_ROUTE}
+          rawYatraRoute={roadRoute}
+          onRouteGenerate={setRoadRoute}
           useSnapping={useSnapping}
           onToggleSnapping={setUseSnapping}
           useCompass={useCompass}
@@ -852,6 +841,7 @@ export default function App() {
           onToggleCompass={setUseCompass}
           adminMode={adminMode}
           logs={logs}
+          globalConfig={globalConfig}
           onSelectVehicle={handleSelect}
         />
       </div>

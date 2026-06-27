@@ -5527,6 +5527,16 @@ def save_vehicle_display_name():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/save_global_config', methods=['POST'])
+def save_global_config():
+    try:
+        req_data = request.json or {}
+        config = req_data.get('config')
+        col_settings.update_one({"_id": "global_gps_config"}, {"$set": {"config": config}}, upsert=True)
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/calibrate_vehicle', methods=['POST'])
 def calibrate_vehicle():
@@ -6662,6 +6672,177 @@ def proxy_snapping(path):
         return Response(resp.content, status=resp.status_code, content_type=resp.headers.get("content-type"))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+
+@app.route("/api/v1/tracking/vehicles", methods=["GET"])
+def api_tracking_vehicles():
+    if session.get('user_type') not in ('admin', 'truck', 'akhada', 'user'):
+        return jsonify({"error": "Unauthorized"}), 403
+        
+    try:
+        # 1. Fetch live telemetry from col_gps_live
+        live_docs = list(col_gps_live.find({}))
+        vehicles = {}
+        for doc in live_docs:
+            d_id = doc.get("device_id")
+            if not d_id:
+                continue
+            
+            # format timestamp from updated_at (which is in UTC)
+            updated_at = doc.get("updated_at")
+            if updated_at:
+                timestamp_str = updated_at.strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                timestamp_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+                
+            vehicles[d_id] = {
+                "lat": float(doc.get("lat")) if doc.get("lat") is not None else None,
+                "lng": float(doc.get("lng")) if doc.get("lng") is not None else None,
+                "speed": float(doc.get("speed")) if doc.get("speed") is not None else 0.0,
+                "timestamp": timestamp_str,
+                "hdop": float(doc.get("hdop", 1.0)) if doc.get("hdop") is not None else 1.0,
+                "sats": int(doc.get("sats", doc.get("satellites", 8))),
+                "is_jammed": bool(doc.get("is_jammed", False)),
+                "is_estimated": bool(doc.get("is_estimated", False)),
+                "sos": int(doc.get("sos", 0)),
+                "mosfet": int(doc.get("mosfet", 0)) if doc.get("mosfet") is not None else 0,
+                "truck_id": d_id,
+                "vehicle_id": d_id
+            }
+            
+        # 2. Fetch vehicle registry details from col_vehicles
+        registry_docs = list(col_vehicles.find({}))
+        vehicle_details = {}
+        for doc in registry_docs:
+            d_id = doc.get("device_id")
+            if d_id:
+                vehicle_details[d_id] = {
+                    "display_name": doc.get("display_name") or d_id,
+                    "driver_name": doc.get("driver_name", "N/A"),
+                    "driver_phone": doc.get("driver_phone", "N/A"),
+                    "transporter_name": doc.get("transporter_name", "N/A"),
+                    "rc_number": doc.get("rc_number", "N/A"),
+                    "config": doc.get("record_config")
+                }
+                
+        # 3. Fetch global config
+        config_doc = col_settings.find_one({"_id": "global_gps_config"})
+        global_config = config_doc.get("config") if config_doc else None
+                
+        return jsonify({
+            "vehicles": vehicles,
+            "vehicle_details": vehicle_details,
+            "global_config": global_config
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/v1/tracking/logs", methods=["GET", "POST", "DELETE"])
+def api_tracking_logs():
+    if session.get('user_type') not in ('admin', 'truck', 'akhada', 'user'):
+        return jsonify({"error": "Unauthorized"}), 403
+        
+    col_tracking_logs = col_settings.database["tracking_logs"]
+    
+    if request.method == "GET":
+        try:
+            logs = {}
+            for doc in col_tracking_logs.find({}, {"_id": 0}):
+                key = doc.get("key")
+                if key:
+                    logs[key] = doc.get("log", {})
+            return jsonify(logs)
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+            
+    elif request.method == "POST":
+        try:
+            data = request.get_json(silent=True) or {}
+            key = data.get("key")
+            log_data = data.get("log")
+            if not key or not log_data:
+                return jsonify({"error": "Missing key or log"}), 400
+                
+            col_tracking_logs.update_one(
+                {"key": key},
+                {"$set": {"key": key, "log": log_data}},
+                upsert=True
+            )
+            return jsonify({"success": True})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+            
+    elif request.method == "DELETE":
+        try:
+            col_tracking_logs.delete_many({})
+            return jsonify({"success": True})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/v1/tracking/sms_queue", methods=["POST"])
+def api_tracking_sms_queue():
+    if session.get('user_type') not in ('admin', 'truck', 'akhada', 'user'):
+        return jsonify({"error": "Unauthorized"}), 403
+        
+    try:
+        data = request.get_json(silent=True) or {}
+        col_sms_queue = col_settings.database["sms_queue"]
+        
+        col_sms_queue.insert_one({
+            "to": data.get("to"),
+            "message": data.get("message"),
+            "status": "pending",
+            "lat": data.get("lat"),
+            "lng": data.get("lng"),
+            "timestamp": datetime.utcnow()
+        })
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/v1/tracking/save_recording", methods=["POST"])
+def api_save_recording():
+    if session.get('user_type') not in ('admin', 'truck', 'akhada', 'user'):
+        return jsonify({"error": "Unauthorized"}), 403
+        
+    try:
+        data = request.get_json(silent=True) or {}
+        points = data.get("points", [])
+        device_id = data.get("vehicleId")
+        
+        if not device_id or not points:
+            return jsonify({"error": "Missing params"}), 400
+            
+        col_map_recordings = col_settings.database["map_recordings"]
+        
+        # Insert each point into MongoDB
+        for p in points:
+            ts_str = p.get("timestamp")
+            if ts_str:
+                try:
+                    ts = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+                except:
+                    ts = datetime.utcnow()
+            else:
+                ts = datetime.utcnow()
+                
+            col_map_recordings.insert_one({
+                "device_id": device_id,
+                "lat": float(p.get("lat")),
+                "lng": float(p.get("lng")),
+                "speed": float(p.get("speed", 0.0)),
+                "timestamp": ts
+            })
+            
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 
 
 if __name__ == "__main__":

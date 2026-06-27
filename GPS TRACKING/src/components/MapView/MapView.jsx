@@ -22,8 +22,7 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { ref as fbRef, set } from "firebase/database";
-import { db } from "../../lib/firebase";
+import { fetchRoadRoute } from "../../utils/routeSnap";
 import { DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM, LANDMARKS } from "../../lib/constants";
 import { fmtCoord, fmtSpeed, timeAgo } from "../../utils/formatters";
 import { AnimatedMarker, AnimatedCircle } from "./AnimatedMarker";
@@ -226,6 +225,18 @@ function VehiclePopup({ vehicleId, data }) {
   );
 }
 
+// Helper component to capture map click events during Route Selection Mode
+function MapRouteSelector({ enabled, onAddPoint }) {
+  useMapEvents({
+    click(e) {
+      if (!enabled) return;
+      const { lat, lng } = e.latlng;
+      onAddPoint([lat, lng]);
+    }
+  });
+  return null;
+}
+
 // ── Map Click Inspector ───────────────────────────────────────────────────────
 // Shows exact GPS coordinates + OSRM road-snapped coordinates on every map click
 function MapClickInspector({ enabled, onClickResult }) {
@@ -380,21 +391,22 @@ function downloadKML(points, vehicleId, sessionId) {
   URL.revokeObjectURL(url);
 }
 
-async function saveRouteToFirebase(points, vehicleId, sessionId) {
+async function saveRouteToBackend(points, vehicleId, sessionId) {
   try {
-    const path = fbRef(db, `recordings/${vehicleId}/${sessionId}`);
-    await set(path, {
-      vehicleId,
-      sessionId,
-      startTime:  points[0]?.timestamp ?? "",
-      endTime:    points[points.length - 1]?.timestamp ?? "",
-      pointCount: points.length,
-      points,
+    const res = await fetch("/api/v1/tracking/save_recording", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        vehicleId,
+        sessionId,
+        points
+      })
     });
-    console.log("[Recording] Saved to Firebase:", `recordings/${vehicleId}/${sessionId}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    console.log("[Recording] Saved custom recording to MongoDB:", vehicleId, sessionId);
     return true;
   } catch (e) {
-    console.error("[Recording] Firebase save failed:", e);
+    console.error("[Recording] MongoDB save failed:", e);
     return false;
   }
 }
@@ -405,6 +417,7 @@ export function MapView({
   onVehicleSelect, 
   yatraRoute, 
   rawYatraRoute, 
+  onRouteGenerate = () => {},
   useSnapping, 
   onToggleSnapping, 
   useCompass, 
@@ -444,6 +457,11 @@ export function MapView({
   const [centerTarget, setCenterTarget] = useState(null);
   const [selectedZoom, setSelectedZoom] = useState(17);
   const [hasAutoCentered, setHasAutoCentered] = useState(false);
+
+  // ── Route Selection state ──────────────────────────────────────────────
+  const [routeSelectionActive, setRouteSelectionActive] = useState(false);
+  const [tempWaypoints, setTempWaypoints] = useState([]);
+  const [generatingRoute, setGeneratingRoute] = useState(false);
 
   // ── GPS Inspector state ────────────────────────────────────────────────
   const [inspectorEnabled, setInspectorEnabled] = useState(false);
@@ -527,8 +545,8 @@ export function MapView({
     const sid = recSessionId.current;
     const vid = recVehicleId;
 
-    // Save to Firebase
-    await saveRouteToFirebase(recPoints, vid, sid);
+    // Save to MongoDB
+    await saveRouteToBackend(recPoints, vid, sid);
 
     // Download CSV
     downloadCSV(recPoints, vid, sid);
@@ -601,6 +619,45 @@ export function MapView({
           enabled={inspectorEnabled}
           onClickResult={setInspectorResult}
         />
+
+        {/* ── Route Selector Events ── */}
+        <MapRouteSelector
+          enabled={routeSelectionActive}
+          onAddPoint={(pt) => setTempWaypoints((prev) => [...prev, pt])}
+        />
+
+        {/* ── Route Selector Temporary Drawing ── */}
+        {routeSelectionActive && tempWaypoints.length >= 2 && (
+          <Polyline
+            positions={tempWaypoints}
+            pathOptions={{
+              color: "#3b82f6",
+              weight: 2,
+              dashArray: "6 4",
+              opacity: 0.7
+            }}
+          />
+        )}
+
+        {routeSelectionActive && tempWaypoints.map((wp, idx) => (
+          <Circle
+            key={`temp_wp_${idx}`}
+            center={wp}
+            radius={idx === 0 || idx === tempWaypoints.length - 1 ? 16 : 8}
+            pathOptions={{
+              color: idx === 0 ? "#22c55e" : idx === tempWaypoints.length - 1 ? "#ef4444" : "#3b82f6",
+              fillColor: idx === 0 ? "#22c55e" : idx === tempWaypoints.length - 1 ? "#ef4444" : "#3b82f6",
+              fillOpacity: 0.8,
+              weight: 2
+            }}
+          >
+            <Tooltip permanent direction="top" offset={[0, -5]}>
+              <span className="text-[9px] font-extrabold text-gray-900">
+                {idx === 0 ? "Start" : idx === tempWaypoints.length - 1 ? "End" : `P${idx}`}
+              </span>
+            </Tooltip>
+          </Circle>
+        ))}
 
         {isAndroidAuto && (
           <>
@@ -1032,6 +1089,79 @@ export function MapView({
                 <div className="w-8 h-4.5 bg-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-orange-500" />
               </div>
             </label>
+          </div>
+
+          {/* Route Selection controls */}
+          <div className="border-t border-white/10 pt-3 flex flex-col gap-2">
+            <button
+              onClick={() => {
+                if (routeSelectionActive) {
+                  setRouteSelectionActive(false);
+                  setTempWaypoints([]);
+                } else {
+                  setRouteSelectionActive(true);
+                  setTempWaypoints([]);
+                }
+              }}
+              className={`w-full flex items-center justify-center gap-2 py-2 px-3
+                border text-xs font-bold rounded-xl transition-all cursor-pointer
+                ${routeSelectionActive 
+                  ? "bg-red-500/20 border-red-500/30 text-red-400" 
+                  : "bg-white/5 border-white/10 hover:bg-orange-500/10 hover:border-orange-500/30 hover:text-orange-400 text-white"}`}
+            >
+              <span>🧭</span> {routeSelectionActive ? "Cancel Route Select" : "Route Selection"}
+            </button>
+
+            {routeSelectionActive && (
+              <div className="flex flex-col gap-2 p-2 bg-orange-500/10 border border-orange-500/20 rounded-xl mt-1">
+                <span className="text-orange-400 font-bold text-[9px] uppercase tracking-wider">
+                  Select Route on Map
+                </span>
+                <span className="text-white/60 text-[10px] leading-relaxed">
+                  Click map to add waypoints in order (Start → Waypoints → End).
+                </span>
+                <div className="text-[10px] text-white font-bold bg-white/5 px-2.5 py-1 rounded-lg">
+                  Waypoints Set: {tempWaypoints.length}
+                </div>
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={async () => {
+                      if (tempWaypoints.length < 2) {
+                        alert("Please select at least a Start and End point on the map!");
+                        return;
+                      }
+                      setGeneratingRoute(true);
+                      try {
+                        const routedPath = await fetchRoadRoute(tempWaypoints);
+                        if (routedPath && routedPath.length > 0) {
+                          onRouteGenerate(routedPath);
+                          setRouteSelectionActive(false);
+                          setTempWaypoints([]);
+                        } else {
+                          alert("Failed to generate route. Please try again.");
+                        }
+                      } catch (err) {
+                        console.error(err);
+                        alert("Error generating route: " + err.message);
+                      } finally {
+                        setGeneratingRoute(false);
+                      }
+                    }}
+                    disabled={generatingRoute || tempWaypoints.length < 2}
+                    className="flex-1 py-1.5 bg-green-500/20 hover:bg-green-500/30 disabled:opacity-40 disabled:hover:bg-green-500/20 text-green-400 font-black text-[9px] rounded-lg transition-all border border-green-500/30 cursor-pointer"
+                  >
+                    {generatingRoute ? "Generating..." : "Generate"}
+                  </button>
+                  <button
+                    onClick={() => setTempWaypoints([])}
+                    disabled={tempWaypoints.length === 0}
+                    className="flex-1 py-1.5 bg-white/5 hover:bg-white/10 disabled:opacity-40 disabled:hover:bg-white/5 text-white/80 font-black text-[9px] rounded-lg transition-all border border-white/10 cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="border-t border-white/10 pt-3 flex flex-col gap-2">
