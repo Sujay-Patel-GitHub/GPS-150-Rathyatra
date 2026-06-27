@@ -464,6 +464,325 @@
                 box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
             }
         }
+
+        /* Route Replay Player Bottom Bar */
+        .playback-bar {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: rgba(17, 24, 39, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 12px 24px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 400px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .playback-bar-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            gap: 20px;
+        }
+
+        .playback-title {
+            color: #ffffff;
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+        }
+
+        .playback-start-btn {
+            background: linear-gradient(135deg, #b45309 0%, #78350f 100%);
+            color: #ffffff;
+            border: none;
+            padding: 8px 16px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            border-radius: 6px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+        }
+
+        .playback-start-btn:hover {
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+            transform: translateY(-1px);
+        }
+
+        /* Expanded Active Replay Control Layout */
+        .active-replay-controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            width: 100%;
+            color: #ffffff;
+        }
+
+        .replay-control-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #ffffff;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .replay-control-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: #f97316;
+        }
+
+        .replay-time-display {
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #9ca3af;
+            min-width: 65px;
+            text-align: center;
+        }
+
+        .replay-timeline {
+            flex-grow: 1;
+            accent-color: #f97316;
+            height: 6px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .replay-speed-select {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .replay-speed-select option {
+            background: #111827;
+            color: #ffffff;
+        }
+
+        .replay-close-btn {
+            background: transparent;
+            border: none;
+            color: #9ca3af;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: color 0.2s;
+            padding: 4px;
+        }
+
+        .replay-close-btn:hover {
+            color: #ef4444;
+        }
+
+        /* Modern Settings Pop-up Modal */
+        .playback-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 1;
+            visibility: visible;
+            transition: all 0.2s ease;
+        }
+
+        .playback-modal.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .playback-modal-content {
+            background: #111827;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes modalSlideUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .playback-modal-header {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .playback-modal-header h3 {
+            color: #ffffff;
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .close-modal-btn {
+            background: transparent;
+            border: none;
+            color: #9ca3af;
+            font-size: 1.5rem;
+            cursor: pointer;
+            line-height: 1;
+            transition: color 0.2s;
+        }
+
+        .close-modal-btn:hover {
+            color: #ffffff;
+        }
+
+        .playback-modal-body {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .input-group label {
+            color: #9ca3af;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .flex-1 {
+            flex: 1;
+        }
+
+        .device-checkbox-container {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .device-checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #ffffff;
+            font-size: 0.8rem;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .device-checkbox-label input {
+            accent-color: #f97316;
+            width: 14px;
+            height: 14px;
+            cursor: pointer;
+        }
+
+        .modern-input {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 10px;
+            color: #ffffff;
+            font-size: 0.85rem;
+            outline: none;
+            transition: border-color 0.2s;
+            width: 100%;
+        }
+
+        .modern-input:focus {
+            border-color: #f97316;
+        }
+
+        /* Date picker icon styling in dark mode */
+        .modern-input::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+        }
+
+        .modal-actions {
+            margin-top: 8px;
+        }
+
+        .modern-btn {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .modern-btn.primary {
+            background: #f97316;
+            color: #ffffff;
+        }
+
+        .modern-btn.primary:hover {
+            background: #ea580c;
+        }
     </style>
 </head>
 
@@ -530,6 +849,76 @@
                     <div class="list-content" id="vehicleListContainer">
                         <!-- Vehicle Items Injected via JS -->
                     </div>
+                </div>
+                
+                <!-- Route Replay Bottom Player Bar -->
+                <div id="playbackBar" class="playback-bar">
+                    <div class="playback-bar-content" id="playbackBarDefault">
+                        <span class="playback-title"><i class="fas fa-history"></i> Route Replay Player</span>
+                        <button id="playbackStartBtn" class="playback-start-btn" onclick="openPlaybackModal()">Start Playback</button>
+                    </div>
+                    <div class="active-replay-controls hidden" id="playbackBarActive">
+                        <button class="replay-control-btn" id="replayPlayPauseBtn" onclick="toggleReplayPlayPause()">
+                            <i class="fas fa-play"></i>
+                        </button>
+                        <span id="replayCurrentTime" class="replay-time-display">00:00:00</span>
+                        <input type="range" id="replayTimeline" class="replay-timeline" min="0" max="100" value="0" oninput="seekReplay(this.value)">
+                        <span id="replayTotalTime" class="replay-time-display">00:00:00</span>
+                        <select id="replaySpeedSelect" class="replay-speed-select" onchange="changeReplaySpeed(this.value)">
+                            <option value="1">1x</option>
+                            <option value="5">5x</option>
+                            <option value="10" selected>10x</option>
+                            <option value="30">30x</option>
+                            <option value="60">60x</option>
+                            <option value="120">120x</option>
+                        </select>
+                        <button class="replay-close-btn" onclick="exitReplayMode()" title="Exit Replay">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Replay Settings Pop-up Modal -->
+    <div id="playbackModal" class="playback-modal hidden">
+        <div class="playback-modal-content">
+            <div class="playback-modal-header">
+                <h3><i class="fas fa-sliders-h"></i> Replay Settings</h3>
+                <button class="close-modal-btn" onclick="closePlaybackModal()">&times;</button>
+            </div>
+            <div class="playback-modal-body">
+                <!-- Device Selection -->
+                <div class="input-group">
+                    <label>Select Devices:</label>
+                    <div class="device-checkbox-container" id="playbackDeviceList">
+                        <!-- Dynamically populated checkboxes -->
+                    </div>
+                </div>
+                <!-- Date Selection -->
+                <div class="input-row">
+                    <div class="input-group flex-1">
+                        <label for="playbackDate">Date:</label>
+                        <input type="date" id="playbackDate" class="modern-input">
+                    </div>
+                </div>
+                <!-- Time range selection -->
+                <div class="input-row">
+                    <div class="input-group flex-1">
+                        <label for="playbackStartTime">Start Time:</label>
+                        <input type="time" id="playbackStartTime" class="modern-input" value="00:00">
+                    </div>
+                    <div class="input-group flex-1">
+                        <label for="playbackEndTime">End Time:</label>
+                        <input type="time" id="playbackEndTime" class="modern-input" value="23:59">
+                    </div>
+                </div>
+                <!-- Actions -->
+                <div class="modal-actions">
+                    <button id="loadHistoryBtn" class="modern-btn primary" onclick="loadReplayHistory()">
+                        <i class="fas fa-download"></i> Load Route History
+                    </button>
                 </div>
             </div>
         </div>
@@ -893,6 +1282,373 @@
 
         setTimeout(() => map.invalidateSize(), 100);
 
+        // --- Playback State & Functions ---
+        let liveRefreshTimer = null;
+        let replayIsActive = false;
+        let replayTimer = null;
+        
+        const replayState = {
+            historyData: {},
+            playbackMarkers: {},
+            playbackPolylines: {},
+            isPlaying: false,
+            minTs: 0,
+            maxTs: 0,
+            currentTs: 0,
+            speed: 10
+        };
+
+        const PLAYBACK_COLORS = [
+            '#f97316', // Orange
+            '#3b82f6', // Blue
+            '#10b981', // Green
+            '#8b5cf6', // Purple
+            '#ec4899', // Pink
+            '#eab308', // Yellow
+            '#06b6d4', // Cyan
+            '#ef4444'  // Red
+        ];
+
+        function makePlaybackIcon(role, deviceId, color) {
+            const isAkhada = role === 'AKHADA_USER';
+            const faIcon = isAkhada ? 'fa-shield-alt' : 'fa-truck';
+            return L.divIcon({
+                className: '',
+                html: `<div style="position:relative;width:40px;height:48px;display:flex;justify-content:center;">
+                    <i class="fas fa-map-marker" style="color:${color};font-size:2.5rem;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35));"></i>
+                    <div style="position:absolute;top:6px;width:22px;height:22px;background:white;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas ${faIcon}" style="color:${color};font-size:10px;"></i>
+                    </div>
+                    <div style="position:absolute;bottom:-18px;background:rgba(17,24,39,0.9);color:white;font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;white-space:nowrap;border:1px solid rgba(255,255,255,0.15);">
+                        ${deviceId}
+                    </div>
+                </div>`,
+                iconSize: [40, 48], iconAnchor: [26, 48], popupAnchor: [0, -48]
+            });
+        }
+
+        function openPlaybackModal() {
+            // Set date picker to today by default
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('playbackDate').value = today;
+
+            // Populate devices list
+            const container = document.getElementById('playbackDeviceList');
+            container.innerHTML = '';
+            
+            // Get unique sorted vehicle list
+            const deviceIds = vehicles.map(v => v.device_id).filter((v, i, self) => self.indexOf(v) === i).sort();
+            
+            deviceIds.forEach(did => {
+                const label = document.createElement('label');
+                label.className = 'device-checkbox-label';
+                label.innerHTML = `
+                    <input type="checkbox" name="playbackDevice" value="${did}">
+                    <span>${did}</span>
+                `;
+                container.appendChild(label);
+            });
+
+            document.getElementById('playbackModal').classList.remove('hidden');
+        }
+
+        function closePlaybackModal() {
+            document.getElementById('playbackModal').classList.add('hidden');
+        }
+
+        async function loadReplayHistory() {
+            const date = document.getElementById('playbackDate').value;
+            const startTimeStr = document.getElementById('playbackStartTime').value;
+            const endTimeStr = document.getElementById('playbackEndTime').value;
+            
+            const checkedBoxes = document.querySelectorAll('input[name="playbackDevice"]:checked');
+            if (checkedBoxes.length === 0) {
+                alert("Please select at least one device to track.");
+                return;
+            }
+            if (!date) {
+                alert("Please select a date.");
+                return;
+            }
+
+            const deviceIds = Array.from(checkedBoxes).map(cb => cb.value);
+            const loadBtn = document.getElementById('loadHistoryBtn');
+            loadBtn.disabled = true;
+            loadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+
+            try {
+                // Fetch in parallel for all selected devices
+                const promises = deviceIds.map(async did => {
+                    const response = await fetch(`/api/get_map_recordings_data?device_id=${encodeURIComponent(did)}&date=${date}`);
+                    if (!response.ok) return { deviceId: did, points: [] };
+                    const data = await response.json();
+                    return { deviceId: did, points: data.points || [] };
+                });
+
+                const results = await promises;
+                
+                // Process and filter results by selected time range
+                const startHour = parseInt(startTimeStr.split(':')[0]);
+                const startMin = parseInt(startTimeStr.split(':')[1]);
+                const endHour = parseInt(endTimeStr.split(':')[0]);
+                const endMin = parseInt(endTimeStr.split(':')[1]);
+                
+                const startSeconds = startHour * 3600 + startMin * 60;
+                const endSeconds = endHour * 3600 + endMin * 60;
+                
+                let totalFilteredPoints = 0;
+                const historyData = {};
+                
+                let minTs = Infinity;
+                let maxTs = -Infinity;
+
+                results.forEach(res => {
+                    const filtered = res.points.filter(pt => {
+                        const timeParts = pt.time.split(':');
+                        const h = parseInt(timeParts[0]);
+                        const m = parseInt(timeParts[1]);
+                        const s = parseInt(timeParts[2] || 0);
+                        const sec = h * 3600 + m * 60 + s;
+                        return sec >= startSeconds && sec <= endSeconds;
+                    });
+                    
+                    if (filtered.length > 0) {
+                        historyData[res.deviceId] = filtered;
+                        totalFilteredPoints += filtered.length;
+                        
+                        filtered.forEach(pt => {
+                            if (pt.ts < minTs) minTs = pt.ts;
+                            if (pt.ts > maxTs) maxTs = pt.ts;
+                        });
+                    }
+                });
+
+                if (totalFilteredPoints === 0) {
+                    alert("No route history found for the selected time range.");
+                    loadBtn.disabled = false;
+                    loadBtn.innerHTML = '<i class="fas fa-download"></i> Load Route History';
+                    return;
+                }
+
+                // Initialize playback mode
+                replayState.historyData = historyData;
+                replayState.minTs = minTs;
+                replayState.maxTs = maxTs;
+                replayState.currentTs = minTs;
+                replayState.isPlaying = false;
+                replayIsActive = true;
+                
+                // Clear live locations updates
+                if (liveRefreshTimer) {
+                    clearInterval(liveRefreshTimer);
+                }
+                
+                // Hide live markers
+                Object.values(markers).forEach(m => map.removeLayer(m));
+                
+                // Create Replay markers and trails
+                clearPlaybackLayers();
+                
+                const activeDeviceIds = Object.keys(historyData);
+                activeDeviceIds.forEach((did, idx) => {
+                    const color = PLAYBACK_COLORS[idx % PLAYBACK_COLORS.length];
+                    const pts = historyData[did];
+                    
+                    // Draw full path polyline
+                    const latlngs = pts.map(p => [p.lat, p.lng]);
+                    const polyline = L.polyline(latlngs, {
+                        color: color,
+                        weight: 4,
+                        opacity: 0.7,
+                        dashArray: '5, 10'
+                    }).addTo(map);
+                    
+                    replayState.playbackPolylines[did] = polyline;
+                    
+                    // Create start position marker
+                    const firstPt = pts[0];
+                    const role = (assignMap[did] || {}).role || '';
+                    const marker = L.marker([firstPt.lat, firstPt.lng], {
+                        icon: makePlaybackIcon(role, did, color)
+                    }).addTo(map);
+                    
+                    // Bind simple popup details
+                    const popupHtml = `
+                        <div style="font-family:'Poppins',sans-serif;">
+                            <strong style="color:${color};">${did}</strong> (Replay)<br>
+                            Speed: <span id="popup-speed-${did}">${firstPt.speed || 0}</span> km/h<br>
+                            Time: <span id="popup-time-${did}">${firstPt.time}</span>
+                        </div>
+                    `;
+                    marker.bindPopup(popupHtml);
+                    
+                    replayState.playbackMarkers[did] = marker;
+                });
+
+                // Fit map to show all routes
+                const allLatLngs = [];
+                activeDeviceIds.forEach(did => {
+                    historyData[did].forEach(p => allLatLngs.push([p.lat, p.lng]));
+                });
+                if (allLatLngs.length > 0) {
+                    map.fitBounds(L.latLngBounds(allLatLngs), { padding: [50, 50] });
+                }
+
+                // Show playback controls
+                document.getElementById('playbackBarDefault').classList.add('hidden');
+                document.getElementById('playbackBarActive').classList.remove('hidden');
+                
+                // Setup slider range
+                const timeline = document.getElementById('replayTimeline');
+                timeline.min = minTs;
+                timeline.max = maxTs;
+                timeline.value = minTs;
+                
+                // Update time display labels
+                updatePlaybackTimeDisplay();
+                
+                closePlaybackModal();
+
+            } catch (err) {
+                console.error("Load replay error:", err);
+                alert("An error occurred while loading history.");
+            } finally {
+                loadBtn.disabled = false;
+                loadBtn.innerHTML = '<i class="fas fa-download"></i> Load Route History';
+            }
+        }
+
+        function clearPlaybackLayers() {
+            Object.values(replayState.playbackMarkers).forEach(m => map.removeLayer(m));
+            Object.values(replayState.playbackPolylines).forEach(p => map.removeLayer(p));
+            replayState.playbackMarkers = {};
+            replayState.playbackPolylines = {};
+        }
+
+        function updatePlaybackTimeDisplay() {
+            const formatTime = (ts) => {
+                const d = new Date(ts * 1000);
+                return d.toTimeString().split(' ')[0];
+            };
+            document.getElementById('replayCurrentTime').innerText = formatTime(replayState.currentTs);
+            document.getElementById('replayTotalTime').innerText = formatTime(replayState.maxTs);
+            document.getElementById('replayTimeline').value = replayState.currentTs;
+        }
+
+        function interpolatePosition(points, targetTs) {
+            if (!points || points.length === 0) return null;
+            if (targetTs <= points[0].ts) return points[0];
+            if (targetTs >= points[points.length - 1].ts) return points[points.length - 1];
+
+            // Binary search to find segment
+            let low = 0;
+            let high = points.length - 1;
+            while (low <= high) {
+                let mid = Math.floor((low + high) / 2);
+                if (points[mid].ts < targetTs) {
+                    low = mid + 1;
+                } else if (points[mid].ts > targetTs) {
+                    high = mid - 1;
+                } else {
+                    return points[mid];
+                }
+            }
+
+            const p1 = points[high];
+            const p2 = points[low];
+
+            if (!p1 || !p2) return p1 || p2;
+
+            const ratio = (targetTs - p1.ts) / (p2.ts - p1.ts);
+            const lat = p1.lat + (p2.lat - p1.lat) * ratio;
+            const lng = p1.lng + (p2.lng - p1.lng) * ratio;
+            const speed = p1.speed + (p2.speed - p1.speed) * ratio;
+
+            return { lat, lng, speed, time: p1.time };
+        }
+
+        function updateReplayPositions() {
+            const activeDeviceIds = Object.keys(replayState.historyData);
+            activeDeviceIds.forEach(did => {
+                const pts = replayState.historyData[did];
+                const pos = interpolatePosition(pts, replayState.currentTs);
+                if (pos) {
+                    const marker = replayState.playbackMarkers[did];
+                    if (marker) {
+                        marker.setLatLng([pos.lat, pos.lng]);
+                        // Update popup DOM values if open
+                        const spSpan = document.getElementById(`popup-speed-${did}`);
+                        const timeSpan = document.getElementById(`popup-time-${did}`);
+                        if (spSpan) spSpan.innerText = Math.round(pos.speed || 0);
+                        if (timeSpan) timeSpan.innerText = pos.time;
+                    }
+                }
+            });
+        }
+
+        function toggleReplayPlayPause() {
+            const playBtn = document.getElementById('replayPlayPauseBtn');
+            if (replayState.isPlaying) {
+                // Pause
+                replayState.isPlaying = false;
+                playBtn.innerHTML = '<i class="fas fa-play"></i>';
+                clearInterval(replayTimer);
+            } else {
+                // Play
+                if (replayState.currentTs >= replayState.maxTs) {
+                    replayState.currentTs = replayState.minTs;
+                }
+                replayState.isPlaying = true;
+                playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                
+                const tickIntervalMs = 100; // 10 ticks per second
+                replayTimer = setInterval(() => {
+                    const increment = (tickIntervalMs / 1000) * replayState.speed;
+                    replayState.currentTs += increment;
+                    
+                    if (replayState.currentTs >= replayState.maxTs) {
+                        replayState.currentTs = replayState.maxTs;
+                        toggleReplayPlayPause(); // Auto-pause at end
+                    }
+                    
+                    updatePlaybackTimeDisplay();
+                    updateReplayPositions();
+                }, tickIntervalMs);
+            }
+        }
+
+        function seekReplay(value) {
+            replayState.currentTs = parseFloat(value);
+            updatePlaybackTimeDisplay();
+            updateReplayPositions();
+        }
+
+        function changeReplaySpeed(val) {
+            replayState.speed = parseFloat(val);
+        }
+
+        function exitReplayMode() {
+            // Stop playback
+            if (replayState.isPlaying) {
+                toggleReplayPlayPause();
+            }
+            
+            // Clean up elements
+            clearPlaybackLayers();
+            replayIsActive = false;
+
+            // Restore live updates
+            Object.values(markers).forEach(m => m.addTo(map));
+            
+            // Switch control bar UI
+            document.getElementById('playbackBarActive').classList.add('hidden');
+            document.getElementById('playbackBarDefault').classList.remove('hidden');
+
+            // Restart live updates interval
+            refreshLocations();
+            liveRefreshTimer = setInterval(refreshLocations, 1000);
+        }
+
         // Initialize
         snapToRoad = localStorage.getItem('snapToRoad') === 'true';
         document.getElementById('snapToRoadChk').checked = snapToRoad;
@@ -903,7 +1659,7 @@
         setTimeout(showAllVehicles, 500);
 
         // Auto-refresh every 1 second
-        setInterval(refreshLocations, 1000);
+        liveRefreshTimer = setInterval(refreshLocations, 1000);
 
     </script>
 </body>
