@@ -678,29 +678,50 @@
             return R * c;
         }
 
+        // Snap a single point to the nearest point on the road GEOMETRY
+        // (not just the nearest node/intersection) using OSRM match API.
+        // Falls back to /nearest if match fails.
         async function getSnappedCoordinate(lat, lng) {
             const key = `${lat.toFixed(6)},${lng.toFixed(6)}`;
             if (snapToRoadCache[key]) {
                 return snapToRoadCache[key];
             }
+
+            // --- Primary: OSRM /match (snaps to road geometry, not just nodes) ---
             try {
-                // Request 5 nearest road candidates so we can pick the truly closest
+                const ts = Math.floor(Date.now() / 1000);
+                const url = `https://router.project-osrm.org/match/v1/driving/` +
+                            `${lng},${lat}?timestamps=${ts}&radiuses=25&generate_hints=false&overview=false`;
+                const response = await fetch(url);
+                const data = await response.json();
+                if ((data.code === 'Ok') && data.matchings && data.matchings.length > 0 &&
+                    data.tracepoints && data.tracepoints.length > 0 && data.tracepoints[0]) {
+                    const tp = data.tracepoints[0];
+                    const snapLat = tp.location[1];
+                    const snapLng = tp.location[0];
+                    const dist = haversine(lat, lng, snapLat, snapLng);
+                    if (dist <= 25) {
+                        const result = { lat: snapLat, lng: snapLng, distance: dist };
+                        snapToRoadCache[key] = result;
+                        return result;
+                    }
+                }
+            } catch (e) {
+                // match failed — fall through to nearest fallback
+            }
+
+            // --- Fallback: OSRM /nearest (pick closest of 5 candidates) ---
+            try {
                 const response = await fetch(
                     `https://router.project-osrm.org/nearest/v1/driving/${lng},${lat}?number=5`
                 );
                 const data = await response.json();
                 if (data.code === 'Ok' && data.waypoints && data.waypoints.length > 0) {
-                    // OSRM returns waypoints sorted by distance already.
-                    // Re-verify by computing haversine distance ourselves so we
-                    // always pick the geometrically nearest snapped point.
                     let best = null;
                     for (const wp of data.waypoints) {
-                        const snapLat = wp.location[1];
-                        const snapLng = wp.location[0];
-                        // Use OSRM reported distance (most accurate)
                         const dist = wp.distance;
                         if (!best || dist < best.distance) {
-                            best = { lat: snapLat, lng: snapLng, distance: dist };
+                            best = { lat: wp.location[1], lng: wp.location[0], distance: dist };
                         }
                     }
                     if (best) {
@@ -719,9 +740,8 @@
                 return { lat: rawLat, lng: rawLng };
             }
             const snapped = await getSnappedCoordinate(rawLat, rawLng);
-            // Only snap if the nearest road is within 20 metres
-            // (tight threshold avoids jumping to a distant parallel road)
-            if (snapped && snapped.distance <= 20) {
+            // Only snap if road is within 25 metres to avoid far-road jumps
+            if (snapped && snapped.distance <= 25) {
                 return { lat: snapped.lat, lng: snapped.lng };
             }
             return { lat: rawLat, lng: rawLng };
