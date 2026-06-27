@@ -52,24 +52,34 @@ def inject_sidebar_sections():
         config_doc = col_settings.find_one({"_id": "sidebar_sections"})
         if config_doc and "sections" in config_doc:
             sections = config_doc["sections"]
-            # Ensure "tracking" section exists
-            if not any(s.get("id") == "tracking" for s in sections):
+            updated = False
+            # Check if tracking section exists, and update its href to force cache bust
+            for s in sections:
+                if s.get("id") == "tracking":
+                    if s.get("href") != "/tracking?v=5":
+                        s["href"] = "/tracking?v=5"
+                        updated = True
+                    break
+            else:
                 idx = -1
                 for i, s in enumerate(sections):
                     if s.get("id") == "gps_monitoring":
                         idx = i
                         break
                 if idx != -1:
-                    sections.insert(idx + 1, {"id": "tracking", "name": "Tracking", "href": "/tracking", "icon": "fas fa-route", "visible": True})
+                    sections.insert(idx + 1, {"id": "tracking", "name": "Tracking", "href": "/tracking?v=5", "icon": "fas fa-route", "visible": True})
                 else:
-                    sections.append({"id": "tracking", "name": "Tracking", "href": "/tracking", "icon": "fas fa-route", "visible": True})
+                    sections.append({"id": "tracking", "name": "Tracking", "href": "/tracking?v=5", "icon": "fas fa-route", "visible": True})
+                updated = True
+            
+            if updated:
                 col_settings.update_one({"_id": "sidebar_sections"}, {"$set": {"sections": sections}}, upsert=True)
         else:
             sections = [
                 {"id": "add_user", "name": "Add New User", "href": "/add_user", "icon": "fas fa-user-plus", "visible": True},
                 {"id": "show_devices", "name": "Show Devices", "href": "/admin_dashboard", "icon": "fas fa-list-ul", "visible": True},
                 {"id": "gps_monitoring", "name": "GPS Monitoring", "href": "/gps_monitoring", "icon": "fas fa-map-marked-alt", "visible": True},
-                {"id": "tracking", "name": "Tracking", "href": "/tracking", "icon": "fas fa-route", "visible": True},
+                {"id": "tracking", "name": "Tracking", "href": "/tracking?v=5", "icon": "fas fa-route", "visible": True},
                 {"id": "detailed_report", "name": "Detailed Report", "href": "/monthly_report", "icon": "fas fa-file-invoice", "visible": True},
                 {"id": "list_roles", "name": "List Roles", "href": "/list_roles", "icon": "fas fa-users", "visible": True},
                 {"id": "grouping", "name": "Grouping", "href": "/grouping", "icon": "fas fa-object-group", "visible": True},
@@ -85,7 +95,7 @@ def inject_sidebar_sections():
             {"id": "add_user", "name": "Add New User", "href": "/add_user", "icon": "fas fa-user-plus", "visible": True},
             {"id": "show_devices", "name": "Show Devices", "href": "/admin_dashboard", "icon": "fas fa-list-ul", "visible": True},
             {"id": "gps_monitoring", "name": "GPS Monitoring", "href": "/gps_monitoring", "icon": "fas fa-map-marked-alt", "visible": True},
-            {"id": "tracking", "name": "Tracking", "href": "/tracking", "icon": "fas fa-route", "visible": True},
+            {"id": "tracking", "name": "Tracking", "href": "/tracking?v=5", "icon": "fas fa-route", "visible": True},
             {"id": "detailed_report", "name": "Detailed Report", "href": "/monthly_report", "icon": "fas fa-file-invoice", "visible": True},
             {"id": "list_roles", "name": "List Roles", "href": "/list_roles", "icon": "fas fa-users", "visible": True},
             {"id": "grouping", "name": "Grouping", "href": "/grouping", "icon": "fas fa-object-group", "visible": True},
@@ -6520,7 +6530,7 @@ def api_reset_sections():
             {"id": "add_user", "name": "Add New User", "href": "/add_user", "icon": "fas fa-user-plus", "visible": True},
             {"id": "show_devices", "name": "Show Devices", "href": "/admin_dashboard", "icon": "fas fa-list-ul", "visible": True},
             {"id": "gps_monitoring", "name": "GPS Monitoring", "href": "/gps_monitoring", "icon": "fas fa-map-marked-alt", "visible": True},
-            {"id": "tracking", "name": "Tracking", "href": "/tracking", "icon": "fas fa-route", "visible": True},
+            {"id": "tracking", "name": "Tracking", "href": "/tracking?v=5", "icon": "fas fa-route", "visible": True},
             {"id": "detailed_report", "name": "Detailed Report", "href": "/monthly_report", "icon": "fas fa-file-invoice", "visible": True},
             {"id": "list_roles", "name": "List Roles", "href": "/list_roles", "icon": "fas fa-users", "visible": True},
             {"id": "grouping", "name": "Grouping", "href": "/grouping", "icon": "fas fa-object-group", "visible": True},
