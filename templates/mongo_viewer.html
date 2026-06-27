@@ -292,6 +292,7 @@ async function showTruckDetail(truckId) {
       <button class="back-btn" onclick="selectCol('new_devices')">&#8592; All Trucks</button>
       <h2>&#128666; ${truckId}</h2>
       <span style="font-size:.75rem;color:#94a3b8;background:#0f172a;padding:3px 10px;border-radius:999px;">${docs.length} records</span>
+      <button class="btn-delete-confirm" style="background:#dc2626;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:.8rem;font-weight:600;margin-left:15px;" onclick="confirmDeleteTruck('${esc(truckId)}')">&#128465; Delete Truck</button>
       <label class="auto-label" style="margin-left:auto;"><input type="checkbox" ${autoRefresh?"checked":""} onchange="toggleAuto(this)"> Auto-refresh</label>
       <button class="refresh-btn" onclick="showTruckDetail('${esc(truckId)}')">&#8635; Refresh</button>
     </div>
@@ -420,6 +421,26 @@ async function confirmDelete() {
       await loadCollections();
     } else showToast("Error: "+d.error, true);
   } catch(e) { showToast("Network error", true); }
+}
+async function confirmDeleteTruck(truckId) {
+  if (!confirm(`Are you sure you want to permanently delete truck "${truckId}" and all its telemetry data, live positions, and history?\n\nThis action cannot be undone.`)) {
+    return;
+  }
+  try {
+    const res = await fetch("/api/devices/unregister/" + encodeURIComponent(truckId), {
+      method: "DELETE"
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showToast(`Truck "${truckId}" and all associated data deleted successfully.`, false);
+      selectCol("new_devices");
+    } else {
+      alert("Error: " + (data.error || "Failed to delete truck."));
+    }
+  } catch (err) {
+    console.error("Delete failed:", err);
+    alert("Connection error: Failed to delete truck.");
+  }
 }
 function showToast(msg, isError) {
   const t = document.getElementById("toast");
