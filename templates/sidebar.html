@@ -163,7 +163,62 @@
         <a href="/manage_sections"><button class="{{ 'active' if request.path == '/manage_sections' else '' }}"><i
                     class="fas fa-sliders-h"></i> <span>Manage Sections</span></button></a>
     {% endif %}
+    <!-- Global Theme Switcher button -->
+    <button id="globalThemeToggleBtn" onclick="toggleGlobalTheme()" class="mt-auto" style="border-top: 1px solid #e5e7eb; border-radius: 0; padding-top: 15px; margin-top: auto;">
+        <i id="globalThemeToggleIcon" class="fas fa-moon" style="color: #9ca3af;"></i> <span>Dark Mode</span>
+    </button>
 </div>
+
+<script>
+(function() {
+    function applyTheme(theme) {
+        const body = document.body;
+        const icon = document.getElementById('globalThemeToggleIcon');
+        const text = document.querySelector('#globalThemeToggleBtn span');
+        const btn = document.getElementById('globalThemeToggleBtn');
+        const hud = document.querySelector('.gps-hud-container');
+        
+        if (theme === 'dark') {
+            body.classList.add('dark-theme');
+            if (hud) hud.classList.add('dark-theme');
+            if (icon) {
+                icon.className = 'fas fa-sun';
+                icon.style.color = '#f59e0b';
+            }
+            if (text) text.textContent = 'Light Mode';
+        } else {
+            body.classList.remove('dark-theme');
+            if (hud) hud.classList.remove('dark-theme');
+            if (icon) {
+                icon.className = 'fas fa-moon';
+                icon.style.color = '#9ca3af';
+            }
+            if (text) text.textContent = 'Dark Mode';
+        }
+    }
+    
+    window.toggleGlobalTheme = function() {
+        const current = localStorage.getItem('globalTheme') || 'light';
+        const next = current === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('globalTheme', next);
+        applyTheme(next);
+        
+        // Custom trigger for GPS monitoring card lists
+        if (typeof renderFleetList === 'function') {
+            renderFleetList();
+        }
+    }
+    
+    // Initialize on page load
+    const savedTheme = localStorage.getItem('globalTheme') || 'light';
+    applyTheme(savedTheme);
+    
+    // Also run on DOMContentLoaded to ensure elements exist
+    document.addEventListener('DOMContentLoaded', () => {
+        applyTheme(localStorage.getItem('globalTheme') || 'light');
+    });
+})();
+</script>
 
 <script>
 (function () {

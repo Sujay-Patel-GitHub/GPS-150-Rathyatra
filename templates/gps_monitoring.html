@@ -218,14 +218,8 @@
                 </div>
             </div>
 
-            <!-- Sidebar Footer with Theme Switcher -->
-            <div class="px-4 py-3.5 theme-border border-t theme-bg-sidebar-header shrink-0 flex flex-col gap-2.5">
-                <div class="flex items-center justify-between text-xs font-bold theme-text-muted">
-                    <span>Theme</span>
-                    <button onclick="toggleTheme()" id="themeToggleBtn" class="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer shadow-sm text-[11px] text-gray-700">
-                        <span id="themeToggleIcon">☀️</span> <span id="themeToggleText">Light</span>
-                    </button>
-                </div>
+            <!-- Sidebar Footer -->
+            <div class="px-4 py-3.5 theme-border border-t theme-bg-sidebar-header shrink-0">
                 <p class="text-[10px] theme-text-muted text-center uppercase font-bold tracking-widest flex items-center justify-center gap-1.5 mt-0.5">
                     <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping"></span>
                     Live Telemetry Active
@@ -256,7 +250,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- Floating Settings Card (Top-Left of map) -->
             <div class="absolute top-4 left-4 z-[1000] theme-bg-panel theme-border border rounded-2xl p-4 theme-shadow backdrop-blur-xl w-60">
                 <h3 class="text-xs font-black uppercase theme-text-muted tracking-wider mb-3">Dashboard Settings</h3>
@@ -268,13 +261,6 @@
                             <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-500"></div>
                         </label>
                     </div>
-
-                    <div class="h-px theme-border border-b my-2"></div>
-
-                    <button id="recordRouteBtn" onclick="toggleRouteRecording()" class="w-full py-2 bg-red-50 hover:bg-red-100 border border-red-200 text-red-500 active:scale-[0.98] transition-all rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer">
-                        <span class="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
-                        <span id="recordRouteBtnText">Record Route</span>
-                    </button>
                 </div>
             </div>
 
@@ -473,6 +459,20 @@
                                     <span class="text-xs theme-text-muted uppercase tracking-wider font-semibold">Last Update</span>
                                     <span id="statLastUpdated" class="text-sm theme-text-title font-bold text-right">—</span>
                                 </div>
+                            </div>
+
+                            <!-- Path Recording Card -->
+                            <div id="recordingCard" class="p-4 rounded-xl theme-bg-card theme-border border space-y-2.5">
+                                <div>
+                                    <p class="text-xs theme-text-title font-bold">Live Path Recorder</p>
+                                    <p class="text-[10px] theme-text-muted mt-0.5 leading-relaxed">
+                                        Record the live path of the selected vehicle in real-time.
+                                    </p>
+                                </div>
+                                <button id="recordRouteBtn" onclick="toggleRouteRecording()" class="w-full py-2 bg-red-50 hover:bg-red-100 border border-red-200 text-red-500 active:scale-[0.98] transition-all rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer">
+                                    <span class="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
+                                    <span id="recordRouteBtnText">Record Route</span>
+                                </button>
                             </div>
 
                             <!-- Export Trail Section -->
@@ -686,6 +686,7 @@
             center: [23.0225, 72.5714], // Default to center of Ahmedabad
             zoom: 13,
             zoomControl: false,
+            attributionControl: false, // Hides Leaflet copyright text
             preferCanvas: true
         });
 
@@ -1215,9 +1216,11 @@
             const device_id = selectedId || vehicles[0].device_id;
             
             // Format CSV
-            let csv = "index,latitude,longitude,speed_kmh,timestamp\n";
+            let csv = "index,latitude,longitude,speed_kmh,timestamp
+";
             recordingPoints.forEach((p, idx) => {
-                csv += `${idx + 1},${p.lat},${p.lng},${p.speed},${p.timestamp}\n`;
+                csv += `${idx + 1},${p.lat},${p.lng},${p.speed},${p.timestamp}
+`;
             });
 
             // Trigger download
@@ -1660,41 +1663,63 @@
             const sid = new Date().toISOString().replace(/[:.]/g, "-");
 
             if (type === 'csv') {
-                let csv = "index,latitude,longitude,speed_kmh,timestamp\n";
+                let csv = "index,latitude,longitude,speed_kmh,timestamp
+";
                 coords.forEach((p, i) => {
-                    csv += `${i + 1},${p[0]},${p[1]},0,${new Date(Date.now() - (coords.length - i) * 5000).toISOString()}\n`;
+                    csv += `${i + 1},${p[0]},${p[1]},0,${new Date(Date.now() - (coords.length - i) * 5000).toISOString()}
+`;
                 });
                 triggerFileDownload(csv, `trail_${selectedId}_${sid}.csv`, 'text/csv');
             } 
             else if (type === 'gpx') {
-                let gpx = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-                gpx += `<gpx version="1.1" creator="Rath Yatra GPS Tracker" xmlns="http://www.topografix.com/GPX/1/1">\n`;
-                gpx += `  <metadata><name>Trail for ${selectedId}</name></metadata>\n`;
-                gpx += `  <trk>\n`;
-                gpx += `    <trkseg>\n`;
+                let gpx = `<?xml version="1.0" encoding="UTF-8"?>
+`;
+                gpx += `<gpx version="1.1" creator="Rath Yatra GPS Tracker" xmlns="http://www.topografix.com/GPX/1/1">
+`;
+                gpx += `  <metadata><name>Trail for ${selectedId}</name></metadata>
+`;
+                gpx += `  <trk>
+`;
+                gpx += `    <trkseg>
+`;
                 coords.forEach(p => {
-                    gpx += `      <trkpt lat="${p[0]}" lon="${p[1]}"></trkpt>\n`;
+                    gpx += `      <trkpt lat="${p[0]}" lon="${p[1]}"></trkpt>
+`;
                 });
-                gpx += `    </trkseg>\n`;
-                gpx += `  </trk>\n`;
+                gpx += `    </trkseg>
+`;
+                gpx += `  </trk>
+`;
                 gpx += `</gpx>`;
                 triggerFileDownload(gpx, `trail_${selectedId}_${sid}.gpx`, 'application/gpx+xml');
             } 
             else {
-                let kml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-                kml += `<kml xmlns="http://www.opengis.net/kml/2.2">\n`;
-                kml += `  <Document>\n`;
-                kml += `    <name>${selectedId} Trail</name>\n`;
-                kml += `    <Placemark>\n`;
-                kml += `      <LineString>\n`;
-                kml += `        <coordinates>\n`;
+                let kml = `<?xml version="1.0" encoding="UTF-8"?>
+`;
+                kml += `<kml xmlns="http://www.opengis.net/kml/2.2">
+`;
+                kml += `  <Document>
+`;
+                kml += `    <name>${selectedId} Trail</name>
+`;
+                kml += `    <Placemark>
+`;
+                kml += `      <LineString>
+`;
+                kml += `        <coordinates>
+`;
                 coords.forEach(p => {
-                    kml += `          ${p[1]},${p[0]},0\n`;
+                    kml += `          ${p[1]},${p[0]},0
+`;
                 });
-                kml += `        </coordinates>\n`;
-                kml += `      </LineString>\n`;
-                kml += `    </Placemark>\n`;
-                kml += `  </Document>\n`;
+                kml += `        </coordinates>
+`;
+                kml += `      </LineString>
+`;
+                kml += `    </Placemark>
+`;
+                kml += `  </Document>
+`;
                 kml += `</kml>`;
                 triggerFileDownload(kml, `trail_${selectedId}_${sid}.kml`, 'application/vnd.google-earth.kml+xml');
             }
@@ -1767,60 +1792,22 @@
             }
         }
 
-        // --- Theme Switcher Handlers ---
-        function toggleTheme() {
-            const hud = document.querySelector('.gps-hud-container');
-            const icon = document.getElementById('themeToggleIcon');
-            const text = document.getElementById('themeToggleText');
-            const btn = document.getElementById('themeToggleBtn');
-            
-            if (hud.classList.contains('dark-theme')) {
-                hud.classList.remove('dark-theme');
-                localStorage.setItem('gpsTheme', 'light');
-                icon.textContent = '☀️';
-                text.textContent = 'Light';
-                btn.className = "flex items-center gap-1.5 px-2.5 py-1 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer shadow-sm text-[11px] text-gray-700";
-            } else {
-                hud.classList.add('dark-theme');
-                localStorage.setItem('gpsTheme', 'dark');
-                icon.textContent = '🌙';
-                text.textContent = 'Dark';
-                btn.className = "flex items-center gap-1.5 px-2.5 py-1 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 cursor-pointer shadow-sm text-[11px] text-gray-200";
-            }
-            
-            // Re-render vehicle card styles to match selected theme background
-            renderFleetList();
-        }
-
-        function initTheme() {
-            const saved = localStorage.getItem('gpsTheme');
-            const hud = document.querySelector('.gps-hud-container');
-            const icon = document.getElementById('themeToggleIcon');
-            const text = document.getElementById('themeToggleText');
-            const btn = document.getElementById('themeToggleBtn');
-            
-            if (saved === 'dark') {
-                hud.classList.add('dark-theme');
-                icon.textContent = '🌙';
-                text.textContent = 'Dark';
-                btn.className = "flex items-center gap-1.5 px-2.5 py-1 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 cursor-pointer shadow-sm text-[11px] text-gray-200";
-            } else {
-                hud.classList.remove('dark-theme');
-                icon.textContent = '☀️';
-                text.textContent = 'Light';
-                btn.className = "flex items-center gap-1.5 px-2.5 py-1 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer shadow-sm text-[11px] text-gray-700";
-            }
-            
-            renderFleetList();
-        }
-
-
         // --- Initializer ---
-        initTheme();
         initPlaybackSelectors();
         initOrUpdateMarkers();
         calculateProcessionHUD();
         centerOnFirstActive();
+
+        // Invalidate map size to prevent gray border tile loading issue
+        setTimeout(() => {
+            map.invalidateSize();
+        }, 500);
+
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 600);
+        });
 
         // Run auto refresh every 2.5 seconds
         setInterval(refreshLocations, 2500);
