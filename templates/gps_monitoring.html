@@ -847,9 +847,9 @@
                 const online = !v.is_power_off;
                 const label = v.display_name || v.device_id;
                 
-                const card = document.createElement('button');
+                const card = document.createElement('div');
                 card.onclick = () => selectVehicle(v.device_id);
-                card.className = `w-full text-left p-4 rounded-xl border transition-all duration-200 cursor-pointer group relative overflow-hidden ${
+                card.className = `w-full text-left p-3 rounded-xl border transition-all duration-200 cursor-pointer group relative overflow-hidden flex flex-col ${
                     isSelected
                         ? "bg-orange-50/70 border-orange-300 dark-active-card shadow-sm"
                         : "theme-bg-card theme-border border hover:scale-[1.01] hover:-translate-y-0.5"
@@ -868,10 +868,10 @@
                         </div>
 
                         <!-- Status badge -->
-                        <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide shrink-0 border ${
+                        <div class="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wide shrink-0 border whitespace-nowrap ${
                             online 
                                 ? "bg-green-50 border-green-200 text-green-700 shadow-sm" 
-                                : "bg-gray-105 border-gray-200 text-gray-500"
+                                : "bg-gray-100 border-gray-200 text-gray-500"
                         }">
                             <span class="w-1.5 h-1.5 rounded-full ${online ? "bg-green-500 animate-pulse shadow-[0_0_4px_#22c55e]" : "bg-gray-400"}" />
                             ${online ? "Online" : "Offline"}
