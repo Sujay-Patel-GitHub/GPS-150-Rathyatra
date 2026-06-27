@@ -1,5 +1,5 @@
 from flask import Flask, request, render_template, render_template_string, redirect, url_for, abort, jsonify, \
-    session, flash, send_from_directory, Response, send_file
+    session, flash, send_from_directory, Response, send_file, make_response
 import requests
 import os
 import time
@@ -6630,14 +6630,20 @@ threading.Thread(target=run_autostart_and_db_check, daemon=True).start()
 
 
 # --- GPS TRACKING INTEGRATION ROUTES ---
+def serve_index_no_cache():
+    dist_dir = os.path.join(os.path.dirname(__file__), "GPS TRACKING", "dist")
+    resp = make_response(send_from_directory(dist_dir, "index.html"))
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
+
 @app.route("/tracking")
 @app.route("/tracking/")
 def tracking_index():
     if session.get('user_type') != 'admin':
         return redirect(url_for('login'))
-    
-    dist_dir = os.path.join(os.path.dirname(__file__), "GPS TRACKING", "dist")
-    return send_from_directory(dist_dir, "index.html")
+    return serve_index_no_cache()
 
 @app.route("/tracking/assets/<path:path>")
 def tracking_assets(path):
@@ -6650,7 +6656,7 @@ def tracking_files(path):
     full_path = os.path.join(dist_dir, path)
     if os.path.exists(full_path) and os.path.isfile(full_path):
         return send_from_directory(dist_dir, path)
-    return send_from_directory(dist_dir, "index.html")
+    return serve_index_no_cache()
 
 @app.route("/api/v1/routing", methods=["GET"])
 @app.route("/api/v1/routing/<path:path>", methods=["GET"])
