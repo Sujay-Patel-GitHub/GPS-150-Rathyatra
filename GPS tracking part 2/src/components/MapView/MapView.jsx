@@ -24,7 +24,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { ref as fbRef, set } from "firebase/database";
 import { db } from "../../lib/firebase";
-import { DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM, LANDMARKS } from "../../lib/constants";
+import { DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM, LANDMARKS, vehicleLabels } from "../../lib/constants";
 import { fmtCoord, fmtSpeed, timeAgo } from "../../utils/formatters";
 import { AnimatedMarker, AnimatedCircle } from "./AnimatedMarker";
 
@@ -446,6 +446,7 @@ export function MapView({
   onSelectedRecordingKeyChange = () => {},
   playbackRoutePoints = [],
   selectedRecordVehicleId = null,
+  deviceList = [],
 }) {
   const vehicleIds  = Object.keys(vehicles);
   
@@ -1206,9 +1207,17 @@ export function MapView({
                       className="bg-gray-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-orange-500 cursor-pointer w-full transition-all"
                     >
                       <option value="">-- Choose Truck --</option>
-                      {Object.keys(vehicles).sort().map(vid => (
-                        <option key={vid} value={vid}>{vehicles[vid]?.display_name || vid}</option>
-                      ))}
+                      {(() => {
+                        const list = deviceList.length > 0 ? deviceList : Object.keys(vehicleLabels);
+                        return [...list].sort((a, b) => {
+                          const numA = parseInt(a.replace(/\D/g, ""), 10);
+                          const numB = parseInt(b.replace(/\D/g, ""), 10);
+                          if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                          return a.localeCompare(b);
+                        }).map(vid => (
+                          <option key={vid} value={vid}>{vehicles[vid]?.display_name || vehicleLabels[vid] || vid}</option>
+                        ));
+                      })()}
                     </select>
                   </div>
 

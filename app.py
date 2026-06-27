@@ -1772,7 +1772,7 @@ def map_recording():
 
 @app.route("/api/get_devices_list")
 def get_devices_list():
-    if session.get('user_type') != 'admin':
+    if session.get('user_type') not in ('admin', 'truck', 'akhada', 'user'):
         return jsonify([])
     
     try:

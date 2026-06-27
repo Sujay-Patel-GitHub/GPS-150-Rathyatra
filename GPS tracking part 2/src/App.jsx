@@ -102,6 +102,23 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // Fetch full device list for playback selection
+  const [deviceList, setDeviceList] = useState([]);
+  useEffect(() => {
+    const fetchDevices = async () => {
+      try {
+        const res = await fetch("/api/get_devices_list");
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setDeviceList(data);
+        }
+      } catch (e) {
+        console.error("Failed to fetch device list:", e);
+      }
+    };
+    fetchDevices();
+  }, []);
+
 
   const [hidePlaybackTrail, setHidePlaybackTrail] = useState(false);
 
@@ -176,8 +193,11 @@ export default function App() {
       }
 
       mocked[vid] = {
+        display_name: vehicleLabels[vid] || vid,
+        icon: "🚛",
         ...firebaseVehicles[vid],
         key: vid,
+        id: vid,
         lat: currentPoint.lat,
         lng: currentPoint.lng,
         rawLat: currentPoint.lat,
@@ -760,8 +780,8 @@ export default function App() {
           onLoadPlayback={loadMongoPlayback}
           selectedRecordingKey={selectedRecordingKey}
           onSelectedRecordingKeyChange={setSelectedRecordingKey}
-          playbackRoutePoints={playbackRoutePoints}
           selectedRecordVehicleId={selectedRecordVehicleId}
+          deviceList={deviceList}
         />
       </div>
 
