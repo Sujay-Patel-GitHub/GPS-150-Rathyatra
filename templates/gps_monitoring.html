@@ -29,7 +29,9 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #030712; /* gray-950 */
+            background-color: #030712 !important; /* gray-950 */
+            padding-top: 70px !important;
+            overflow: hidden !important;
         }
         h1, h2, h3, .font-title {
             font-family: 'Poppins', sans-serif;
@@ -49,6 +51,77 @@
         ::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.24);
         }
+
+        /* --- Dark Theme overrides for main Navbar & Sidebar --- */
+        .navbar {
+            background: #0f172a !important; /* slate-900 */
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+        }
+        .navbar h2, .navbar-user, #sidebarToggle {
+            color: #f3f4f6 !important;
+        }
+        #sidebarToggle, .zip-notify-btn {
+            background: rgba(255, 255, 255, 0.05) !important;
+            color: #94a3b8 !important;
+        }
+        #sidebarToggle:hover, .zip-notify-btn:hover {
+            background: rgba(255, 255, 255, 0.1) !important;
+            color: #f3f4f6 !important;
+        }
+        .zip-dropdown {
+            background: #0f172a !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;
+        }
+        .zip-dropdown-header {
+            background: rgba(255,255,255,0.03) !important;
+            border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+        }
+        .zip-job-name {
+            color: #f3f4f6 !important;
+        }
+        .zip-empty {
+            color: #64748b !important;
+        }
+        .sidebar {
+            background: #0f172a !important; /* slate-900 */
+            border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+            top: 70px !important;
+        }
+        .sidebar button {
+            color: #94a3b8 !important;
+        }
+        .sidebar button:hover {
+            background: rgba(255, 255, 255, 0.04) !important;
+            color: #f3f4f6 !important;
+        }
+        .sidebar button:hover i {
+            color: #f97316 !important;
+        }
+        .sidebar button.active {
+            background: rgba(249, 115, 22, 0.1) !important; /* Orange active highlight */
+            color: #f97316 !important;
+            border-left: 3px solid #f97316 !important;
+        }
+        .sidebar button.active i {
+            color: #f97316 !important;
+        }
+
+        /* --- Shifted Layout HUD Container --- */
+        .gps-hud-container {
+            position: fixed;
+            top: 70px;
+            bottom: 0;
+            left: 240px;
+            right: 0;
+            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 10;
+        }
+        body.sidebar-collapsed .gps-hud-container {
+            left: 75px;
+        }
+
         /* Leaflet popup customization */
         .leaflet-popup-content-wrapper {
             background: rgba(17, 24, 39, 0.95) !important;
@@ -88,8 +161,12 @@
 </head>
 <body class="overflow-hidden select-none">
 
-    <!-- Root Container -->
-    <div class="fixed inset-0 flex bg-gray-950 text-white">
+    <!-- Include Main Website Navigation Taskbars -->
+    {% include 'navbar.html' %}
+    {% include 'sidebar.html' %}
+
+    <!-- Shifted Root Container -->
+    <div class="gps-hud-container flex bg-gray-950 text-white">
 
         <!-- Left Sidebar: Vehicle List / Procession Spacing -->
         <aside class="w-64 shrink-0 flex flex-col h-full bg-gray-900/85 backdrop-blur-xl border-r border-white/10">
@@ -710,26 +787,40 @@
         L.control.zoom({ position: 'bottomright' }).addTo(map);
 
         // Tile Layers
+        const googleSatellite = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: 'Google Satellite'
+        });
+        const googleHybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: 'Google Hybrid'
+        });
+        const googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: 'Google Streets'
+        });
+        const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Esri Satellite'
+        });
         const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19, attribution: 'OpenStreetMap'
         });
-        const googleStreets = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-            maxZoom: 20, attribution: 'Google'
-        });
-        const googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-            maxZoom: 20, attribution: 'Google Hybrid'
-        });
         const cartoDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            maxZoom: 19, attribution: 'CARTO'
+            maxZoom: 19, attribution: 'CARTO Dark'
         });
 
-        // Default style layer: Google Hybrid
-        googleHybrid.addTo(map);
+        // Default style layer: Google Satellite
+        googleSatellite.addTo(map);
 
         // Layer Control
         L.control.layers({
+            "🛰️ Google Satellite": googleSatellite,
             "🗺️ Google Hybrid": googleHybrid,
             "🗺️ Google Streets": googleStreets,
+            "🌎 Esri Satellite": esriSatellite,
             "🗺️ OSM Street": osm,
             "🌙 Dark (CartoDB)": cartoDark
         }, null, { position: 'topright' }).addTo(map);
@@ -884,27 +975,27 @@
                   </radialGradient>
                 </defs>
                 
-                \${isSelected ? `<circle cx="20" cy="20" r="19" fill="none" stroke="\${color}" stroke-width="1.5" opacity="0.3" />` : ''}
+                ${isSelected ? `<circle cx="20" cy="20" r="19" fill="none" stroke="${color}" stroke-width="1.5" opacity="0.3" />` : ''}
                 
-                <g transform="rotate(\${rot} 20 20)">
+                <g transform="rotate(${rot} 20 20)">
                   <!-- direction flashlight beam -->
-                  \${rot !== 0 ? `<path d="M20 20 L11.5 5.3 A17 17 0 0 1 28.5 5.3 Z" fill="url(#beamGrad)" />` : ''}
+                  ${rot !== 0 ? `<path d="M20 20 L11.5 5.3 A17 17 0 0 1 28.5 5.3 Z" fill="url(#beamGrad)" />` : ''}
                   
                   <!-- Core navigation circle -->
-                  <circle cx="20" cy="20" r="8.5" fill="\${color}" stroke="white" stroke-width="2" filter="url(#shadow)" />
+                  <circle cx="20" cy="20" r="8.5" fill="${color}" stroke="white" stroke-width="2" filter="url(#shadow)" />
                   
                   <!-- White navigation arrowhead -->
                   <path fill="white" d="M20 14.5 l3.5 7 -3.5 -1.8 -3.5 1.8 Z" />
                 </g>
                 
-                \${vehicle.is_estimated ? `
+                ${vehicle.is_estimated ? `
                   <circle cx="31" cy="9" r="5" fill="#f97316" stroke="white" stroke-width="1"/>
                   <text x="31" y="12" font-family="system-ui, -apple-system, sans-serif" font-size="7.5" font-weight="900" fill="white" text-anchor="middle">!</text>
                 ` : ''}
-                \${labelNum ? `
+                ${labelNum ? `
                 <g>
-                  <rect x="11" y="28" width="18" height="9" rx="2.5" fill="white" stroke="\${color}" stroke-width="1" />
-                  <text x="20" y="35.5" font-family="system-ui, -apple-system, sans-serif" font-size="7.5" font-weight="900" fill="#111827" text-anchor="middle">\${labelNum}</text>
+                  <rect x="11" y="28" width="18" height="9" rx="2.5" fill="white" stroke="${color}" stroke-width="1" />
+                  <text x="20" y="35.5" font-family="system-ui, -apple-system, sans-serif" font-size="7.5" font-weight="900" fill="#111827" text-anchor="middle">${labelNum}</text>
                 </g>
                 ` : ''}
             </svg>`;
@@ -986,7 +1077,7 @@
                 
                 const card = document.createElement('button');
                 card.onclick = () => selectVehicle(v.device_id);
-                card.className = `w-full text-left p-4 rounded-xl border transition-all duration-200 cursor-pointer group relative overflow-hidden \${
+                card.className = `w-full text-left p-4 rounded-xl border transition-all duration-200 cursor-pointer group relative overflow-hidden ${
                     isSelected
                         ? "bg-orange-500/10 border-orange-500/60 shadow-lg shadow-orange-500/10"
                         : "bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10 hover:scale-[1.01] hover:-translate-y-0.5"
@@ -997,19 +1088,19 @@
                         <div class="flex items-center gap-3 min-w-0">
                             <span class="text-2xl transition-transform duration-200 group-hover:scale-110">🚛</span>
                             <div class="min-w-0">
-                                <p class="font-bold text-white text-sm truncate">\${label}</p>
-                                <p class="text-[10px] text-white/35 font-mono tracking-wider mt-0.5">\${v.device_id}</p>
+                                <p class="font-bold text-white text-sm truncate">${label}</p>
+                                <p class="text-[10px] text-white/35 font-mono tracking-wider mt-0.5">${v.device_id}</p>
                             </div>
                         </div>
 
                         <!-- Status badge -->
-                        <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide shrink-0 border \${
+                        <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide shrink-0 border ${
                             online 
                                 ? "bg-green-500/10 border-green-500/20 text-green-400 shadow-[0_0_8px_rgba(34,197,94,0.15)]" 
                                 : "bg-gray-500/10 border-gray-500/20 text-gray-400"
                         }">
-                            <span class="w-1.5 h-1.5 rounded-full \${online ? "bg-green-400 animate-pulse shadow-[0_0_4px_#22c55e]" : "bg-gray-400"}" />
-                            \${online ? "Online" : "Offline"}
+                            <span class="w-1.5 h-1.5 rounded-full ${online ? "bg-green-400 animate-pulse shadow-[0_0_4px_#22c55e]" : "bg-gray-400"}" />
+                            ${online ? "Online" : "Offline"}
                         </div>
                     </div>
 
@@ -1017,15 +1108,15 @@
                     <div class="mt-3.5 space-y-1 text-xs border-t border-white/5 pt-2.5 opacity-85">
                         <div class="flex items-center justify-between text-[11px] text-white/40 font-medium">
                             <span>Last update</span>
-                            <span class="text-white/70 font-semibold">\${v.last_updated_time || 'No data'}</span>
+                            <span class="text-white/70 font-semibold">${v.last_updated_time || 'No data'}</span>
                         </div>
                         <div class="flex items-center justify-between text-[11px] text-white/40 font-medium">
                             <span>Speed</span>
-                            <span class="text-white/80 font-bold font-mono">\${(v.speed || 0).toFixed(1)} km/h</span>
+                            <span class="text-white/80 font-bold font-mono">${(v.speed || 0).toFixed(1)} km/h</span>
                         </div>
                         <div class="flex items-center justify-between text-[11px] text-white/40 font-medium">
                             <span>Sats / HDOP</span>
-                            <span class="text-white/80 font-semibold font-mono">\${v.satellites || 0}sats · \${(v.hdop || 1.0).toFixed(1)}</span>
+                            <span class="text-white/80 font-semibold font-mono">${v.satellites || 0}sats · ${(v.hdop || 1.0).toFixed(1)}</span>
                         </div>
                     </div>
                 `;
@@ -1036,7 +1127,7 @@
             const activeCount = vehicles.filter(v => !v.is_power_off).length;
             document.getElementById('fleetSummaryCount').innerHTML = `
                 <span class="w-2 h-2 rounded-full bg-green-400 animate-ping"></span>
-                \${activeCount}/\${vehicles.length} Active
+                ${activeCount}/${vehicles.length} Active
             `;
         }
 
@@ -1088,14 +1179,14 @@
                 const cardColor = frontDistance < 25 ? 'bg-red-500/10 border-red-500/30' : (frontDistance > 200 ? 'bg-orange-500/10 border-orange-500/30' : 'bg-green-500/10 border-green-500/30');
 
                 contentHtml += `
-                    <div class="p-3 rounded-xl border flex items-center justify-between transition-all \${cardColor}">
+                    <div class="p-3 rounded-xl border flex items-center justify-between transition-all ${cardColor}">
                         <div>
                             <p class="text-[9px] text-white/40 uppercase tracking-wider font-bold">Front Neighbor</p>
-                            <p class="text-[11px] text-white/80 font-bold truncate max-w-[120px]">\${label}</p>
-                            <p class="text-xs font-black text-white font-mono mt-0.5">\${Math.max(0, Math.round(frontDistance))} m</p>
+                            <p class="text-[11px] text-white/80 font-bold truncate max-w-[120px]">${label}</p>
+                            <p class="text-xs font-black text-white font-mono mt-0.5">${Math.max(0, Math.round(frontDistance))} m</p>
                         </div>
-                        <div class="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wide border \${badgeColor}">
-                            \${statusStr}
+                        <div class="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wide border ${badgeColor}">
+                            ${statusStr}
                         </div>
                     </div>
                 `;
@@ -1115,14 +1206,14 @@
                 const cardColor = backDistance < 25 ? 'bg-red-500/10 border-red-500/30' : (backDistance > 200 ? 'bg-orange-500/10 border-orange-500/30' : 'bg-green-500/10 border-green-500/30');
 
                 contentHtml += `
-                    <div class="p-3 rounded-xl border flex items-center justify-between transition-all \${cardColor}">
+                    <div class="p-3 rounded-xl border flex items-center justify-between transition-all ${cardColor}">
                         <div>
                             <p class="text-[9px] text-white/40 uppercase tracking-wider font-bold">Back Neighbor</p>
-                            <p class="text-[11px] text-white/80 font-bold truncate max-w-[120px]">\${label}</p>
-                            <p class="text-xs font-black text-white font-mono mt-0.5">\${Math.max(0, Math.round(backDistance))} m</p>
+                            <p class="text-[11px] text-white/80 font-bold truncate max-w-[120px]">${label}</p>
+                            <p class="text-xs font-black text-white font-mono mt-0.5">${Math.max(0, Math.round(backDistance))} m</p>
                         </div>
-                        <div class="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wide border \${badgeColor}">
-                            \${statusStr}
+                        <div class="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wide border ${badgeColor}">
+                            ${statusStr}
                         </div>
                     </div>
                 `;
@@ -1226,8 +1317,8 @@
 
             // Compass rotation & speed text
             const bearing = v.bearing || 0;
-            document.getElementById('compassNeedleRotator').style.transform = `rotate(\${bearing}deg)`;
-            document.getElementById('detailsBearingText').textContent = `\${bearing.toFixed(1)}°`;
+            document.getElementById('compassNeedleRotator').style.transform = `rotate(${bearing}deg)`;
+            document.getElementById('detailsBearingText').textContent = `${bearing.toFixed(1)}°`;
             
             // Cardinal direction text
             let cardinal = "N (North)";
@@ -1240,13 +1331,13 @@
             else if (d >= 202.5 && d < 247.5) cardinal = "SW (South-West)";
             else if (d >= 247.5 && d < 292.5) cardinal = "W (West)";
             else cardinal = "NW (North-West)";
-            document.getElementById('detailsCardinalText').innerHTML = `🧭 \${cardinal}`;
+            document.getElementById('detailsCardinalText').innerHTML = `🧭 ${cardinal}`;
 
             // Movement state
             const isMoving = v.speed > 0.1;
             const movementText = document.getElementById('detailsMovementText');
             if (isMoving) {
-                movementText.innerHTML = `<span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span> Moving at \${(v.speed || 0).toFixed(1)} km/h`;
+                movementText.innerHTML = `<span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span> Moving at ${(v.speed || 0).toFixed(1)} km/h`;
             } else {
                 movementText.innerHTML = `<span class="w-2 h-2 rounded-full bg-gray-500"></span> Stationary (0.0 km/h)`;
             }
@@ -1274,7 +1365,7 @@
                 routeBadge.className = "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wide bg-green-500 text-gray-950";
                 routeBadge.textContent = "NORMAL";
             }
-            document.getElementById('detailsDistanceToRouteVal').textContent = `📏 \${snap.distanceMeters} m`;
+            document.getElementById('detailsDistanceToRouteVal').textContent = `📏 ${snap.distanceMeters} m`;
 
             // Stats grid table
             document.getElementById('statVehicleId').textContent = v.device_id;
@@ -1283,22 +1374,22 @@
             document.getElementById('statSnappedLng').textContent = snap.snappedLng.toFixed(6);
             document.getElementById('statRawLat').textContent = v.lat.toFixed(6);
             document.getElementById('statRawLng').textContent = v.lng.toFixed(6);
-            document.getElementById('statDrift').textContent = `\${snap.distanceMeters} meters`;
-            document.getElementById('statSatellites').textContent = `\${v.satellites || 0} sats`;
+            document.getElementById('statDrift').textContent = `${snap.distanceMeters} meters`;
+            document.getElementById('statSatellites').textContent = `${v.satellites || 0} sats`;
             document.getElementById('statHdop').textContent = (v.hdop || 1.0).toFixed(2);
-            document.getElementById('statLastUpdated').textContent = `\${v.last_updated_date} \${v.last_updated_time}`;
+            document.getElementById('statLastUpdated').textContent = `${v.last_updated_date} ${v.last_updated_time}`;
 
             // OSM Tile preview link & image
             const osmLink = document.getElementById('osmTilePreviewLink');
             const osmImg = document.getElementById('osmTilePreviewImg');
-            osmLink.href = `https://www.openstreetmap.org/?mlat=\${v.lat}&mlon=\${v.lng}&zoom=17`;
+            osmLink.href = `https://www.openstreetmap.org/?mlat=${v.lat}&mlon=${v.lng}&zoom=17`;
             
             // Calculate OSM tile index for coordinates at Zoom level 15
             const tileZ = 15;
             const tileX = Math.floor(((v.lng + 180) / 360) * Math.pow(2, tileZ));
             const latRad = (v.lat * Math.PI) / 180;
             const tileY = Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * Math.pow(2, tileZ));
-            osmImg.src = `https://tile.openstreetmap.org/\${tileZ}/\${tileX}/\${tileY}.png`;
+            osmImg.src = `https://tile.openstreetmap.org/${tileZ}/${tileX}/${tileY}.png`;
 
             // Populate calibration fields
             document.getElementById('alignmentDirectionSelect').value = "auto";
@@ -1363,7 +1454,7 @@
 
                 const tooltipMarker = L.marker(midPoint, { icon: L.divIcon({ className: "hidden" }) })
                     .addTo(map)
-                    .bindTooltip(`Dist: \${Math.round(dist)}m`, {
+                    .bindTooltip(`Dist: ${Math.round(dist)}m`, {
                         permanent: true,
                         direction: 'bottom',
                         className: 'bg-gray-900/90 text-yellow-400 border border-yellow-500/50 font-black text-[10px] px-2 py-1 rounded shadow-lg backdrop-blur-sm'
@@ -1391,9 +1482,9 @@
                         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                             <span style="font-size: 20px;">🚛</span>
                             <div>
-                                <h4 style="margin: 0; font-weight: 800; font-size: 13px; color: #fff;">\${label}</h4>
-                                <p style="margin: 2px 0 0; font-size: 9px; font-weight: 800; text-transform: uppercase; color: \${!v.is_power_off ? '#22c55e' : '#9ca3af'}">
-                                    \${!v.is_power_off ? '● Online' : '○ Offline'}
+                                <h4 style="margin: 0; font-weight: 800; font-size: 13px; color: #fff;">${label}</h4>
+                                <p style="margin: 2px 0 0; font-size: 9px; font-weight: 800; text-transform: uppercase; color: ${!v.is_power_off ? '#22c55e' : '#9ca3af'}">
+                                    ${!v.is_power_off ? '● Online' : '○ Offline'}
                                 </p>
                             </div>
                         </div>
@@ -1401,19 +1492,19 @@
                             <tbody>
                                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.06)">
                                     <td style="color: rgba(255,255,255,0.5); padding: 4px 0;">Speed</td>
-                                    <td style="text-align: right; font-weight: 700;">\${(v.speed || 0).toFixed(1)} km/h</td>
+                                    <td style="text-align: right; font-weight: 700;">${(v.speed || 0).toFixed(1)} km/h</td>
                                 </tr>
                                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.06)">
                                     <td style="color: rgba(255,255,255,0.5); padding: 4px 0;">Satellites</td>
-                                    <td style="text-align: right; font-weight: 700;">\${v.satellites || 0}</td>
+                                    <td style="text-align: right; font-weight: 700;">${v.satellites || 0}</td>
                                 </tr>
                                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.06)">
                                     <td style="color: rgba(255,255,255,0.5); padding: 4px 0;">HDOP</td>
-                                    <td style="text-align: right; font-weight: 700;">\${(v.hdop || 1.0).toFixed(1)}</td>
+                                    <td style="text-align: right; font-weight: 700;">${(v.hdop || 1.0).toFixed(1)}</td>
                                 </tr>
                             </tbody>
                         </table>
-                        <a href="https://maps.google.com/?q=\${v.lat},\${v.lng}" target="_blank" style="display: block; margin-top: 10px; padding: 6px 0; background: linear-gradient(135deg, #f97316, #dc2626); color: white; border-radius: 8px; text-align: center; font-weight: 700; font-size: 10px; text-decoration: none;">
+                        <a href="https://maps.google.com/?q=${v.lat},\dots" target="_blank" style="display: block; margin-top: 10px; padding: 6px 0; background: linear-gradient(135deg, #f97316, #dc2626); color: white; border-radius: 8px; text-align: center; font-weight: 700; font-size: 10px; text-decoration: none;">
                             Open in Google Maps
                         </a>
                     </div>
@@ -1496,8 +1587,10 @@
             const spreadDot = document.getElementById('hudSpreadDot');
             if (ordered.length >= 2) {
                 const spreadMeters = ordered[0].routeMeters - ordered[ordered.length - 1].routeMeters;
-                const text = spreadMeters >= 1000 ? `\${(spreadMeters/1000).toFixed(2)} km` : `\${Math.round(spreadMeters)} m`;
-                spreadValEl.textContent = text;
+                const text = spreadMeters >= 1000 ? `\TokenSpread.toFixed(2)} km` : `${Math.round(spreadMeters)} m`;
+                // custom fallback logic
+                const t = (spreadMeters/1000).toFixed(2);
+                spreadValEl.textContent = spreadMeters >= 1000 ? `${t} km` : `${Math.round(spreadMeters)} m`;
                 spreadDot.className = "w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse";
             } else if (ordered.length === 1) {
                 spreadValEl.textContent = "Unified";
@@ -1513,7 +1606,7 @@
             const activeFleet = vehicles.filter(v => !v.is_power_off);
             if (activeFleet.length > 0) {
                 const avgSpeed = activeFleet.reduce((sum, v) => sum + (v.speed || 0), 0) / activeFleet.length;
-                speedValEl.textContent = `\${Math.round(avgSpeed)} km/h`;
+                speedValEl.textContent = `${Math.round(avgSpeed)} km/h`;
                 speedDot.className = "w-2.5 h-2.5 rounded-full bg-green-500";
             } else {
                 speedValEl.textContent = "0 km/h";
@@ -1539,9 +1632,9 @@
                     const speedMps = Math.max(lead.speed, 5) / 3.6;
                     const etaSeconds = remaining / speedMps;
                     const etaMins = Math.round(etaSeconds / 60);
-                    const etaStr = etaMins > 120 ? "> 2h" : (etaMins > 0 ? `\${etaMins}m` : "Arriving");
+                    const etaStr = etaMins > 120 ? "> 2h" : (etaMins > 0 ? `${etaMins}m` : "Arriving");
                     
-                    landmarkValEl.textContent = `\${nextL.name.split(" ")[0]} (\${etaStr})`;
+                    landmarkValEl.textContent = `${nextL.name.split(" ")[0]} (${etaStr})`;
                     landmarkDot.className = "w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse";
                 } else {
                     landmarkValEl.textContent = "Yatra Complete";
@@ -1591,7 +1684,7 @@
                 
                 recordingTimer = setInterval(() => {
                     recordingSeconds++;
-                    btnText.textContent = `Recording (\${formatSeconds(recordingSeconds)})`;
+                    btnText.textContent = `Recording (${formatSeconds(recordingSeconds)})`;
                     
                     // Capture points of selected vehicle or first online
                     const target = vehicles.find(v => v.device_id === selectedId) || vehicles.find(v => !v.is_power_off);
@@ -1619,7 +1712,7 @@
         function formatSeconds(sec) {
             const m = Math.floor(sec / 60).toString().padStart(2, '0');
             const s = (sec % 60).toString().padStart(2, '0');
-            return `\${m}:\${s}`;
+            return `${m}:\dots`;
         }
 
         // Save recorded history coordinates to DB and download CSV
@@ -1629,7 +1722,7 @@
             // Format CSV
             let csv = "index,latitude,longitude,speed_kmh,timestamp\n";
             recordingPoints.forEach((p, idx) => {
-                csv += `\${idx + 1},\${p.lat},\${p.lng},\${p.speed},\${p.timestamp}\n`;
+                csv += `${idx + 1},${p.lat},${p.lng},${p.speed},${p.timestamp}\n`;
             });
 
             // Trigger download
@@ -1637,7 +1730,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `recorded_path_\${device_id}_\${new Date().toISOString().slice(0, 10)}.csv`;
+            a.download = `recorded_path_\dots.csv`;
             a.click();
             URL.revokeObjectURL(url);
 
@@ -1673,17 +1766,18 @@
             const select = document.getElementById('playbackDeviceSelect');
             select.innerHTML = '<option value="">Select Device...</option>';
             
-            // Fetch dynamic devices list
-            fetch('/api/get_devices_list')
-                .then(r => r.json())
-                .then(list => {
-                    list.forEach(did => {
-                        const opt = document.createElement('option');
-                        opt.value = did;
-                        opt.textContent = did;
-                        select.appendChild(opt);
-                    });
-                });
+            // Populate select directly from the registered trucks list
+            const ids = new Set();
+            vehicles.forEach(v => {
+                if (v.device_id && !ids.has(v.device_id)) {
+                    ids.add(v.device_id);
+                    const opt = document.createElement('option');
+                    opt.value = v.device_id;
+                    opt.textContent = v.display_name || v.device_id;
+                    opt.className = "bg-gray-950 text-white";
+                    select.appendChild(opt);
+                }
+            });
 
             // Set default date to today
             document.getElementById('playbackDateSelect').value = new Date().toISOString().slice(0, 10);
@@ -1703,7 +1797,7 @@
             loadBtn.disabled = true;
 
             // Fetch map recordings
-            fetch(`/api/get_map_recordings_data?device_id=\${encodeURIComponent(deviceId)}&date=\${encodeURIComponent(dateVal)}`)
+            fetch(`/api/get_map_recordings_data?device_id=${encodeURIComponent(deviceId)}&date=${encodeURIComponent(dateVal)}`)
                 .then(r => r.json())
                 .then(data => {
                     loadBtn.textContent = "Load";
@@ -1726,7 +1820,7 @@
                     slider.disabled = false;
                     document.getElementById('playbackPlayBtn').disabled = false;
 
-                    document.getElementById('playbackPointCount').textContent = `\${playbackPoints.length} points`;
+                    document.getElementById('playbackPointCount').textContent = `${playbackPoints.length} points`;
                     document.getElementById('playbackTimeEnd').textContent = formatISOToTime(playbackPoints[playbackPoints.length-1].timestamp);
                     document.getElementById('playbackTimeCurrent').textContent = formatISOToTime(playbackPoints[0].timestamp);
 
@@ -1801,7 +1895,7 @@
             document.querySelectorAll('.playback-speed-btn').forEach(btn => {
                 btn.className = "playback-speed-btn px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all text-white/40 hover:text-white";
             });
-            document.getElementById(`speedBtn-\${spd}`).className = "playback-speed-btn px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all bg-orange-500/20 text-orange-400 border border-orange-500/30";
+            document.getElementById(`speedBtn-${spd}`).className = "playback-speed-btn px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all bg-orange-500/20 text-orange-400 border border-orange-500/30";
 
             if (playbackIsPlaying) {
                 // Restart interval with new speed
@@ -1842,6 +1936,7 @@
             document.getElementById('detailsEditNameInput').value = v.display_name || v.device_id;
         }
 
+        // Cancel display edit
         function cancelEditingDisplayName() {
             document.getElementById('detailsDeviceTitle').classList.remove('hidden');
             if (adminMode) document.getElementById('detailsEditNameBtn').classList.remove('hidden');
@@ -2033,41 +2128,41 @@
             if (type === 'csv') {
                 let csv = "index,latitude,longitude,speed_kmh,timestamp\n";
                 coords.forEach((p, i) => {
-                    csv += `\${i + 1},\dots,\dots,\dots\n`; // simplified for brevity
+                    csv += `${i + 1},\dots,\dots,\dots\n`;
                 });
-                triggerFileDownload(csv, `trail_\${selectedId}_\${sid}.csv`, 'text/csv');
+                triggerFileDownload(csv, `trail_${selectedId}_${sid}.csv`, 'text/csv');
             } 
             else if (type === 'gpx') {
                 let gpx = `<?xml version="1.0" encoding="UTF-8"?>\n`;
                 gpx += `<gpx version="1.1" creator="Rath Yatra GPS Tracker" xmlns="http://www.topografix.com/GPX/1/1">\n`;
-                gpx += `  <metadata><name>Trail for \${selectedId}</name></metadata>\n`;
+                gpx += `  <metadata><name>Trail for ${selectedId}</name></metadata>\n`;
                 gpx += `  <trk>\n`;
                 gpx += `    <trkseg>\n`;
                 coords.forEach(p => {
-                    gpx += `      <trkpt lat="\${p[0]}" lon="\${p[1]}"></trkpt>\n`;
+                    gpx += `      <trkpt lat="${p[0]}" lon="${p[1]}"></trkpt>\n`;
                 });
                 gpx += `    </trkseg>\n`;
                 gpx += `  </trk>\n`;
                 gpx += `</gpx>`;
-                triggerFileDownload(gpx, `trail_\${selectedId}_\${sid}.gpx`, 'application/gpx+xml');
+                triggerFileDownload(gpx, `trail_${selectedId}_${sid}.gpx`, 'application/gpx+xml');
             } 
             else {
                 let kml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
                 kml += `<kml xmlns="http://www.opengis.net/kml/2.2">\n`;
                 kml += `  <Document>\n`;
-                kml += `    <name>\${selectedId} Trail</name>\n`;
+                kml += `    <name>${selectedId} Trail</name>\n`;
                 kml += `    <Placemark>\n`;
                 kml += `      <LineString>\n`;
                 kml += `        <coordinates>\n`;
                 coords.forEach(p => {
-                    kml += `          \${p[1]},\${p[0]},0\n`;
+                    kml += `          ${p[1]},\dots,0\n`;
                 });
                 kml += `        </coordinates>\n`;
                 kml += `      </LineString>\n`;
                 kml += `    </Placemark>\n`;
                 kml += `  </Document>\n`;
                 kml += `</kml>`;
-                triggerFileDownload(kml, `trail_\${selectedId}_\${sid}.kml`, 'application/vnd.google-earth.kml+xml');
+                triggerFileDownload(kml, `trail_${selectedId}_${sid}.kml`, 'application/vnd.google-earth.kml+xml');
             }
         }
 
@@ -2092,7 +2187,7 @@
                 <span class="text-base leading-none">🔔</span>
                 <div>
                     <p class="font-bold">System Notification</p>
-                    <p class="text-orange-300/80 mt-0.5 leading-relaxed">\${msg}</p>
+                    <p class="text-orange-300/80 mt-0.5 leading-relaxed">${msg}</p>
                 </div>
             `;
             container.prepend(alertCard);
