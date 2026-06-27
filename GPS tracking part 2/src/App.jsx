@@ -124,33 +124,7 @@ export default function App() {
     }
   }, [playbackMode, playbackIsPlaying, playbackIndex, playbackRoutePoints.length]);
 
-  // Set default selectedRecordingKey to the selected vehicle's first recording if available,
-  // or fallback to the first recording in the entire database.
-  useEffect(() => {
-    if (playbackMode) {
-      const targetVehicleId = selectedId || Object.keys(recordings)[0];
-      const vehicleRecordings = recordings[targetVehicleId];
 
-      if (vehicleRecordings && Object.keys(vehicleRecordings).length > 0) {
-        const firstSession = Object.keys(vehicleRecordings)[0];
-        const key = `${targetVehicleId}/${firstSession}`;
-        if (selectedRecordingKey !== key && (!selectedRecordingKey || !selectedRecordingKey.startsWith(`${targetVehicleId}/`))) {
-          setSelectedRecordingKey(key);
-          setPlaybackIndex(0);
-        }
-      } else if (!selectedRecordingKey || selectedRecordingKey === "yatra" || selectedRecordingKey === "") {
-        const vids = Object.keys(recordings);
-        if (vids.length > 0) {
-          const firstVid = vids[0];
-          const sids = Object.keys(recordings[firstVid]);
-          if (sids.length > 0) {
-            setSelectedRecordingKey(`${firstVid}/${sids[0]}`);
-            setPlaybackIndex(0);
-          }
-        }
-      }
-    }
-  }, [playbackMode, recordings, selectedId, selectedRecordingKey]);
 
   // Reset index when path changes
   useEffect(() => {
