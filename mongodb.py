@@ -52,11 +52,21 @@ try:
     # 13. Area collection
     col_area = db["area"]
 
-    # Ensure route and area collections exist in the database
+    # 14. SMS Sender collection
+    col_sms_sender = db["sms_sender"]
+
+    # 15. SMS Queue collection
+    col_sms_queue = db["sms_queue"]
+
+    # Ensure collections exist in the database
     if "route" not in db.list_collection_names():
         db.create_collection("route")
     if "area" not in db.list_collection_names():
         db.create_collection("area")
+    if "sms_sender" not in db.list_collection_names():
+        db.create_collection("sms_sender")
+    if "sms_queue" not in db.list_collection_names():
+        db.create_collection("sms_queue")
 
     # Create indexes for optimization
     col_map_recordings.create_index([("device_id", 1), ("timestamp", 1)])
