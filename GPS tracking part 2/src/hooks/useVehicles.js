@@ -387,8 +387,7 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
   // Compute enriched vehicle map
   const vehicles = useMemo(() => {
     const enriched = {};
-    const firebaseIds = Object.keys(rawVehicles);
-    const idsToShow = [...new Set([...ACTIVE_VEHICLE_IDS, ...firebaseIds])];
+    const idsToShow = Object.keys(rawVehicles);
 
     const getTrail = (id) => {
       if (useSnapping) {

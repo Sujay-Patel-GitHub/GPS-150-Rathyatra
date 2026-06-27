@@ -559,7 +559,7 @@ export function MapView({
         {/* ── Tile layers ────────────────────────────────────────────────── */}
         <LayersControl position="topright">
 
-          <BaseLayer checked name="🗺️ OSM Street">
+          <BaseLayer name="🗺️ OSM Street">
             <TileLayer
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -567,7 +567,7 @@ export function MapView({
             />
           </BaseLayer>
 
-          <BaseLayer name="🗺️ Google Streets">
+          <BaseLayer checked name="🗺️ Google Streets">
             <TileLayer
               url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
               attribution="&copy; Google Maps"
