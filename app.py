@@ -1706,6 +1706,16 @@ def get_all_vehicle_locations():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/log_js_error", methods=["POST"])
+def log_js_error():
+    try:
+        data = request.get_json() or {}
+        print(f"❌ FRONTEND JS ERROR: {data.get('message')} at {data.get('source')}:{data.get('lineno')}:{data.get('colno')}\nStack: {data.get('error')}")
+    except Exception as e:
+        print(f"Error logging JS exception: {e}")
+    return jsonify({"status": "logged"})
+
+
 @app.route("/map_recording")
 def map_recording():
     if session.get('user_type') != 'admin':

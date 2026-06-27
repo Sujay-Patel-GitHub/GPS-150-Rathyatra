@@ -478,9 +478,9 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            z-index: 1000;
+            z-index: 99999;
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            transform: translateX(380px); /* Hidden by default */
+            transform: translateX(100%); /* Hidden by default */
         }
 
         .vehicle-details-overlay.open {
@@ -991,6 +991,21 @@
     </script>
 
     <script>
+        // JS Error Logger
+        window.onerror = function (message, source, lineno, colno, error) {
+            fetch('/log_js_error', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: message,
+                    source: source,
+                    lineno: lineno,
+                    colno: colno,
+                    error: error ? error.stack : ''
+                })
+            });
+        };
+
         // --- Map Initialization ---
         const map = L.map('map', {
             center: [23.0225, 72.5714],
@@ -1336,135 +1351,173 @@
         }
 
         function showVehicleDetails(id) {
-            selectedVehicleId = id;
-            const v = vehicles.find(x => x.device_id.toUpperCase() === id.toUpperCase());
-            if (!v) return;
+            try {
+                selectedVehicleId = id;
+                const v = vehicles.find(x => x && x.device_id && x.device_id.toUpperCase() === id.toUpperCase());
+                if (!v) return;
 
-            const assign = assignMap[id.toUpperCase()] || {};
-            const role = (assign.role || 'device').replace('_USER', '');
+                const assign = assignMap[id.toUpperCase()] || assignMap[id.toLowerCase()] || assignMap[id] || {};
+                const role = (assign.role || 'device').replace('_USER', '');
 
-            // Open overlay
-            document.getElementById('detailsOverlay').classList.add('open');
+                // Open overlay
+                const detailsOverlay = document.getElementById('detailsOverlay');
+                if (detailsOverlay) detailsOverlay.classList.add('open');
 
-            // Populate fields
-            document.getElementById('detailsDeviceName').textContent = v.device_id;
-            
-            const badge = document.getElementById('detailsRoleBadge');
-            badge.textContent = role;
-            badge.className = `role-badge ${role.toLowerCase()}`;
+                // Populate fields
+                const deviceNameEl = document.getElementById('detailsDeviceName');
+                if (deviceNameEl) deviceNameEl.textContent = v.device_id;
+                
+                const badge = document.getElementById('detailsRoleBadge');
+                if (badge) {
+                    badge.textContent = role;
+                    badge.className = `role-badge ${role.toLowerCase()}`;
+                }
 
-            // Status dot and text
-            const dot = document.getElementById('detailsStatusDot');
-            const statusText = document.getElementById('detailsStatusText');
-            if (v.is_recording) {
-                dot.className = 'status-dot recording';
-                statusText.textContent = 'Recording';
-                statusText.style.color = '#ef4444';
-            } else if (v.is_power_off) {
-                dot.className = 'status-dot offline';
-                statusText.textContent = 'Power Off (Offline)';
-                statusText.style.color = '#6b7280';
-            } else if (v.has_gps) {
-                dot.className = 'status-dot online';
-                statusText.textContent = 'Online';
-                statusText.style.color = '#10b981';
-            } else {
-                dot.className = 'status-dot offline';
-                statusText.textContent = 'Offline';
-                statusText.style.color = '#6b7280';
-            }
+                // Status dot and text
+                const dot = document.getElementById('detailsStatusDot');
+                const statusText = document.getElementById('detailsStatusText');
+                if (dot && statusText) {
+                    if (v.is_recording) {
+                        dot.className = 'status-dot recording';
+                        statusText.textContent = 'Recording';
+                        statusText.style.color = '#ef4444';
+                    } else if (v.is_power_off) {
+                        dot.className = 'status-dot offline';
+                        statusText.textContent = 'Power Off (Offline)';
+                        statusText.style.color = '#6b7280';
+                    } else if (v.has_gps) {
+                        dot.className = 'status-dot online';
+                        statusText.textContent = 'Online';
+                        statusText.style.color = '#10b981';
+                    } else {
+                        dot.className = 'status-dot offline';
+                        statusText.textContent = 'Offline';
+                        statusText.style.color = '#6b7280';
+                    }
+                }
 
-            // Info Card 1
-            document.getElementById('detailsPlate').textContent = assign.vehicle_plate || v.rc_number || '—';
-            document.getElementById('detailsSpeed').textContent = (v.speed || 0) + ' km/h';
+                // Info Card 1
+                const detailsPlateEl = document.getElementById('detailsPlate');
+                if (detailsPlateEl) detailsPlateEl.textContent = assign.vehicle_plate || v.rc_number || '—';
+                
+                const detailsSpeedEl = document.getElementById('detailsSpeed');
+                if (detailsSpeedEl) detailsSpeedEl.textContent = (v.speed || 0) + ' km/h';
 
-            // Info Card 2
-            document.getElementById('detailsDriver').textContent = assign.driver_name || v.driver_name || '—';
-            
-            const phoneVal = assign.driver_mobile || '—';
-            if (phoneVal !== '—') {
-                document.getElementById('detailsPhone').innerHTML = `<a href="tel:${phoneVal}" style="color:#2563eb; text-decoration:none;"><i class="fas fa-phone-alt"></i> ${phoneVal}</a>`;
-            } else {
-                document.getElementById('detailsPhone').textContent = '—';
-            }
+                // Info Card 2
+                const detailsDriverEl = document.getElementById('detailsDriver');
+                if (detailsDriverEl) detailsDriverEl.textContent = assign.driver_name || v.driver_name || '—';
+                
+                const detailsPhoneEl = document.getElementById('detailsPhone');
+                if (detailsPhoneEl) {
+                    const phoneVal = assign.driver_mobile || '—';
+                    if (phoneVal !== '—') {
+                        detailsPhoneEl.innerHTML = `<a href="tel:${phoneVal}" style="color:#2563eb; text-decoration:none;"><i class="fas fa-phone-alt"></i> ${phoneVal}</a>`;
+                    } else {
+                        detailsPhoneEl.textContent = '—';
+                    }
+                }
 
-            document.getElementById('detailsContractor').textContent = assign.contractor_name || v.transporter_name || '—';
-            document.getElementById('detailsOfficer').textContent = assign.officer_pi || '—';
+                const detailsContractorEl = document.getElementById('detailsContractor');
+                if (detailsContractorEl) detailsContractorEl.textContent = assign.contractor_name || v.transporter_name || '—';
+                
+                const detailsOfficerEl = document.getElementById('detailsOfficer');
+                if (detailsOfficerEl) detailsOfficerEl.textContent = assign.officer_pi || '—';
 
-            // Info Card 3
-            if (v.lat && v.lng) {
-                document.getElementById('detailsCoords').textContent = `${v.lat.toFixed(5)}, ${v.lng.toFixed(5)}`;
-            } else {
-                document.getElementById('detailsCoords').textContent = '0.00000, 0.00000';
-            }
-            document.getElementById('detailsLastUpdated').textContent = `${v.last_updated_date || ''} ${v.last_updated_time || ''}`.trim() || 'N/A';
+                // Info Card 3
+                const detailsCoordsEl = document.getElementById('detailsCoords');
+                if (detailsCoordsEl) {
+                    if (v.lat !== undefined && v.lat !== null && v.lng !== undefined && v.lng !== null) {
+                        const latNum = typeof v.lat === 'number' ? v.lat : parseFloat(v.lat);
+                        const lngNum = typeof v.lng === 'number' ? v.lng : parseFloat(v.lng);
+                        detailsCoordsEl.textContent = `${latNum.toFixed(5)}, ${lngNum.toFixed(5)}`;
+                    } else {
+                        detailsCoordsEl.textContent = '0.00000, 0.00000';
+                    }
+                }
+                
+                const detailsLastUpdatedEl = document.getElementById('detailsLastUpdated');
+                if (detailsLastUpdatedEl) {
+                    detailsLastUpdatedEl.textContent = `${v.last_updated_date || ''} ${v.last_updated_time || ''}`.trim() || 'N/A';
+                }
 
-            // Quick Actions
-            document.getElementById('detailsHistoryBtn').onclick = () => {
-                window.location.href = `/map_recording?truck_id=${encodeURIComponent(v.device_id)}`;
-            };
-            document.getElementById('detailsNavBtn').href = `https://www.google.com/maps?q=${v.lat},${v.lng}`;
+                // Quick Actions
+                const historyBtn = document.getElementById('detailsHistoryBtn');
+                if (historyBtn) {
+                    historyBtn.onclick = () => {
+                        window.location.href = `/map_recording?truck_id=${encodeURIComponent(v.device_id)}`;
+                    };
+                }
+                
+                const navBtn = document.getElementById('detailsNavBtn');
+                if (navBtn) {
+                    navBtn.href = `https://www.google.com/maps?q=${v.lat},${v.lng}`;
+                }
 
-            // Calculate Proximity List
-            const proxContainer = document.getElementById('proximityListContainer');
-            proxContainer.innerHTML = '';
+                // Calculate Proximity List
+                const proxContainer = document.getElementById('proximityListContainer');
+                if (proxContainer) {
+                    proxContainer.innerHTML = '';
 
-            const activeOthers = vehicles.filter(x => x.device_id.toUpperCase() !== id.toUpperCase() && x.lat && x.lng);
-            
-            const calculatedList = activeOthers.map(other => {
-                const dist = getHaversineDistance(v.lat, v.lng, other.lat, other.lng);
-                return { other, dist };
-            });
-
-            // Sort by proximity
-            calculatedList.sort((a, b) => a.dist - b.dist);
-
-            // Render list
-            calculatedList.forEach(item => {
-                const row = document.createElement('div');
-                row.className = 'proximity-row';
-                row.onclick = (e) => {
-                    e.stopPropagation();
-                    focusVehicle(item.other.device_id, item.other.lat, item.other.lng);
-                };
-
-                const isFar = item.dist > 50;
-                row.innerHTML = `
-                    <div class="prox-id">
-                        <i class="fas fa-truck"></i> ${item.other.device_id}
-                    </div>
-                    <div class="prox-dist ${isFar ? 'far' : ''}">
-                        ${formatDistance(item.dist)}
-                    </div>
-                `;
-                proxContainer.appendChild(row);
-            });
-
-            if (calculatedList.length === 0) {
-                proxContainer.innerHTML = '<div style="font-size:0.8rem; color:#6b7280; text-align:center; padding:10px;">No other active devices found</div>';
-            }
-
-            // Draw lines on map
-            proximityLines.forEach(line => map.removeLayer(line));
-            proximityLines = [];
-
-            if (showProximityLines && v.lat && v.lng) {
-                // Draw lines to the nearest 10 other active devices
-                const nearestOthers = calculatedList.slice(0, 10);
-                nearestOthers.forEach(item => {
-                    const other = item.other;
-                    const dist = item.dist;
+                    const activeOthers = vehicles.filter(x => x && x.device_id && x.device_id.toUpperCase() !== id.toUpperCase() && x.lat !== undefined && x.lat !== null && x.lng !== undefined && x.lng !== null);
                     
-                    const line = L.polyline([[v.lat, v.lng], [other.lat, other.lng]], {
-                        color: '#3b82f6',
-                        weight: 2,
-                        dashArray: '5, 8',
-                        opacity: 0.7
-                    }).addTo(map);
-                    
-                    line.bindTooltip(`${other.device_id}: ${formatDistance(dist)}`, { sticky: true });
-                    proximityLines.push(line);
-                });
+                    const calculatedList = activeOthers.map(other => {
+                        const dist = getHaversineDistance(v.lat, v.lng, other.lat, other.lng);
+                        return { other, dist };
+                    });
+
+                    // Sort by proximity
+                    calculatedList.sort((a, b) => a.dist - b.dist);
+
+                    // Render list
+                    calculatedList.forEach(item => {
+                        const row = document.createElement('div');
+                        row.className = 'proximity-row';
+                        row.onclick = (e) => {
+                            e.stopPropagation();
+                            focusVehicle(item.other.device_id, item.other.lat, item.other.lng);
+                        };
+
+                        const isFar = item.dist > 50;
+                        row.innerHTML = `
+                            <div class="prox-id">
+                                <i class="fas fa-truck"></i> ${item.other.device_id}
+                            </div>
+                            <div class="prox-dist ${isFar ? 'far' : ''}">
+                                ${formatDistance(item.dist)}
+                            </div>
+                        `;
+                        proxContainer.appendChild(row);
+                    });
+
+                    if (calculatedList.length === 0) {
+                        proxContainer.innerHTML = '<div style="font-size:0.8rem; color:#6b7280; text-align:center; padding:10px;">No other active devices found</div>';
+                    }
+
+                    // Draw lines on map
+                    proximityLines.forEach(line => map.removeLayer(line));
+                    proximityLines = [];
+
+                    if (showProximityLines && v.lat !== undefined && v.lat !== null && v.lng !== undefined && v.lng !== null) {
+                        // Draw lines to the nearest 10 other active devices
+                        const nearestOthers = calculatedList.slice(0, 10);
+                        nearestOthers.forEach(item => {
+                            const other = item.other;
+                            const dist = item.dist;
+                            
+                            const line = L.polyline([[v.lat, v.lng], [other.lat, other.lng]], {
+                                color: '#3b82f6',
+                                weight: 2,
+                                dashArray: '5, 8',
+                                opacity: 0.7
+                            }).addTo(map);
+                            
+                            line.bindTooltip(`${other.device_id}: ${formatDistance(dist)}`, { sticky: true });
+                            proximityLines.push(line);
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error("Error in showVehicleDetails:", err);
             }
         }
 
