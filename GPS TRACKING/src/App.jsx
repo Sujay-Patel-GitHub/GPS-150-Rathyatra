@@ -1,7 +1,29 @@
 // src/App.jsx
 // Root component — wires together Firebase data, map, sidebar, and detail panel.
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, Component } from "react";
+
+// ── Global Error Boundary ────────────────────────────────────────────────────
+class ErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null, info: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, info) { this.setState({ info }); console.error("[ErrorBoundary]", error, info); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ position:"fixed",inset:0,background:"#030712",color:"#f87171",fontFamily:"monospace",padding:"2rem",overflowY:"auto",zIndex:9999 }}>
+          <h1 style={{ fontSize:"1.5rem",marginBottom:"1rem" }}>⚠️ Tracking App Crashed</h1>
+          <p style={{ color:"#fbbf24",marginBottom:"0.5rem" }}>{String(this.state.error)}</p>
+          <pre style={{ background:"#111",padding:"1rem",borderRadius:"0.5rem",fontSize:"0.75rem",color:"#94a3b8",whiteSpace:"pre-wrap" }}>
+            {this.state.info?.componentStack}
+          </pre>
+          <button onClick={() => window.location.reload()} style={{ marginTop:"1rem",padding:"0.5rem 1rem",background:"#f97316",color:"#fff",border:"none",borderRadius:"0.5rem",cursor:"pointer" }}>Reload</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { useVehicles } from "./hooks/useVehicles";
 import { Sidebar } from "./components/Sidebar/Sidebar";
 import { MapView } from "./components/MapView/MapView";
@@ -780,6 +802,7 @@ export default function App() {
   }
 
   return (
+    <ErrorBoundary>
     <div className="fixed inset-0 flex bg-gray-950 overflow-hidden">
       {/* Sidebar — vehicle list */}
       <div className="w-64 shrink-0 flex flex-col">
@@ -846,5 +869,6 @@ export default function App() {
         />
       </div>
     </div>
+    </ErrorBoundary>
   );
 }
