@@ -1277,13 +1277,15 @@ def get_processed_vehicles_list():
     # Get all devices from MongoDB
     vehicles_dict = {}
     for vehicle in col_vehicles.find({}):
-        vehicles_dict[vehicle.get("device_id")] = vehicle
+        did = vehicle.get("device_id")
+        if did:
+            vehicles_dict[did.strip()] = vehicle
     all_device_ids = [did for did in vehicles_dict.keys() if did]
 
     # Combine MongoDB vehicles with live GPS data
     vehicles_list = []
     for device_id in all_device_ids:
-        vehicle_data = vehicles_dict.get(device_id, {})
+        vehicle_data = vehicles_dict.get(device_id.strip(), {})
 
         # Get GPS coordinates from MongoDB live GPS
         lat = None
@@ -1328,9 +1330,8 @@ def get_processed_vehicles_list():
                         # Convert to IST (UTC + 5:30)
                         ist_time = utc_time + timedelta(hours=5, minutes=30)
                         
-                        # Apply Dynamic Offsets
-                        vehicle_doc = vehicles_dict.get(device_id, {})
-                        ist_time = apply_time_offset(ist_time, device_id, vehicle_doc)
+                        # Apply Time Offset
+                        ist_time = apply_time_offset(ist_time, device_id, vehicle_data)
 
                         # Check if more than configured threshold ago
                         threshold_sec = get_power_off_threshold() * 60
@@ -1374,7 +1375,6 @@ def get_processed_vehicles_list():
         latest_trip_num = 0
         try:
             base_path = Path(__file__).parent / "RECORDINGS"
-            # Check today's date first, then previous dates if needed
             current_date_str = datetime.now().strftime("%Y-%m-%d")
             vehicle_path = base_path / current_date_str / device_id
             
@@ -1401,6 +1401,9 @@ def get_processed_vehicles_list():
 
         vehicles_list.append({
             "device_id": device_id,
+            "display_name": vehicle_data.get("display_name", device_id),
+            "record_config": vehicle_data.get("record_config"),
+            "calibrate_pending": vehicle_data.get("calibrate_pending"),
             "rc_number": vehicle_data.get("rc_number"),
             "driver_name": vehicle_data.get("driver_name"),
             "transporter_name": vehicle_data.get("transporter_name"),
@@ -1415,7 +1418,10 @@ def get_processed_vehicles_list():
             "is_recording": is_recording,
             "trip_number": latest_trip_num,
             "trip_status": "Ongoing" if raw_trip_status == "1" else "Stop",
-            "speed": speed
+            "speed": speed,
+            "bearing": float(location.get("bearing", 0.0)),
+            "satellites": int(location.get("satellites", 12)),
+            "hdop": float(location.get("hdop", 1.0))
         })
 
     # Also include ESP trucks from registered_trucks (new GPS db)
@@ -1424,7 +1430,7 @@ def get_processed_vehicles_list():
         gps_db = mongo_client["gps_server_db"]
         existing_ids = set(v["device_id"] for v in vehicles_list)
         latest_map = {}
-        for doc in gps_db["new_devices"].find({}, {"truck_id":1,"lat":1,"lng":1,"speed":1,"timestamp":1}).sort("timestamp", -1):
+        for doc in gps_db["new_devices"].find({}, {"truck_id":1,"lat":1,"lng":1,"speed":1,"timestamp":1,"bearing":1,"satellites":1,"hdop":1}).sort("timestamp", -1):
             tid = doc.get("truck_id")
             if tid and tid.upper() not in latest_map:
                 latest_map[tid.upper()] = doc
@@ -1445,8 +1451,12 @@ def get_processed_vehicles_list():
                 lng = 72.5714
                 has_gps = False
             a = assign_map.get(tid, {})
+            vehicle_data = vehicles_dict.get(tid.strip(), {})
             vehicles_list.append({
                 "device_id": tid,
+                "display_name": vehicle_data.get("display_name", tid),
+                "record_config": vehicle_data.get("record_config"),
+                "calibrate_pending": vehicle_data.get("calibrate_pending"),
                 "rc_number": a.get("vehicle_plate", ""),
                 "driver_name": a.get("driver_name", ""),
                 "transporter_name": a.get("contractor_name", ""),
@@ -1457,7 +1467,10 @@ def get_processed_vehicles_list():
                 "is_power_off": (datetime.now() - ts).total_seconds() > threshold_sec if ts else True,
                 "camera_status": "No Data", "is_recording": False,
                 "trip_number": 0, "trip_status": "Stop",
-                "speed": nd.get("speed", 0)
+                "speed": nd.get("speed", 0),
+                "bearing": float(nd.get("bearing", 0.0)),
+                "satellites": int(nd.get("satellites", 12)),
+                "hdop": float(nd.get("hdop", 1.0))
             })
     except Exception as e:
         print(f"Error adding ESP trucks to vehicles list: {e}")
@@ -5487,6 +5500,30 @@ def save_config():
         return jsonify({'status': 'success'})
     except Exception as e:
         return jsonify({'error': str(e)})
+
+
+@app.route('/api/save_vehicle_display_name', methods=['POST'])
+def save_vehicle_display_name():
+    try:
+        req_data = request.json or {}
+        device_id = req_data.get('device_id')
+        display_name = req_data.get('display_name')
+        col_vehicles.update_one({"device_id": device_id}, {"$set": {"display_name": display_name}}, upsert=True)
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/calibrate_vehicle', methods=['POST'])
+def calibrate_vehicle():
+    try:
+        req_data = request.json or {}
+        device_id = req_data.get('device_id')
+        angle = req_data.get('angle')
+        col_vehicles.update_one({"device_id": device_id}, {"$set": {"calibrate_pending": angle}}, upsert=True)
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 # --- Stream API Routes ---
