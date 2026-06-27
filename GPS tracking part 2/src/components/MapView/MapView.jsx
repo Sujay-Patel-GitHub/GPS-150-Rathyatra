@@ -440,6 +440,10 @@ export function MapView({
   onPlaybackVehicleIdChange = () => {},
   playbackDate = "",
   onPlaybackDateChange = () => {},
+  playbackStartTime = "",
+  onPlaybackStartTimeChange = () => {},
+  playbackEndTime = "",
+  onPlaybackEndTimeChange = () => {},
   loadingPlayback = false,
   onLoadPlayback = () => {},
   selectedRecordingKey = "",
@@ -447,6 +451,7 @@ export function MapView({
   playbackRoutePoints = [],
   selectedRecordVehicleId = null,
   deviceList = [],
+  totalRawPoints = 0,
 }) {
   const vehicleIds  = Object.keys(vehicles);
   
@@ -1231,8 +1236,28 @@ export function MapView({
                     />
                   </div>
 
+                  <div className="flex flex-col gap-1 shrink-0 w-full md:w-24">
+                    <label className="text-[9px] text-white/40 font-bold uppercase tracking-wider">Start Time</label>
+                    <input
+                      type="time"
+                      value={playbackStartTime}
+                      onChange={(e) => onPlaybackStartTimeChange(e.target.value)}
+                      className="bg-gray-900 border border-white/10 rounded-lg px-2.5 py-1 text-xs font-bold text-white focus:outline-none focus:border-orange-500 cursor-pointer w-full transition-all"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1 shrink-0 w-full md:w-24">
+                    <label className="text-[9px] text-white/40 font-bold uppercase tracking-wider">End Time</label>
+                    <input
+                      type="time"
+                      value={playbackEndTime}
+                      onChange={(e) => onPlaybackEndTimeChange(e.target.value)}
+                      className="bg-gray-900 border border-white/10 rounded-lg px-2.5 py-1 text-xs font-bold text-white focus:outline-none focus:border-orange-500 cursor-pointer w-full transition-all"
+                    />
+                  </div>
+
                   <button
-                    onClick={() => onLoadPlayback(playbackVehicleId, playbackDate)}
+                    onClick={() => onLoadPlayback(playbackVehicleId, playbackDate, playbackStartTime, playbackEndTime)}
                     disabled={loadingPlayback}
                     className="px-4 py-2 text-xs font-extrabold rounded-lg bg-orange-500 hover:bg-orange-600 text-white disabled:opacity-50 cursor-pointer shrink-0 transition-all uppercase tracking-wider w-full md:w-auto shadow-md"
                   >
@@ -1243,7 +1268,12 @@ export function MapView({
                 <div className="flex items-center justify-between border-t border-white/10 pt-2 w-full">
                   <span className="text-[9px] text-white/40 font-bold uppercase tracking-wider">Active Device: <span className="text-orange-400 font-extrabold">{selectedRecordVehicleId || "None"}</span></span>
                   {playbackRoutePoints.length > 0 && (
-                    <span className="text-[9px] text-white/40 font-bold uppercase tracking-wider">Total Points: <span className="text-white font-extrabold">{playbackRoutePoints.length}</span></span>
+                    <span className="text-[9px] text-white/40 font-bold uppercase tracking-wider">
+                      Points Loaded: <span className="text-white font-extrabold">{playbackRoutePoints.length}</span>
+                      {totalRawPoints > playbackRoutePoints.length && (
+                        <span className="text-white/40"> (Total: {totalRawPoints})</span>
+                      )}
+                    </span>
                   )}
                 </div>
               </div>

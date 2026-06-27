@@ -43,8 +43,11 @@ export default function App() {
     const ist = new Date(d.getTime() + 5.5 * 3600 * 1000);
     return ist.toISOString().split("T")[0];
   });
+  const [playbackStartTime, setPlaybackStartTime] = useState("");
+  const [playbackEndTime, setPlaybackEndTime] = useState("");
   const [loadingPlayback, setLoadingPlayback] = useState(false);
   const [playbackRoutePoints, setPlaybackRoutePoints] = useState([]);
+  const [totalRawPoints, setTotalRawPoints] = useState(0);
   const [selectedRecordVehicleId, setSelectedRecordVehicleId] = useState("");
   const [selectedRecordingKey, setSelectedRecordingKey] = useState(""); // Set to "mongo" when mongo playback loads
 
@@ -55,24 +58,30 @@ export default function App() {
     }
   }, [selectedId]);
 
-  const loadMongoPlayback = async (vehicleId, dateStr) => {
+  const loadMongoPlayback = async (vehicleId, dateStr, startTime, endTime) => {
     if (!vehicleId || !dateStr) {
       alert("Please select a vehicle and a date first.");
       return;
     }
     setLoadingPlayback(true);
     try {
-      const res = await fetch(`/api/get_map_recordings_data?device_id=${encodeURIComponent(vehicleId)}&date=${encodeURIComponent(dateStr)}`);
+      let url = `/api/get_map_recordings_data?device_id=${encodeURIComponent(vehicleId)}&date=${encodeURIComponent(dateStr)}`;
+      if (startTime) url += `&start_time=${encodeURIComponent(startTime)}`;
+      if (endTime) url += `&end_time=${encodeURIComponent(endTime)}`;
+      
+      const res = await fetch(url);
       const data = await res.json();
       if (data.points && data.points.length > 0) {
         setPlaybackRoutePoints(data.points);
+        setTotalRawPoints(data.total_raw || data.points.length);
         setPlaybackIndex(0);
         setSelectedRecordVehicleId(vehicleId);
         setPlaybackIsPlaying(true);
         setSelectedRecordingKey("mongo");
       } else {
-        alert(`No GPS coordinates found for "${vehicleId}" on ${dateStr} in MongoDB.`);
+        alert(`No GPS coordinates found for "${vehicleId}" in the selected range.`);
         setPlaybackRoutePoints([]);
+        setTotalRawPoints(0);
         setPlaybackIndex(0);
         setPlaybackIsPlaying(false);
         setSelectedRecordingKey("");
@@ -776,12 +785,17 @@ export default function App() {
           onPlaybackVehicleIdChange={setPlaybackVehicleId}
           playbackDate={playbackDate}
           onPlaybackDateChange={setPlaybackDate}
+          playbackStartTime={playbackStartTime}
+          onPlaybackStartTimeChange={setPlaybackStartTime}
+          playbackEndTime={playbackEndTime}
+          onPlaybackEndTimeChange={setPlaybackEndTime}
           loadingPlayback={loadingPlayback}
           onLoadPlayback={loadMongoPlayback}
           selectedRecordingKey={selectedRecordingKey}
           onSelectedRecordingKeyChange={setSelectedRecordingKey}
           selectedRecordVehicleId={selectedRecordVehicleId}
           deviceList={deviceList}
+          totalRawPoints={totalRawPoints}
         />
       </div>
 

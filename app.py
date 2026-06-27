@@ -1834,6 +1834,8 @@ def get_map_recordings_data():
         
     device_id = request.args.get('device_id')
     date_str = request.args.get('date') # YYYY-MM-DD
+    start_time_str = request.args.get('start_time') # HH:MM (optional)
+    end_time_str = request.args.get('end_time') # HH:MM (optional)
     
     if not device_id or not date_str:
         return jsonify({"error": "Missing params"}), 400
@@ -1841,7 +1843,21 @@ def get_map_recordings_data():
     # Query mongo with projection for speed
     try:
         start_dt = datetime.strptime(date_str, "%Y-%m-%d")
+        if start_time_str:
+            try:
+                sh, sm = map(int, start_time_str.split(":"))
+                start_dt = start_dt.replace(hour=sh, minute=sm)
+            except Exception as ex:
+                print(f"Error parsing start_time: {ex}")
+                
         end_dt = start_dt + timedelta(days=1)
+        if end_time_str:
+            try:
+                eh, em = map(int, end_time_str.split(":"))
+                temp_end = datetime.strptime(date_str, "%Y-%m-%d")
+                end_dt = temp_end.replace(hour=eh, minute=em)
+            except Exception as ex:
+                print(f"Error parsing end_time: {ex}")
         
         # 1. Try exact match in map_recordings (fastest)
         query = {
