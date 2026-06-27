@@ -1,0 +1,40 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('users/' + auth.uid + '/role').val() === 'admin')",
+        ".write": "auth != null && (auth.uid === $uid || root.child('users/' + auth.uid + '/role').val() === 'admin')"
+      }
+    },
+    
+    "fleet_metadata": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('users/' + auth.uid + '/role').val() === 'admin'"
+    },
+
+    "vehicles": {
+      ".read": true,
+      ".write": true
+    },
+
+    "vehicle_details": {
+      ".read": true,
+      ".write": true
+    },
+
+    "recordings": {
+      ".read": true,
+      ".write": true
+    },
+
+    "history": {
+      ".read": true,
+      ".write": true
+    },
+
+    "logs": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}

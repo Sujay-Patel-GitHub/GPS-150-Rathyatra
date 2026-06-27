@@ -1,0 +1,3 @@
+# Netlify Redirects for Google Maps and Google Roads Proxies
+/api/v1/routing  https://maps.googleapis.com/maps/api/directions/json  200
+/api/v1/snapping/*  https://roads.googleapis.com/v1/:splat  200

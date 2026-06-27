@@ -1,0 +1,24 @@
+{
+  "rules": {
+    "vehicles": {
+      ".read": true,
+      "$vehicleId": {
+        ".write": true
+      }
+    },
+    "commands": {
+      ".read": true,
+      "$vehicleId": {
+        ".write": true
+      }
+    },
+    "recordings": {
+      ".read": true,
+      "$vehicleId": {
+        "$sessionId": {
+          ".write": true
+        }
+      }
+    }
+  }
+}

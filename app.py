@@ -6646,7 +6646,7 @@ threading.Thread(target=run_autostart_and_db_check, daemon=True).start()
 
 # --- GPS TRACKING INTEGRATION ROUTES ---
 def serve_index_no_cache():
-    dist_dir = os.path.join(os.path.dirname(__file__), "GPS TRACKING", "dist")
+    dist_dir = os.path.join(os.path.dirname(__file__), "GPS tracking part 2", "dist")
     resp = make_response(send_from_directory(dist_dir, "index.html"))
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     resp.headers["Pragma"] = "no-cache"
@@ -6662,12 +6662,12 @@ def tracking_index():
 
 @app.route("/tracking/assets/<path:path>")
 def tracking_assets(path):
-    dist_assets_dir = os.path.join(os.path.dirname(__file__), "GPS TRACKING", "dist", "assets")
+    dist_assets_dir = os.path.join(os.path.dirname(__file__), "GPS tracking part 2", "dist", "assets")
     return send_from_directory(dist_assets_dir, path)
 
 @app.route("/tracking/<path:path>")
 def tracking_files(path):
-    dist_dir = os.path.join(os.path.dirname(__file__), "GPS TRACKING", "dist")
+    dist_dir = os.path.join(os.path.dirname(__file__), "GPS tracking part 2", "dist")
     full_path = os.path.join(dist_dir, path)
     if os.path.exists(full_path) and os.path.isfile(full_path):
         return send_from_directory(dist_dir, path)
