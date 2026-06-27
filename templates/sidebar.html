@@ -172,50 +172,65 @@
 <script>
 (function() {
     function applyTheme(theme) {
-        const body = document.body;
-        const icon = document.getElementById('globalThemeToggleIcon');
-        const text = document.querySelector('#globalThemeToggleBtn span');
-        const btn = document.getElementById('globalThemeToggleBtn');
-        const hud = document.querySelector('.gps-hud-container');
-        
-        if (theme === 'dark') {
-            body.classList.add('dark-theme');
-            if (hud) hud.classList.add('dark-theme');
-            if (icon) {
-                icon.className = 'fas fa-sun';
-                icon.style.color = '#f59e0b';
+        try {
+            const body = document.body;
+            const icon = document.getElementById('globalThemeToggleIcon');
+            const text = document.querySelector('#globalThemeToggleBtn span');
+            const btn = document.getElementById('globalThemeToggleBtn');
+            const hud = document.querySelector('.gps-hud-container');
+            
+            if (theme === 'dark') {
+                body.classList.add('dark-theme');
+                if (hud) hud.classList.add('dark-theme');
+                if (icon) {
+                    icon.className = 'fas fa-sun';
+                    icon.style.color = '#f59e0b';
+                }
+                if (text) text.textContent = 'Light Mode';
+            } else {
+                body.classList.remove('dark-theme');
+                if (hud) hud.classList.remove('dark-theme');
+                if (icon) {
+                    icon.className = 'fas fa-moon';
+                    icon.style.color = '#9ca3af';
+                }
+                if (text) text.textContent = 'Dark Mode';
             }
-            if (text) text.textContent = 'Light Mode';
-        } else {
-            body.classList.remove('dark-theme');
-            if (hud) hud.classList.remove('dark-theme');
-            if (icon) {
-                icon.className = 'fas fa-moon';
-                icon.style.color = '#9ca3af';
-            }
-            if (text) text.textContent = 'Dark Mode';
+        } catch (e) {
+            console.error("Theme application error:", e);
         }
     }
     
     window.toggleGlobalTheme = function() {
-        const current = localStorage.getItem('globalTheme') || 'light';
-        const next = current === 'dark' ? 'light' : 'dark';
-        localStorage.setItem('globalTheme', next);
-        applyTheme(next);
-        
-        // Custom trigger for GPS monitoring card lists
-        if (typeof renderFleetList === 'function') {
-            renderFleetList();
+        try {
+            const current = localStorage.getItem('globalTheme') || 'light';
+            const next = current === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('globalTheme', next);
+            applyTheme(next);
+            
+            // Custom trigger for GPS monitoring card lists
+            if (typeof renderFleetList === 'function') {
+                renderFleetList();
+            }
+        } catch (e) {
+            console.error("Theme toggle error:", e);
         }
     }
     
     // Initialize on page load
-    const savedTheme = localStorage.getItem('globalTheme') || 'light';
+    let savedTheme = 'light';
+    try {
+        savedTheme = localStorage.getItem('globalTheme') || 'light';
+    } catch (e) {}
     applyTheme(savedTheme);
     
     // Also run on DOMContentLoaded to ensure elements exist
     document.addEventListener('DOMContentLoaded', () => {
-        applyTheme(localStorage.getItem('globalTheme') || 'light');
+        let saved = 'light';
+        try {
+            saved = localStorage.getItem('globalTheme') || 'light';
+        } catch (e) {}
+        applyTheme(saved);
     });
 })();
 </script>

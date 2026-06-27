@@ -6575,5 +6575,57 @@ def debug_sys_cmd():
         return str(e)
 
 
+def run_autostart_and_db_check():
+    log_file = Path(__file__).parent / "boot_diagnostics.log"
+    log_entries = []
+    log_entries.append(f"Boot at {datetime.now()}")
+    
+    # 1. Check MongoDB vehicles count
+    try:
+        from mongodb import col_vehicles
+        count = col_vehicles.count_documents({})
+        log_entries.append(f"DB vehicles count: {count}")
+        # List device IDs
+        devices = [doc.get("device_id") for doc in col_vehicles.find({}, {"device_id": 1})]
+        log_entries.append(f"Registered Devices: {devices}")
+    except Exception as e:
+        log_entries.append(f"DB connection error: {e}")
+        
+    # 2. PM2 autostart
+    try:
+        flag_file = Path(__file__).parent / ".pm2_initialized"
+        if not flag_file.exists():
+            log_entries.append("Initializing PM2 auto-start...")
+            # Try to start pm2 for sms_curl_acess.py
+            cmd = "pm2 start /home/lenovo1/python-server/sms_curl_acess.py --name 'sms-sender' --interpreter /home/lenovo1/python-server/venv/bin/python"
+            res = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=15)
+            log_entries.append(f"PM2 STDOUT: {res.stdout}")
+            log_entries.append(f"PM2 STDERR: {res.stderr}")
+            
+            # Save
+            subprocess.run("pm2 save", shell=True)
+            flag_file.write_text("done")
+            log_entries.append("PM2 auto-start initialized and saved.")
+        else:
+            log_entries.append("PM2 auto-start already initialized in past runs.")
+    except Exception as e:
+        log_entries.append(f"PM2 autostart error: {e}")
+        
+    # Write log
+    with open(log_file, "w", encoding="utf-8") as f:
+        f.write("\n".join(log_entries) + "\n\n")
+
+
+@app.route('/view_boot_log')
+def view_boot_log():
+    log_file = Path(__file__).parent / "boot_diagnostics.log"
+    if log_file.exists():
+        return Response(log_file.read_text(encoding="utf-8"), mimetype="text/plain")
+    return "No log file found"
+
+
+threading.Thread(target=run_autostart_and_db_check, daemon=True).start()
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=7777, debug=True, threaded=True)
