@@ -947,7 +947,7 @@ export function DetailPanel({ vehicleId, data, useCompass, onToggleCompass, admi
               Object.entries(logs)
                 .sort((a, b) => b[0] - a[0]) // Sort by timestamp key descending
                 .map(([key, log]) => {
-                  const logDate = new Date(log.timestamp || Number(key));
+                  const logDate = new Date(log?.timestamp || Number(key));
                   const timeStr = logDate.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
                   const severityColors = {
@@ -955,7 +955,7 @@ export function DetailPanel({ vehicleId, data, useCompass, onToggleCompass, admi
                     warning: "bg-orange-500/10 border-orange-500/20 text-orange-400",
                     normal: "bg-green-500/10 border-green-500/20 text-green-400"
                   };
-                  const colors = severityColors[log.severity] || severityColors.normal;
+                  const colors = severityColors[log?.severity] || severityColors.normal;
 
                   const typeLabels = {
                     GEOFENCE: "GEOFENCE ENTER",
@@ -965,7 +965,7 @@ export function DetailPanel({ vehicleId, data, useCompass, onToggleCompass, admi
                     OFF_ROUTE: "OFF ROUTE",
                     ON_ROUTE: "ON ROUTE"
                   };
-                  const typeLabel = typeLabels[log.type] || log.type || "INFO";
+                  const typeLabel = typeLabels[log?.type] || log?.type || "INFO";
 
                   return (
                     <div key={key} className={`p-3 rounded-xl border flex flex-col gap-2 transition-all ${colors}`}>

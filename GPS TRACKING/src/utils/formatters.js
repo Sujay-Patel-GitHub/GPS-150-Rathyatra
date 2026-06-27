@@ -8,8 +8,21 @@
  */
 export function parseTimestamp(ts) {
   if (!ts) return new Date(0);
+  if (ts instanceof Date) return ts;
+  if (typeof ts === "number") return new Date(ts);
+  if (typeof ts !== "string") {
+    try {
+      return new Date(ts);
+    } catch {
+      return new Date(0);
+    }
+  }
   // Replace space with T and append Z to mark as UTC
-  return new Date(ts.replace(" ", "T") + "Z");
+  try {
+    return new Date(ts.replace(" ", "T") + "Z");
+  } catch {
+    return new Date(0);
+  }
 }
 
 /**

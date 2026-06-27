@@ -8,6 +8,11 @@ import subprocess
 import threading
 import paramiko
 import json
+import mimetypes
+
+# Force correct MIME types for JavaScript and CSS files (crucial for strict browser checks on Windows servers)
+mimetypes.add_type("application/javascript", ".js")
+mimetypes.add_type("text/css", ".css")
 import zipfile
 import io
 from pathlib import Path
