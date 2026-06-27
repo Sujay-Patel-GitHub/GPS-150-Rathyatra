@@ -11,8 +11,8 @@
 #include <HTTPClient.h>
 
 // ── CONFIG — edit these lines only ────────────────────────
-const char* TRUCK_NAME = "TRUCK1";
-const char* WIFI_SSID  = "surya1";
+const char* TRUCK_NAME = "TRUCK2";
+const char* WIFI_SSID  = "surya2";
 const char* WIFI_PASS  = "Pilab@909090";
 #define MOSFET_PIN 27
 // ──────────────────────────────────────────────────────────

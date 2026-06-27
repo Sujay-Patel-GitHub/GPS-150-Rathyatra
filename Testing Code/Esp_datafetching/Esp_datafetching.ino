@@ -5,8 +5,8 @@
 #include <HTTPClient.h>
 
 // --- WiFi Credentials ---
-const char* WIFI_SSID = "YOUR_WIFI_SSID";
-const char* WIFI_PASS = "YOUR_WIFI_PASSWORD";
+const char* WIFI_SSID = "PANIND";
+const char* WIFI_PASS = "12AB89YZ";
 
 // --- Server ---
 const char* SERVER_URL = "http://150.129.165.162:7777/api/test_gps";

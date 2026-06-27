@@ -47,11 +47,24 @@ def inject_sidebar_sections():
         config_doc = col_settings.find_one({"_id": "sidebar_sections"})
         if config_doc and "sections" in config_doc:
             sections = config_doc["sections"]
+            # Ensure "tracking" section exists
+            if not any(s.get("id") == "tracking" for s in sections):
+                idx = -1
+                for i, s in enumerate(sections):
+                    if s.get("id") == "gps_monitoring":
+                        idx = i
+                        break
+                if idx != -1:
+                    sections.insert(idx + 1, {"id": "tracking", "name": "Tracking", "href": "/tracking", "icon": "fas fa-route", "visible": True})
+                else:
+                    sections.append({"id": "tracking", "name": "Tracking", "href": "/tracking", "icon": "fas fa-route", "visible": True})
+                col_settings.update_one({"_id": "sidebar_sections"}, {"$set": {"sections": sections}}, upsert=True)
         else:
             sections = [
                 {"id": "add_user", "name": "Add New User", "href": "/add_user", "icon": "fas fa-user-plus", "visible": True},
                 {"id": "show_devices", "name": "Show Devices", "href": "/admin_dashboard", "icon": "fas fa-list-ul", "visible": True},
                 {"id": "gps_monitoring", "name": "GPS Monitoring", "href": "/gps_monitoring", "icon": "fas fa-map-marked-alt", "visible": True},
+                {"id": "tracking", "name": "Tracking", "href": "/tracking", "icon": "fas fa-route", "visible": True},
                 {"id": "detailed_report", "name": "Detailed Report", "href": "/monthly_report", "icon": "fas fa-file-invoice", "visible": True},
                 {"id": "list_roles", "name": "List Roles", "href": "/list_roles", "icon": "fas fa-users", "visible": True},
                 {"id": "grouping", "name": "Grouping", "href": "/grouping", "icon": "fas fa-object-group", "visible": True},
@@ -67,6 +80,7 @@ def inject_sidebar_sections():
             {"id": "add_user", "name": "Add New User", "href": "/add_user", "icon": "fas fa-user-plus", "visible": True},
             {"id": "show_devices", "name": "Show Devices", "href": "/admin_dashboard", "icon": "fas fa-list-ul", "visible": True},
             {"id": "gps_monitoring", "name": "GPS Monitoring", "href": "/gps_monitoring", "icon": "fas fa-map-marked-alt", "visible": True},
+            {"id": "tracking", "name": "Tracking", "href": "/tracking", "icon": "fas fa-route", "visible": True},
             {"id": "detailed_report", "name": "Detailed Report", "href": "/monthly_report", "icon": "fas fa-file-invoice", "visible": True},
             {"id": "list_roles", "name": "List Roles", "href": "/list_roles", "icon": "fas fa-users", "visible": True},
             {"id": "grouping", "name": "Grouping", "href": "/grouping", "icon": "fas fa-object-group", "visible": True},
@@ -6491,6 +6505,7 @@ def api_reset_sections():
             {"id": "add_user", "name": "Add New User", "href": "/add_user", "icon": "fas fa-user-plus", "visible": True},
             {"id": "show_devices", "name": "Show Devices", "href": "/admin_dashboard", "icon": "fas fa-list-ul", "visible": True},
             {"id": "gps_monitoring", "name": "GPS Monitoring", "href": "/gps_monitoring", "icon": "fas fa-map-marked-alt", "visible": True},
+            {"id": "tracking", "name": "Tracking", "href": "/tracking", "icon": "fas fa-route", "visible": True},
             {"id": "detailed_report", "name": "Detailed Report", "href": "/monthly_report", "icon": "fas fa-file-invoice", "visible": True},
             {"id": "list_roles", "name": "List Roles", "href": "/list_roles", "icon": "fas fa-users", "visible": True},
             {"id": "grouping", "name": "Grouping", "href": "/grouping", "icon": "fas fa-object-group", "visible": True},
@@ -6601,6 +6616,52 @@ def run_autostart_and_db_check():
 
 
 threading.Thread(target=run_autostart_and_db_check, daemon=True).start()
+
+
+
+# --- GPS TRACKING INTEGRATION ROUTES ---
+@app.route("/tracking")
+@app.route("/tracking/")
+def tracking_index():
+    if session.get('user_type') != 'admin':
+        return redirect(url_for('login'))
+    
+    dist_dir = os.path.join(os.path.dirname(__file__), "GPS TRACKING", "dist")
+    return send_from_directory(dist_dir, "index.html")
+
+@app.route("/tracking/assets/<path:path>")
+def tracking_assets(path):
+    dist_assets_dir = os.path.join(os.path.dirname(__file__), "GPS TRACKING", "dist", "assets")
+    return send_from_directory(dist_assets_dir, path)
+
+@app.route("/tracking/<path:path>")
+def tracking_files(path):
+    dist_dir = os.path.join(os.path.dirname(__file__), "GPS TRACKING", "dist")
+    full_path = os.path.join(dist_dir, path)
+    if os.path.exists(full_path) and os.path.isfile(full_path):
+        return send_from_directory(dist_dir, path)
+    return send_from_directory(dist_dir, "index.html")
+
+@app.route("/api/v1/routing", methods=["GET"])
+@app.route("/api/v1/routing/<path:path>", methods=["GET"])
+def proxy_routing(path=""):
+    url = "https://maps.googleapis.com/maps/api/directions/json"
+    params = request.args.to_dict()
+    try:
+        resp = requests.get(url, params=params, timeout=10)
+        return Response(resp.content, status=resp.status_code, content_type=resp.headers.get("content-type"))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/v1/snapping/<path:path>", methods=["GET"])
+def proxy_snapping(path):
+    url = f"https://roads.googleapis.com/v1/{path}"
+    params = request.args.to_dict()
+    try:
+        resp = requests.get(url, params=params, timeout=10)
+        return Response(resp.content, status=resp.status_code, content_type=resp.headers.get("content-type"))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":

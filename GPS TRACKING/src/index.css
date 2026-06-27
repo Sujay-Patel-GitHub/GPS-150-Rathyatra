@@ -1,0 +1,190 @@
+/* ─── Google Fonts ─────────────────────────────────────── */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap");
+
+@import "tailwindcss";
+
+/* ─── Base ─────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  background: #030712; /* gray-950 */
+  color: #f1f5f9;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────── */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* ─── Custom Animations ─────────────────────────────────── */
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.25s ease-out both;
+}
+
+/* ─── Leaflet Map Overrides ──────────────────────────────── */
+
+/* Map background — matches OSM light tiles */
+.leaflet-container {
+  background: #f2ede6;
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+/* ── Popup card — premium dark glassmorphic style ──────────── */
+.leaflet-popup-content-wrapper {
+  background: rgba(17, 24, 39, 0.95) !important; /* dark slate */
+  backdrop-filter: blur(12px);
+  border-radius: 16px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  padding: 0 !important;
+  overflow: hidden;
+  color: #f1f5f9 !important;
+}
+
+.leaflet-popup-content {
+  margin: 16px 18px !important;
+  min-width: 210px;
+}
+
+.leaflet-popup-tip-container {
+  display: none !important;
+}
+
+.leaflet-popup-close-button {
+  color: rgba(255, 255, 255, 0.5) !important;
+  font-size: 16px !important;
+  top: 10px !important;
+  right: 12px !important;
+  transition: color 0.15s;
+}
+
+.leaflet-popup-close-button:hover {
+  color: #fff !important;
+}
+
+/* ── Zoom controls ───────────────────────────────────────── */
+.leaflet-control-zoom {
+  border: none !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important;
+  border-radius: 10px !important;
+  overflow: hidden;
+}
+
+.leaflet-control-zoom a {
+  width: 36px !important;
+  height: 36px !important;
+  line-height: 36px !important;
+  font-size: 16px !important;
+  background: rgba(17, 24, 39, 0.9) !important;
+  color: rgba(255,255,255,0.7) !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+  backdrop-filter: blur(8px);
+  transition: all 0.15s;
+}
+
+.leaflet-control-zoom a:hover {
+  background: rgba(249, 115, 22, 0.9) !important; /* Orange */
+  color: #fff !important;
+}
+
+/* ── Layers control (tile switcher) ─────────────────────── */
+.leaflet-control-layers {
+  border: none !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important;
+  font-family: "Inter", sans-serif;
+  font-size: 12px;
+}
+
+.leaflet-control-layers-toggle {
+  background-color: rgba(17, 24, 39, 0.9) !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(8px);
+}
+
+.leaflet-control-layers-expanded {
+  padding: 12px 16px !important;
+  background: rgba(17, 24, 39, 0.95) !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  min-width: 150px;
+  backdrop-filter: blur(12px);
+}
+
+.leaflet-control-layers label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  cursor: pointer;
+  color: rgba(255,255,255,0.75);
+  font-size: 12px;
+  transition: color 0.15s;
+}
+
+.leaflet-control-layers label:hover {
+  color: #f97316; /* Orange */
+}
+
+/* ── Attribution bar ─────────────────────────────────────── */
+.leaflet-control-attribution {
+  background: rgba(255,255,255,0.82) !important;
+  color: #888 !important;
+  font-size: 10px !important;
+  backdrop-filter: blur(4px);
+  border-radius: 4px 0 0 0 !important;
+  padding: 2px 6px !important;
+}
+
+.leaflet-control-attribution a {
+  color: #EA4335 !important;
+}
+
+/* ── Geofence Tooltip ────────────────────────────────────── */
+.custom-geofence-tooltip {
+  background: rgba(17, 24, 39, 0.9) !important; /* Dark slate */
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+  font-family: "Inter", sans-serif;
+  border-radius: 6px !important;
+  padding: 3px 6px !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;
+}
+
+.custom-geofence-tooltip::before {
+  border-top-color: rgba(17, 24, 39, 0.9) !important;
+}
+
+
