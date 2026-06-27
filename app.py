@@ -1290,6 +1290,9 @@ def get_processed_vehicles_list():
         lng = None
         has_gps = False
         speed = 0
+        last_updated_date = "N/A"
+        last_updated_time = ""
+        is_power_off = True
 
         location = {}
         try:
@@ -1298,12 +1301,11 @@ def get_processed_vehicles_list():
                 location = device_firebase_data
                 if location:
                     try:
-                        lat_val = float(location.get("lat", 0))
-                        lng_val = float(location.get("lng") or location.get("lon", 0))
-                        # Only consider it valid GPS if it is within bounds
-                        if is_valid_gps_coordinate(lat_val, lng_val):
-                            lat = lat_val
-                            lng = lng_val
+                        if "lat" in location:
+                            lat = float(location.get("lat", 0.0))
+                            has_gps = True
+                        if "lng" in location or "lon" in location:
+                            lng = float(location.get("lng") or location.get("lon", 0.0))
                             has_gps = True
                     except:
                         pass
@@ -1351,9 +1353,10 @@ def get_processed_vehicles_list():
             pass
         
         # Use default coordinates if no GPS
-        if not has_gps:
+        if lat is None or lng is None:
             lat = 23.0225  # Default to Ahmedabad
             lng = 72.5714
+            has_gps = False
         
         # Get camera status (mosfet)
         device_raw = get_live_gps(device_id) or {}
@@ -1433,9 +1436,14 @@ def get_processed_vehicles_list():
                 continue
             nd = latest_map.get(tid.upper(), {})
             ts = nd.get("timestamp")
-            lat = nd.get("lat", 23.0225)
-            lng = nd.get("lng", 72.5714)
-            has_gps = bool(nd and lat and lng and not (lat == 23.0225 and lng == 72.5714))
+            lat = nd.get("lat")
+            lng = nd.get("lng") or nd.get("lon")
+            if lat is not None and lng is not None:
+                has_gps = True
+            else:
+                lat = 23.0225
+                lng = 72.5714
+                has_gps = False
             a = assign_map.get(tid, {})
             vehicles_list.append({
                 "device_id": tid,
