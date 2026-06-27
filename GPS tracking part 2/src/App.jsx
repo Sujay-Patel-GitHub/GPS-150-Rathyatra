@@ -51,12 +51,16 @@ export default function App() {
   const [selectedRecordVehicleId, setSelectedRecordVehicleId] = useState("");
   const [selectedRecordingKey, setSelectedRecordingKey] = useState(""); // Set to "mongo" when mongo playback loads
 
-  // Default playback vehicle ID to selected vehicle in sidebar
+  // Default playback vehicle ID to selected vehicle in sidebar or first available device
   useEffect(() => {
-    if (selectedId && !playbackVehicleId) {
-      setPlaybackVehicleId(selectedId);
+    if (playbackMode) {
+      if (selectedId) {
+        setPlaybackVehicleId(selectedId);
+      } else if (!playbackVehicleId && deviceList.length > 0) {
+        setPlaybackVehicleId(deviceList[0]);
+      }
     }
-  }, [selectedId]);
+  }, [playbackMode, selectedId, deviceList]);
 
   const loadMongoPlayback = async (vehicleId, dateStr, startTime, endTime) => {
     if (!vehicleId || !dateStr) {
@@ -93,6 +97,13 @@ export default function App() {
       setLoadingPlayback(false);
     }
   };
+
+  // Auto-load playback data when vehicle, date, or times change
+  useEffect(() => {
+    if (playbackMode && playbackVehicleId && playbackDate) {
+      loadMongoPlayback(playbackVehicleId, playbackDate, playbackStartTime, playbackEndTime);
+    }
+  }, [playbackMode, playbackVehicleId, playbackDate, playbackStartTime, playbackEndTime]);
 
   // Poll persistent logs from MongoDB
   const [logs, setLogs] = useState({});
