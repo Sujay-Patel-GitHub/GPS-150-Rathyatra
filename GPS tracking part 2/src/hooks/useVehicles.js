@@ -338,56 +338,50 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
   }, [rawVehicles, snappingRoute, useSnapping]);
 
   useEffect(() => {
-    const vehiclesDbRef = ref(db, "vehicles");
-
-    const unsubscribeVehicles = onValue(
-      vehiclesDbRef,
-      (snapshot) => {
-        const raw = snapshot.val() || {};
-
-        // Apply universal physical-to-display device mapping
+    let active = true;
+    const fetchVehicles = async () => {
+      try {
+        const res = await fetch("/api/v1/tracking/vehicles");
+        if (!res.ok) throw new Error("Failed to fetch vehicles from MongoDB");
+        const data = await res.json();
+        if (!active) return;
+        
+        const raw = data.vehicles || {};
         const mapped = {};
-        Object.entries(raw).forEach(([dbId, data]) => {
+        Object.entries(raw).forEach(([dbId, item]) => {
           const displayId = (DEVICE_TO_DISPLAY_MAP[dbId] || dbId).trim();
-          if (data) {
+          if (item) {
             const existing = mapped[displayId];
             // If duplicate display IDs exist, keep the one with the newest timestamp
-            if (!existing || (data.timestamp && (!existing.timestamp || data.timestamp > existing.timestamp))) {
+            if (!existing || (item.timestamp && (!existing.timestamp || item.timestamp > existing.timestamp))) {
               mapped[displayId] = {
-                ...data,
+                ...item,
                 truck_id: displayId,
                 vehicle_id: displayId
               };
             }
           }
         });
-
+        
         setRawVehicles(mapped);
+        setVehicleDetails(data.vehicle_details || {});
         setLoading(false);
         setError(null);
-      },
-      (err) => {
-        console.error("Firebase subscription failed:", err);
-        setError(err.message || String(err));
-        setLoading(false);
+      } catch (err) {
+        console.error("MongoDB fetch failed:", err);
+        if (active) {
+          setError(err.message || String(err));
+          setLoading(false);
+        }
       }
-    );
+    };
 
-    return unsubscribeVehicles;
-  }, []);
-
-  useEffect(() => {
-    const detailsDbRef = ref(db, "vehicle_details");
-    const unsubscribeDetails = onValue(
-      detailsDbRef,
-      (snapshot) => {
-        setVehicleDetails(snapshot.val() || {});
-      },
-      (err) => {
-        console.error("Firebase vehicle_details subscription failed:", err);
-      }
-    );
-    return unsubscribeDetails;
+    fetchVehicles();
+    const interval = setInterval(fetchVehicles, 2000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, []);
 
   // Compute enriched vehicle map
