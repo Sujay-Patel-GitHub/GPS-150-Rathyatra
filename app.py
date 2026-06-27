@@ -583,6 +583,8 @@ def unregister_device(truck_id):
         db["gps_live"].delete_many({"device_id": truck_id})
         db["map_recordings"].delete_many({"device_id": truck_id})
         db["sos_logs"].delete_many({"device_id": truck_id})
+        db["new_devices"].delete_many({"truck_id": truck_id})
+        db["new_devices"].delete_many({"device_id": truck_id})
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
