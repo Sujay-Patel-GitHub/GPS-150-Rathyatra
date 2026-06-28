@@ -496,6 +496,41 @@ export function MapView({
   const [inspectorResult, setInspectorResult] = useState(null);
   const [copiedField, setCopiedField] = useState(null);
 
+  // ── Active Snapped Route State (Activated from MongoDB) ───────────────────
+  const [savedRoutes, setSavedRoutes] = useState([]);
+  const [activeRouteId, setActiveRouteId] = useState("");
+  const [activeRoutePoints, setActiveRoutePoints] = useState([]);
+
+  const fetchSavedRoutes = useCallback(async () => {
+    try {
+      const res = await fetch("/api/mongo_data/route");
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setSavedRoutes(data);
+      }
+    } catch (e) {
+      console.error("Failed to fetch saved routes:", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSavedRoutes();
+  }, [fetchSavedRoutes]);
+
+  const handleActivateRoute = useCallback((idxStr) => {
+    if (idxStr === "") {
+      setActiveRouteId("");
+      setActiveRoutePoints([]);
+    } else {
+      const idx = Number(idxStr);
+      const route = savedRoutes[idx];
+      if (route && Array.isArray(route.points)) {
+        setActiveRouteId(idxStr);
+        setActiveRoutePoints(route.points);
+      }
+    }
+  }, [savedRoutes]);
+
   // ── Route Assigning Mode State ───────────────────────────────────────────
   const [assignMode, setAssignMode] = useState(false);
   const [assignPoints, setAssignPoints] = useState([]);
@@ -534,6 +569,7 @@ export function MapView({
       const data = await res.json();
       if (data.ok) {
         setAssignStatus("Saved successfully to MongoDB!");
+        fetchSavedRoutes();
         setTimeout(() => {
           setAssignMode(false);
           setAssignPoints([]);
@@ -548,7 +584,7 @@ export function MapView({
       console.error(e);
       setAssignStatus("Error saving route");
     }
-  }, [fetchedRoute, routeName, assignPoints]);
+  }, [fetchedRoute, routeName, assignPoints, fetchSavedRoutes]);
 
 
   const copyToClipboard = useCallback((text, field) => {
@@ -736,6 +772,34 @@ export function MapView({
 
 
 
+
+        {/* ── Active Snapped Route (Activated from MongoDB) ── */}
+        {activeRoutePoints && activeRoutePoints.length >= 2 && (
+          <>
+            {/* Reddish/purple corridor buffer around the active route */}
+            <Polyline
+              positions={activeRoutePoints}
+              pathOptions={{
+                color: "#ef4444", // Reddish corridor
+                weight: 80,
+                opacity: 0.15,
+                lineJoin: "round",
+                lineCap: "round",
+              }}
+            />
+            {/* Inner glowing blue route line */}
+            <Polyline
+              positions={activeRoutePoints}
+              pathOptions={{
+                color: "#2563eb", // Deep blue line
+                weight: 5,
+                opacity: 0.9,
+                lineJoin: "round",
+                lineCap: "round",
+              }}
+            />
+          </>
+        )}
 
         {/* ── Route Assigning Drawing Overlays ──────────────────────────────── */}
         <MapAssignClickHandler
@@ -1232,6 +1296,34 @@ export function MapView({
             </div>
           )}
 
+
+          {/* Activate Route Dropdown Selector */}
+          <div className="flex flex-col gap-1 border-t border-white/10 pt-3 mt-1">
+            <label className="text-[9px] text-white/40 font-bold uppercase tracking-wider">Activate Route</label>
+            <div className="flex gap-2">
+              <select
+                value={activeRouteId}
+                onChange={(e) => handleActivateRoute(e.target.value)}
+                className="bg-gray-900 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] font-bold text-white focus:outline-none focus:border-orange-500 cursor-pointer flex-1 min-w-0 transition-all"
+              >
+                <option value="">-- Select Route --</option>
+                {savedRoutes.map((r, idx) => (
+                  <option key={idx} value={idx}>{r.route_name || `Route ${idx + 1}`}</option>
+                ))}
+              </select>
+              {activeRouteId !== "" && (
+                <button
+                  onClick={() => {
+                    setActiveRouteId("");
+                    setActiveRoutePoints([]);
+                  }}
+                  className="px-2.5 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-[10px] font-extrabold rounded-lg uppercase tracking-wider transition active:scale-[0.97]"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
 
           <div className="border-t border-white/10 pt-3 flex flex-col gap-2">
             {/* Recording status pill */}
