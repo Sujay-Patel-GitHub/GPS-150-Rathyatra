@@ -451,6 +451,7 @@ export function MapView({
   playbackRoutePoints = [],
   selectedRecordVehicleId = null,
   totalRawPoints = 0,
+  deviceList = [],
 }) {
   const vehicleIds  = Object.keys(vehicles);
   
@@ -1225,14 +1226,17 @@ export function MapView({
                       className="bg-gray-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-orange-500 cursor-pointer w-full transition-all"
                     >
                       <option value="">-- Choose Truck --</option>
-                      {Object.keys(vehicleLabels).sort((a, b) => {
-                        const numA = parseInt(a.replace(/\D/g, ""), 10);
-                        const numB = parseInt(b.replace(/\D/g, ""), 10);
-                        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-                        return a.localeCompare(b);
-                      }).map(vid => (
-                        <option key={vid} value={vid}>{vehicleLabels[vid] || vid}</option>
-                      ))}
+                      {(() => {
+                        const list = (Array.isArray(deviceList) && deviceList.length > 0) ? deviceList : Object.keys(vehicleLabels);
+                        return [...list].sort((a, b) => {
+                          const numA = parseInt(a.replace(/\D/g, ""), 10);
+                          const numB = parseInt(b.replace(/\D/g, ""), 10);
+                          if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                          return a.localeCompare(b);
+                        }).map(vid => (
+                          <option key={vid} value={vid}>{vehicles[vid]?.display_name || vehicleLabels[vid] || vid}</option>
+                        ));
+                      })()}
                     </select>
                   </div>
 

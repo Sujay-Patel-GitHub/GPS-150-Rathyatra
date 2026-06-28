@@ -121,7 +121,22 @@ export default function App() {
     const interval = setInterval(fetchLogs, 10000);
     return () => clearInterval(interval);
   }, []);
-
+  // Fetch full device list from MongoDB for playback selection
+  const [deviceList, setDeviceList] = useState([]);
+  useEffect(() => {
+    const fetchDevices = async () => {
+      try {
+        const res = await fetch("/api/get_devices_list");
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setDeviceList(data);
+        }
+      } catch (e) {
+        console.error("Failed to fetch device list:", e);
+      }
+    };
+    fetchDevices();
+  }, []);
 
 
   const [hidePlaybackTrail, setHidePlaybackTrail] = useState(false);
@@ -789,6 +804,7 @@ export default function App() {
           selectedRecordingKey={selectedRecordingKey}
           onSelectedRecordingKeyChange={setSelectedRecordingKey}
           selectedRecordVehicleId={selectedRecordVehicleId}
+          deviceList={deviceList}
           totalRawPoints={totalRawPoints}
         />
       </div>
