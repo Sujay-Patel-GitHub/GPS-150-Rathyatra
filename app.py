@@ -368,6 +368,70 @@ def save_route():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.route("/api/report_out_of_route", methods=["POST"])
+def report_out_of_route():
+    try:
+        data = request.get_json() or {}
+        truck_id = data.get("truckId")
+        lat = data.get("lat")
+        lng = data.get("lng")
+        
+        if not truck_id:
+            return jsonify({"ok": False, "error": "Missing truckId"}), 400
+            
+        from mongodb import mongo_client
+        gps_db = mongo_client["gps_server_db"]
+        assign_col = gps_db["assign_devices"]
+        
+        device_doc = assign_col.find_one({"truck_id": truck_id})
+        if not device_doc:
+            import re
+            device_doc = assign_col.find_one({"truck_id": re.compile(f"^{re.escape(truck_id)}$", re.IGNORECASE)})
+            
+        phone_number = None
+        if device_doc:
+            phone_number = device_doc.get("driver_mobile")
+            
+        if not phone_number:
+            phone_number = "+918469091377" # User fallback number
+            
+        message = f"{truck_id} IS OUT OF THE ROUTE at Lat: {lat:.6f}, Lng: {lng:.6f}"
+        
+        import urllib.request
+        import json
+        
+        sms_url = "http://127.0.0.1:4636/push"
+        payload = {
+            "truckId": truck_id,
+            "phoneNumber": phone_number,
+            "message": message,
+            "priority": "HIGH"
+        }
+        
+        sms_ok = False
+        try:
+            req = urllib.request.Request(
+                sms_url, 
+                data=json.dumps(payload).encode('utf-8'),
+                headers={'Content-Type': 'application/json'},
+                method='POST'
+            )
+            with urllib.request.urlopen(req, timeout=5) as response:
+                sms_ok = response.status == 200
+        except Exception as err:
+            print(f"Error calling SMS server: {err}")
+            
+        return jsonify({
+            "ok": True,
+            "sms_sent": sms_ok,
+            "phone_used": phone_number,
+            "message": message
+        })
+    except Exception as e:
+        print(f"Error in report_out_of_route: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/api/mongo_drop/<collection>", methods=["DELETE"])
 def mongo_drop(collection):
     # Permanently disabled — no collection drops allowed

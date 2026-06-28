@@ -546,6 +546,7 @@ export function MapView({
   const [trackVehicleId, setTrackVehicleId] = useState("");
   const [trackRange, setTrackRange] = useState(15); // in meters
   const [mapZoom, setMapZoom] = useState(17);
+  const hasReportedOutRef = useRef(false);
 
   const corridorPixelWeight = useMemo(() => {
     const lat = activeRoutePoints.length > 0 ? activeRoutePoints[0][0] : 23.0225;
@@ -638,12 +639,31 @@ export function MapView({
       const displayName = v.display_name || activeId;
 
       if (isInside) {
+        hasReportedOutRef.current = false;
         setTrackMessage({
           text: `🟢 ${displayName} in route`,
           isOut: false,
           visible: true
         });
       } else {
+        if (!hasReportedOutRef.current) {
+          hasReportedOutRef.current = true;
+          fetch("/api/report_out_of_route", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              truckId: activeId,
+              lat: v.lat,
+              lng: v.lng
+            })
+          }).then(res => res.json())
+            .then(data => {
+              console.log("Out-of-route report response:", data);
+            })
+            .catch(err => {
+              console.error("Error sending out-of-route report:", err);
+            });
+        }
         setTrackMessage({
           text: `🚨 ${displayName} OUT OF ROUTE!`,
           isOut: true,
