@@ -422,6 +422,14 @@ function MapAssignClickHandler({ enabled, onAddPoint }) {
   });
   return null;
 }
+function MapZoomListener({ onZoomChange }) {
+  const map = useMapEvents({
+    zoomend() {
+      onZoomChange(map.getZoom());
+    }
+  });
+  return null;
+}
 
 const makeAssignPin = (label) => {
   const isStart = label === "Start";
@@ -536,6 +544,15 @@ export function MapView({
   const [trackingActive, setTrackingActive] = useState(false);
   const [trackMessage, setTrackMessage] = useState(null);
   const [trackVehicleId, setTrackVehicleId] = useState("");
+  const [trackRange, setTrackRange] = useState(15); // in meters
+  const [mapZoom, setMapZoom] = useState(17);
+
+  const corridorPixelWeight = useMemo(() => {
+    const lat = activeRoutePoints.length > 0 ? activeRoutePoints[0][0] : 23.0225;
+    const metersPerPixel = 40075016.686 * Math.cos(lat * Math.PI / 180) / Math.pow(2, mapZoom + 8);
+    const calcWeight = (2 * trackRange) / metersPerPixel;
+    return Math.max(4, Math.min(300, calcWeight));
+  }, [mapZoom, trackRange, activeRoutePoints]);
 
   // Sync track selector when map selection changes
   useEffect(() => {
@@ -617,7 +634,7 @@ export function MapView({
         }
       }
 
-      const isInside = minDistance <= 40;
+      const isInside = minDistance <= trackRange;
       const displayName = v.display_name || activeId;
 
       if (isInside) {
@@ -642,7 +659,7 @@ export function MapView({
     checkAdherence();
     const intervalId = setInterval(checkAdherence, 5000);
     return () => clearInterval(intervalId);
-  }, [trackingActive, registeredRoute, trackVehicleId, vehicles, vehicleIds, closestPointOnSegment, haversineDist]);
+  }, [trackingActive, registeredRoute, trackVehicleId, vehicles, vehicleIds, closestPointOnSegment, haversineDist, trackRange]);
 
   // ── Route Assigning Mode State ───────────────────────────────────────────
   const [assignMode, setAssignMode] = useState(false);
@@ -819,6 +836,7 @@ export function MapView({
         preferCanvas={true}
       >
         {!isAndroidAuto && <ZoomControl position="bottomright" />}
+        <MapZoomListener onZoomChange={setMapZoom} />
 
         {/* ── Tile layers ────────────────────────────────────────────────── */}
         <LayersControl position="topright">
@@ -894,7 +912,7 @@ export function MapView({
               positions={activeRoutePoints}
               pathOptions={{
                 color: "#ef4444", // Reddish corridor
-                weight: 80,
+                weight: corridorPixelWeight,
                 opacity: 0.15,
                 lineJoin: "round",
                 lineCap: "round",
@@ -1455,6 +1473,20 @@ export function MapView({
                     <option key={vid} value={vid}>{vehicles[vid]?.display_name || vid}</option>
                   ))}
                 </select>
+
+                {/* Deviation Range (meters) Input */}
+                <div className="flex flex-col gap-1 mt-1">
+                  <label className="text-[9px] text-white/40 font-bold uppercase tracking-wider">Allowed Deviation (meters)</label>
+                  <input
+                    type="number"
+                    min="5"
+                    max="500"
+                    value={trackRange}
+                    onChange={(e) => setTrackRange(Math.max(5, Number(e.target.value)))}
+                    disabled={trackingActive}
+                    className="bg-gray-900 border border-white/10 rounded-lg px-2.5 py-1 text-xs font-bold text-white focus:outline-none focus:border-orange-500 w-full transition-all disabled:opacity-50"
+                  />
+                </div>
 
                 <button
                   onClick={() => {
