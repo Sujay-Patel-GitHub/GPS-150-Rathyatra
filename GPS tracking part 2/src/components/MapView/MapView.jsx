@@ -497,6 +497,20 @@ export function MapView({
     }
   }, [vehicles, selectedId, vehicleIds, selectedZoom, hasAutoCentered]);
 
+  // Fly to and zoom in on a vehicle when it is selected
+  const lastSelectedIdRef = useRef("");
+  useEffect(() => {
+    if (selectedId && selectedId !== lastSelectedIdRef.current) {
+      lastSelectedIdRef.current = selectedId;
+      const v = vehicles[selectedId];
+      if (v && typeof v.lat === "number") {
+        setCenterTarget({ id: selectedId, t: Date.now(), zoom: 16 });
+      }
+    } else if (!selectedId) {
+      lastSelectedIdRef.current = "";
+    }
+  }, [selectedId, vehicles]);
+
   // ── Recording state ─────────────────────────────────────────────────────
   const [recording,    setRecording]    = useState(false);
   const [recVehicleId, setRecVehicleId] = useState(null);
