@@ -15,11 +15,11 @@ jobs:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@master
         with:
-          host: 150.129.165.162
-          username: lenovo1
-          password: "P@Ss!23"
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/lenovo1/LatestGPS
+            cd /home/${{ secrets.SERVER_USER }}/LatestGPS
             git fetch https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git main
             git reset --hard FETCH_HEAD
             ./venv/bin/python3 -m pip install -r requirements.txt --quiet
@@ -30,8 +30,8 @@ jobs:
             fi
             sleep 8
             if pgrep -f "app.py" > /dev/null; then
-              echo "Deployment Successful! http://150.129.165.162:7777"
+              echo "Deployment Successful! http://${{ secrets.SERVER_HOST }}:7777"
             else
-              tail -n 40 /home/lenovo1/LatestGPS/output.log || true
+              tail -n 40 /home/${{ secrets.SERVER_USER }}/LatestGPS/output.log || true
               exit 1
             fi
