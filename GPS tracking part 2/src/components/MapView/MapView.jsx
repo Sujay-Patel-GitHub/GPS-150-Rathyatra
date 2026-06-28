@@ -535,6 +535,14 @@ export function MapView({
   const [registeredRoute, setRegisteredRoute] = useState(null);
   const [trackingActive, setTrackingActive] = useState(false);
   const [trackMessage, setTrackMessage] = useState(null);
+  const [trackVehicleId, setTrackVehicleId] = useState("");
+
+  // Sync track selector when map selection changes
+  useEffect(() => {
+    if (selectedId && !trackingActive) {
+      setTrackVehicleId(selectedId);
+    }
+  }, [selectedId, trackingActive]);
 
   const closestPointOnSegment = useCallback((pLat, pLng, aLat, aLng, bLat, bLng) => {
     const degToRad = Math.PI / 180;
@@ -576,10 +584,10 @@ export function MapView({
     }
 
     const checkAdherence = () => {
-      const activeId = selectedId || vehicleIds[0];
+      const activeId = trackVehicleId;
       if (!activeId) {
         setTrackMessage({
-          text: "⚠️ No active vehicle selected to track route adherence",
+          text: "⚠️ No vehicle selected to track route adherence",
           isOut: true,
           visible: true
         });
@@ -634,7 +642,7 @@ export function MapView({
     checkAdherence();
     const intervalId = setInterval(checkAdherence, 5000);
     return () => clearInterval(intervalId);
-  }, [trackingActive, registeredRoute, selectedId, vehicles, vehicleIds, closestPointOnSegment, haversineDist]);
+  }, [trackingActive, registeredRoute, trackVehicleId, vehicles, vehicleIds, closestPointOnSegment, haversineDist]);
 
   // ── Route Assigning Mode State ───────────────────────────────────────────
   const [assignMode, setAssignMode] = useState(false);
@@ -1429,13 +1437,40 @@ export function MapView({
               )}
             </div>
             {activeRouteId !== "" && (
-              <div className="flex flex-col gap-1.5 mt-2">
+              <div className="flex flex-col gap-1.5 mt-2.5 border-t border-white/5 pt-2">
+                <label className="text-[9px] text-white/40 font-bold uppercase tracking-wider">Track Vehicle</label>
+                <select
+                  value={trackVehicleId}
+                  onChange={(e) => setTrackVehicleId(e.target.value)}
+                  disabled={trackingActive}
+                  className="bg-gray-900 border border-white/10 rounded-lg px-2 py-1 text-[11px] font-bold text-white focus:outline-none focus:border-orange-500 cursor-pointer w-full transition-all disabled:opacity-50"
+                >
+                  <option value="">-- Choose Truck --</option>
+                  {vehicleIds.slice().sort((a, b) => {
+                    const numA = parseInt(a.replace(/\D/g, ""), 10);
+                    const numB = parseInt(b.replace(/\D/g, ""), 10);
+                    if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                    return a.localeCompare(b);
+                  }).map(vid => (
+                    <option key={vid} value={vid}>{vehicles[vid]?.display_name || vid}</option>
+                  ))}
+                </select>
+
                 <button
                   onClick={() => {
+                    if (!trackVehicleId) {
+                      setTrackMessage({
+                        text: "⚠️ Please choose a truck to track first!",
+                        isOut: true,
+                        visible: true
+                      });
+                      setTimeout(() => setTrackMessage(prev => prev ? { ...prev, visible: false } : null), 2000);
+                      return;
+                    }
                     setRegisteredRoute(activeRoutePoints);
                     setTrackingActive(true);
                     setTrackMessage({
-                      text: "🎯 Route registered! Tracking started...",
+                      text: `🎯 Route registered! Tracking ${vehicles[trackVehicleId]?.display_name || trackVehicleId}...`,
                       isOut: false,
                       visible: true
                     });
