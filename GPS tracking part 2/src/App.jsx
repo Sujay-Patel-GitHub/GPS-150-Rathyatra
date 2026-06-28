@@ -806,6 +806,7 @@ export default function App() {
           selectedRecordVehicleId={selectedRecordVehicleId}
           deviceList={deviceList}
           totalRawPoints={totalRawPoints}
+          playbackRoutePoints={playbackRoutePoints}
         />
       </div>
 
