@@ -509,36 +509,13 @@ export function MapView({
 
   useEffect(() => {
     if (assignMode && assignPoints.length >= 1) {
-      if (!useSnapping) {
-        setFetchedRoute(assignPoints);
-        setAssignStatus("Free-draw route updated!");
-      } else if (assignPoints.length >= 2) {
-        const fetchOSRMRoute = async () => {
-          const coordString = assignPoints.map(p => `${p[1]},${p[0]}`).join(";");
-          setAssignStatus("Snapping path to roads...");
-          try {
-            const res = await fetch(`https://router.project-osrm.org/route/v1/foot/${coordString}?overview=full&geometries=geojson`);
-            const data = await res.json();
-            if (data.code === "Ok" && data.routes && data.routes[0]) {
-              const geojson = data.routes[0].geometry;
-              const routeCoords = geojson.coordinates.map(c => [c[1], c[0]]);
-              setFetchedRoute(routeCoords);
-              setAssignStatus("Route snaps to road calculated!");
-            } else {
-              setAssignStatus("Road snap failed: " + (data.message || ""));
-            }
-          } catch (err) {
-            console.error(err);
-            setAssignStatus("Error snapping route");
-          }
-        };
-        fetchOSRMRoute();
-      }
+      setFetchedRoute(assignPoints);
+      setAssignStatus(assignPoints.length === 1 ? "Click map to set End point" : "Route updated point-to-point!");
     } else {
       setFetchedRoute([]);
-      setAssignStatus(assignPoints.length === 1 ? "Click map to set End point" : "");
+      setAssignStatus("");
     }
-  }, [assignPoints, assignMode, useSnapping]);
+  }, [assignPoints, assignMode]);
 
   const handleSaveRoute = useCallback(async () => {
     if (fetchedRoute.length === 0) return;
