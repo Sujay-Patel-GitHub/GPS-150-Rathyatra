@@ -549,21 +549,6 @@ export default function App() {
 
   if (loading) return <LoadingScreen />;
 
-  if (error) {
-    return (
-      <div className="fixed inset-0 bg-gray-950 flex items-center justify-center text-center p-6">
-        <div>
-          <p className="text-4xl mb-4">⚠️</p>
-          <h2 className="text-xl font-bold text-red-400 mb-2">Firebase Connection Error</h2>
-          <p className="text-white/50 text-sm max-w-sm">{error}</p>
-          <p className="text-white/30 text-xs mt-3">
-            Check your .env.local Firebase configuration
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   // Helper to compute Turn-by-Turn Guidance instructions for Android Auto HUD
   const getGuidance = (vehicle) => {
     if (!vehicle) return { instruction: "Searching...", sub: "Wait for GPS lock", icon: "🗺️" };
