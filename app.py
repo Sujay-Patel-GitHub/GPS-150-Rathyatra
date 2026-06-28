@@ -346,6 +346,28 @@ def mongo_data(collection):
     return jsonify(docs)
 
 
+@app.route("/api/save_route", methods=["POST"])
+def save_route():
+    try:
+        from mongodb import mongo_client
+        import datetime
+        db = mongo_client["gps_server_db"]
+        data = request.json
+        if not data or "points" not in data:
+            return jsonify({"ok": False, "error": "Missing points array"}), 400
+        
+        db["route"].insert_one({
+            "route_name": data.get("route_name", "Custom Route"),
+            "start_point": data.get("start_point"),
+            "end_point": data.get("end_point"),
+            "points": data["points"],
+            "timestamp": datetime.datetime.now()
+        })
+        return jsonify({"ok": True, "message": "Route saved successfully!"})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/api/mongo_drop/<collection>", methods=["DELETE"])
 def mongo_drop(collection):
     # Permanently disabled — no collection drops allowed

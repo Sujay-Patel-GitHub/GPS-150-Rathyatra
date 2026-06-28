@@ -413,6 +413,27 @@ async function saveRouteToFirebase(points, vehicleId, sessionId) {
   }
 }
 
+function MapAssignClickHandler({ enabled, onAddPoint }) {
+  useMapEvents({
+    click(e) {
+      if (!enabled) return;
+      onAddPoint([e.latlng.lat, e.latlng.lng]);
+    }
+  });
+  return null;
+}
+
+const makeAssignPin = (label) => {
+  const isStart = label === "Start";
+  const isEnd = label === "End";
+  const bgColor = isStart ? "#10B981" : isEnd ? "#EF4444" : "#3B82F6";
+  return L.divIcon({
+    html: `<div style="background-color: ${bgColor}; color: white; font-weight: 800; font-size: 8px; border: 1.5px solid white; border-radius: 9999px; padding: 2px 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.4); white-space: nowrap; display: inline-block; transform: translate(-50%, -50%);">${label}</div>`,
+    className: "custom-assign-pin",
+    iconSize: [0, 0]
+  });
+};
+
 export function MapView({ 
   vehicles, 
   selectedId, 
@@ -474,6 +495,79 @@ export function MapView({
   const [inspectorEnabled, setInspectorEnabled] = useState(false);
   const [inspectorResult, setInspectorResult] = useState(null);
   const [copiedField, setCopiedField] = useState(null);
+
+  // ── Route Assigning Mode State ───────────────────────────────────────────
+  const [assignMode, setAssignMode] = useState(false);
+  const [assignPoints, setAssignPoints] = useState([]);
+  const [fetchedRoute, setFetchedRoute] = useState([]);
+  const [routeName, setRouteName] = useState("");
+  const [assignStatus, setAssignStatus] = useState("");
+
+  const handleAddAssignPoint = useCallback((latlng) => {
+    setAssignPoints(prev => [...prev, latlng]);
+  }, []);
+
+  useEffect(() => {
+    if (assignMode && assignPoints.length >= 2) {
+      const fetchOSRMRoute = async () => {
+        const coordString = assignPoints.map(p => `${p[1]},${p[0]}`).join(";");
+        setAssignStatus("Snapping path to roads...");
+        try {
+          const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordString}?overview=full&geometries=geojson`);
+          const data = await res.json();
+          if (data.code === "Ok" && data.routes && data.routes[0]) {
+            const geojson = data.routes[0].geometry;
+            const routeCoords = geojson.coordinates.map(c => [c[1], c[0]]);
+            setFetchedRoute(routeCoords);
+            setAssignStatus("Route snaps to road calculated!");
+          } else {
+            setAssignStatus("Road snap failed: " + (data.message || ""));
+          }
+        } catch (err) {
+          console.error(err);
+          setAssignStatus("Error snapping route");
+        }
+      };
+      fetchOSRMRoute();
+    } else {
+      setFetchedRoute([]);
+      setAssignStatus(assignPoints.length === 1 ? "Click map to set End point" : "");
+    }
+  }, [assignPoints, assignMode]);
+
+  const handleSaveRoute = useCallback(async () => {
+    if (fetchedRoute.length === 0) return;
+    setAssignStatus("Saving to MongoDB...");
+    try {
+      const res = await fetch("/api/save_route", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          route_name: routeName || `Assigned Route ${new Date().toLocaleDateString()}`,
+          start_point: assignPoints[0],
+          end_point: assignPoints[assignPoints.length - 1],
+          points: fetchedRoute
+        })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setAssignStatus("Saved successfully to MongoDB!");
+        setTimeout(() => {
+          setAssignMode(false);
+          setAssignPoints([]);
+          setFetchedRoute([]);
+          setRouteName("");
+          setAssignStatus("");
+        }, 1500);
+      } else {
+        setAssignStatus("Failed to save: " + data.error);
+      }
+    } catch (e) {
+      console.error(e);
+      setAssignStatus("Error saving route");
+    }
+  }, [fetchedRoute, routeName, assignPoints]);
+
 
   const copyToClipboard = useCallback((text, field) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -710,6 +804,59 @@ export function MapView({
             />
           </>
         )}
+
+        {/* ── Route Assigning Drawing Overlays ──────────────────────────────── */}
+        <MapAssignClickHandler
+          enabled={assignMode}
+          onAddPoint={handleAddAssignPoint}
+        />
+
+        {fetchedRoute.length > 0 && (
+          <>
+            {/* Reddish/purple corridor buffer around the snapped route */}
+            <Polyline
+              positions={fetchedRoute}
+              pathOptions={{
+                color: "#ef4444", // Reddish corridor
+                weight: 80,
+                opacity: 0.15,
+                lineJoin: "round",
+                lineCap: "round",
+              }}
+            />
+            {/* Inner glowing blue route line */}
+            <Polyline
+              positions={fetchedRoute}
+              pathOptions={{
+                color: "#2563eb", // Deep blue snapped road line
+                weight: 5,
+                opacity: 0.9,
+                lineJoin: "round",
+                lineCap: "round",
+              }}
+            />
+          </>
+        )}
+
+        {/* Individual clicked assign points markers */}
+        {assignPoints.map((p, idx) => (
+          <Marker
+            key={idx}
+            position={p}
+            icon={makeAssignPin(idx === 0 ? "Start" : idx === assignPoints.length - 1 ? "End" : `Pt ${idx + 1}`)}
+          >
+            <Popup closeButton={false}>
+              <div className="text-xs font-bold p-1">
+                <span className="text-orange-500 font-extrabold uppercase">
+                  {idx === 0 ? "Start Point" : idx === assignPoints.length - 1 ? "End Point" : `Waypoint ${idx + 1}`}
+                </span>
+                <div className="text-[10px] text-gray-500 font-mono mt-0.5">
+                  Lat: {p[0].toFixed(6)}<br />Lng: {p[1].toFixed(6)}
+                </div>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
 
         {/* ── Geofenced Landmarks ─────────────────────────────────────────── */}
         {LANDMARKS.map((landmark) => (
@@ -1071,7 +1218,88 @@ export function MapView({
                 <div className="w-8 h-4.5 bg-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-orange-500" />
               </div>
             </label>
+
+            {/* Route Assigning Toggle Switch */}
+            <label htmlFor="routeAssignToggle" className="flex items-center justify-between text-xs font-bold text-white/85 cursor-pointer select-none w-full border-t border-white/5 pt-2 mt-1">
+              <span className="flex items-center gap-1">🗺️ Route Assigning</span>
+              <div className="relative inline-flex items-center">
+                <input
+                  type="checkbox"
+                  id="routeAssignToggle"
+                  checked={assignMode}
+                  onChange={(e) => {
+                    setAssignMode(e.target.checked);
+                    if (!e.target.checked) {
+                      setAssignPoints([]);
+                      setFetchedRoute([]);
+                      setRouteName("");
+                      setAssignStatus("");
+                    }
+                  }}
+                  className="sr-only peer"
+                />
+                <div className="w-8 h-4.5 bg-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-orange-500" />
+              </div>
+            </label>
           </div>
+
+          {assignMode && (
+            <div className="border-t border-white/10 pt-3 mt-1 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold text-orange-400 uppercase tracking-wider">Assign Points</span>
+                {assignPoints.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setAssignPoints([]);
+                      setFetchedRoute([]);
+                      setAssignStatus("");
+                    }}
+                    className="text-[9px] text-red-400 hover:text-red-300 font-bold uppercase transition"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <div className="text-[10px] text-white/60 leading-relaxed bg-white/5 rounded-lg p-2 border border-white/5">
+                  {assignPoints.length === 0 ? (
+                    <span>👉 Click map to set <strong className="text-green-400">Start point</strong></span>
+                  ) : assignPoints.length === 1 ? (
+                    <span>👉 Click map to set <strong className="text-red-400">End point</strong></span>
+                  ) : (
+                    <span>✅ Snap line calculated!</span>
+                  )}
+                </div>
+
+                {assignPoints.length >= 2 && (
+                  <div className="flex flex-col gap-2 mt-1">
+                    <input
+                      type="text"
+                      placeholder="Route Name (e.g. Route A)"
+                      value={routeName}
+                      onChange={(e) => setRouteName(e.target.value)}
+                      className="bg-gray-900 border border-white/10 rounded-lg px-2.5 py-1 text-xs font-bold text-white focus:outline-none focus:border-orange-500 w-full"
+                    />
+                    <button
+                      onClick={handleSaveRoute}
+                      disabled={fetchedRoute.length === 0}
+                      className="w-full py-1.5 bg-orange-500 hover:bg-orange-600 disabled:bg-white/10 disabled:text-white/30 text-white text-xs font-extrabold rounded-lg shadow-lg active:scale-[0.98] transition uppercase tracking-wider"
+                    >
+                      Save to MongoDB
+                    </button>
+                  </div>
+                )}
+
+                {assignStatus && (
+                  <div className="text-[9px] font-semibold text-white/50 text-center animate-pulse mt-0.5">
+                    {assignStatus}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
 
           <div className="border-t border-white/10 pt-3 flex flex-col gap-2">
             {/* Recording status pill */}
