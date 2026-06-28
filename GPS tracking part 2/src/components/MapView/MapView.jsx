@@ -749,43 +749,6 @@ export function MapView({
           />
         )}
 
-        {formattedYatraRoute && formattedYatraRoute.length >= 2 && (
-          <>
-            {/* Light corridor buffer representing the allowed off-route threshold range */}
-            <Polyline
-              positions={formattedYatraRoute}
-              pathOptions={{
-                color: "#a855f7", // Soft purple corridor
-                weight: 80,
-                opacity: 0.15,
-                lineJoin: "round",
-                lineCap: "round",
-              }}
-            />
-            {/* Outer border/shadow line */}
-            <Polyline
-              positions={formattedYatraRoute}
-              pathOptions={{
-                color: "#1d4ed8", // Dark blue border
-                weight: 9,
-                opacity: 0.3,
-                lineJoin: "round",
-                lineCap: "round",
-              }}
-            />
-            {/* Inner glowing route line */}
-            <Polyline
-              positions={formattedYatraRoute}
-              pathOptions={{
-                color: "#3b82f6", // Google Maps bright blue
-                weight: 5,
-                opacity: 0.9,
-                lineJoin: "round",
-                lineCap: "round",
-              }}
-            />
-          </>
-        )}
 
         {/* ── Route Assigning Drawing Overlays ──────────────────────────────── */}
         <MapAssignClickHandler
