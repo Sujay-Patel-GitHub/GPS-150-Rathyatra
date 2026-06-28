@@ -531,6 +531,111 @@ export function MapView({
     }
   }, [savedRoutes]);
 
+  // ── Route Tracking Adherence State ────────────────────────────────────────
+  const [registeredRoute, setRegisteredRoute] = useState(null);
+  const [trackingActive, setTrackingActive] = useState(false);
+  const [trackMessage, setTrackMessage] = useState(null);
+
+  const closestPointOnSegment = useCallback((pLat, pLng, aLat, aLng, bLat, bLng) => {
+    const degToRad = Math.PI / 180;
+    const earthR = 6371000;
+    const cosLat = Math.cos(((aLat + bLat) / 2) * degToRad);
+    const bx = (bLng - aLng) * degToRad * earthR * cosLat;
+    const by = (bLat - aLat) * degToRad * earthR;
+    const px = (pLng - aLng) * degToRad * earthR * cosLat;
+    const py = (pLat - aLat) * degToRad * earthR;
+    const dx = bx, dy = by;
+    const lenSq = dx * dx + dy * dy;
+    let t = 0;
+    if (lenSq > 0) {
+      t = (px * dx + py * dy) / lenSq;
+      t = Math.max(0, Math.min(1, t));
+    }
+    const snapX = t * dx;
+    const snapY = t * dy;
+    const snapLat = aLat + (snapY / earthR) * (180 / Math.PI);
+    const snapLng = aLng + (snapX / (earthR * cosLat)) * (180 / Math.PI);
+    return { lat: snapLat, lng: snapLng };
+  }, []);
+
+  const haversineDist = useCallback((lat1, lng1, lat2, lng2) => {
+    const R = 6371e3; // meters
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }, []);
+
+  useEffect(() => {
+    if (!trackingActive || !registeredRoute || registeredRoute.length < 2) {
+      setTrackMessage(null);
+      return;
+    }
+
+    const checkAdherence = () => {
+      const activeId = selectedId || vehicleIds[0];
+      if (!activeId) {
+        setTrackMessage({
+          text: "⚠️ No active vehicle selected to track route adherence",
+          isOut: true,
+          visible: true
+        });
+        setTimeout(() => setTrackMessage(prev => prev ? { ...prev, visible: false } : null), 2000);
+        return;
+      }
+
+      const v = vehicles[activeId];
+      if (!v || typeof v.lat !== "number") {
+        setTrackMessage({
+          text: `📡 Waiting for GPS signal from ${activeId}...`,
+          isOut: true,
+          visible: true
+        });
+        setTimeout(() => setTrackMessage(prev => prev ? { ...prev, visible: false } : null), 2000);
+        return;
+      }
+
+      let minDistance = Infinity;
+      for (let i = 0; i < registeredRoute.length - 1; i++) {
+        const segStart = registeredRoute[i];
+        const segEnd = registeredRoute[i + 1];
+        const snapped = closestPointOnSegment(v.lat, v.lng, segStart[0], segStart[1], segEnd[0], segEnd[1]);
+        const d = haversineDist(v.lat, v.lng, snapped.lat, snapped.lng);
+        if (d < minDistance) {
+          minDistance = d;
+        }
+      }
+
+      const isInside = minDistance <= 40;
+      const displayName = v.display_name || activeId;
+
+      if (isInside) {
+        setTrackMessage({
+          text: `🟢 ${displayName} in route`,
+          isOut: false,
+          visible: true
+        });
+      } else {
+        setTrackMessage({
+          text: `🚨 ${displayName} OUT OF ROUTE!`,
+          isOut: true,
+          visible: true
+        });
+      }
+
+      setTimeout(() => {
+        setTrackMessage(prev => prev ? { ...prev, visible: false } : null);
+      }, 2500);
+    };
+
+    checkAdherence();
+    const intervalId = setInterval(checkAdherence, 5000);
+    return () => clearInterval(intervalId);
+  }, [trackingActive, registeredRoute, selectedId, vehicles, vehicleIds, closestPointOnSegment, haversineDist]);
+
   // ── Route Assigning Mode State ───────────────────────────────────────────
   const [assignMode, setAssignMode] = useState(false);
   const [assignPoints, setAssignPoints] = useState([]);
@@ -1323,6 +1428,45 @@ export function MapView({
                 </button>
               )}
             </div>
+            {activeRouteId !== "" && (
+              <div className="flex flex-col gap-1.5 mt-2">
+                <button
+                  onClick={() => {
+                    setRegisteredRoute(activeRoutePoints);
+                    setTrackingActive(true);
+                    setTrackMessage({
+                      text: "🎯 Route registered! Tracking started...",
+                      isOut: false,
+                      visible: true
+                    });
+                    setTimeout(() => setTrackMessage(prev => prev ? { ...prev, visible: false } : null), 2000);
+                  }}
+                  className={`w-full py-1.5 text-[10px] font-extrabold rounded-lg shadow-lg transition duration-200 active:scale-[0.98] border uppercase tracking-wider cursor-pointer
+                    ${trackingActive 
+                      ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-pulse" 
+                      : "bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30"}`}
+                >
+                  {trackingActive ? "✓ Tracking Active" : "Register and Follow"}
+                </button>
+                {trackingActive && (
+                  <button
+                    onClick={() => {
+                      setTrackingActive(false);
+                      setRegisteredRoute(null);
+                      setTrackMessage({
+                        text: "🛑 Route tracking stopped.",
+                        isOut: true,
+                        visible: true
+                      });
+                      setTimeout(() => setTrackMessage(prev => prev ? { ...prev, visible: false } : null), 2000);
+                    }}
+                    className="w-full py-1 bg-white/5 hover:bg-white/10 text-white/70 border border-white/10 text-[9px] font-extrabold rounded-lg uppercase tracking-wider transition cursor-pointer"
+                  >
+                    Stop Following
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="border-t border-white/10 pt-3 flex flex-col gap-2">
@@ -1599,6 +1743,19 @@ export function MapView({
 
             </div>
           )}
+        </div>
+      )}
+      {/* ── Route Adherence Popup Toast Alert ── */}
+      {trackMessage && (
+        <div className={`absolute top-4 left-1/2 -translate-x-1/2 z-[2000] px-4 py-2 rounded-xl shadow-2xl border backdrop-blur-md transition-all duration-300 transform pointer-events-none select-none
+          ${trackMessage.visible ? "translate-y-0 opacity-100 scale-100" : "-translate-y-4 opacity-0 scale-95"}
+          ${trackMessage.isOut 
+            ? "bg-red-500/25 border-red-500/40 text-red-400 font-extrabold shadow-[0_0_15px_rgba(239,68,68,0.25)] animate-bounce" 
+            : "bg-emerald-500/20 border-emerald-500/40 text-emerald-400 font-bold shadow-[0_0_15px_rgba(16,185,129,0.2)]"}`}
+        >
+          <div className="flex items-center gap-2 text-xs">
+            <span>{trackMessage.text}</span>
+          </div>
         </div>
       )}
     </div>
