@@ -734,20 +734,7 @@ export function MapView({
           </>
         )}
 
-        {/* ── Yatra Route Highlight (Google Maps style cased route) ──────── */}
-        {rawYatraRoute && rawYatraRoute.length >= 2 && (
-          <Polyline
-            positions={rawYatraRoute}
-            pathOptions={{
-              color: "#f59e0b", // Amber/orange color for raw route waypoints path
-              weight: 2,
-              opacity: 0.8,
-              dashArray: "6 4",
-              lineJoin: "round",
-              lineCap: "round",
-            }}
-          />
-        )}
+
 
 
         {/* ── Route Assigning Drawing Overlays ──────────────────────────────── */}
