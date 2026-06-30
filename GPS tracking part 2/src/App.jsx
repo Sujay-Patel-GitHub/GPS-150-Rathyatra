@@ -243,10 +243,17 @@ export default function App() {
     if (!distanceToolEnabled || !distanceSource || !distanceTarget) return null;
     const v1 = vehicles?.[distanceSource];
     const v2 = vehicles?.[distanceTarget];
-    if (!v1 || !v2 || typeof v1.lat !== "number" || typeof v2.lat !== "number" || typeof v1.lng !== "number" || typeof v2.lng !== "number") {
+    if (!v1 || !v2) return null;
+
+    const lat1 = typeof v1.rawLat === "number" ? v1.rawLat : v1.lat;
+    const lng1 = typeof v1.rawLng === "number" ? v1.rawLng : v1.lng;
+    const lat2 = typeof v2.rawLat === "number" ? v2.rawLat : v2.lat;
+    const lng2 = typeof v2.rawLng === "number" ? v2.rawLng : v2.lng;
+
+    if (typeof lat1 !== "number" || typeof lng1 !== "number" || typeof lat2 !== "number" || typeof lng2 !== "number") {
       return null;
     }
-    return haversine(v1.lat, v1.lng, v2.lat, v2.lng);
+    return haversine(lat1, lng1, lat2, lng2);
   }, [distanceToolEnabled, distanceSource, distanceTarget, vehicles]);
 
   // Procession Analytics HUD calculations
