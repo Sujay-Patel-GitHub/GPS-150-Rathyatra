@@ -878,8 +878,7 @@
 
         L.control.layers({ "Streets": googleStreets, "Satellite": googleHybrid }).addTo(map);
 
-        // --- Data & State ---
-        let vehicles = JSON.parse(document.getElementById('vehicles-data').textContent).filter(v => v.is_registered);
+        let vehicles = JSON.parse(document.getElementById('vehicles-data').textContent).filter(v => v.is_registered !== false);
         const assignMap = JSON.parse(document.getElementById('assign-data').textContent);
         let markers = {};
         let snapToRoad = false;
@@ -1152,7 +1151,7 @@
                         const activeCard = document.querySelector('.vehicle-card.active');
                         const activeId = activeCard ? activeCard.getAttribute('data-id') : null;
 
-                        vehicles = data.filter(v => v.is_registered);
+                        vehicles = data.filter(v => v.is_registered !== false);
 
                         // Update markers on the map
                         for (let i = 0; i < vehicles.length; i++) {
