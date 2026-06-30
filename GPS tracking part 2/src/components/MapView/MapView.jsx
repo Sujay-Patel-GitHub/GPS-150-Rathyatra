@@ -1122,31 +1122,15 @@ export function MapView({
             const v2 = vehicles?.[distanceTarget];
             if (v1 && v2 && typeof v1.lat === "number" && typeof v1.lng === "number" && typeof v2.lat === "number" && typeof v2.lng === "number") {
               return (
-                <Fragment>
-                  <Polyline
-                    positions={[[v1.lat, v1.lng], [v2.lat, v2.lng]]}
-                    pathOptions={{
-                      color: "#2563eb", // Blue
-                      weight: 4,
-                      opacity: 0.8,
-                      dashArray: "6 6"
-                    }}
-                  />
-                  <Marker
-                    position={[
-                      (v1.lat + v2.lat) / 2,
-                      (v1.lng + v2.lng) / 2
-                    ]}
-                    icon={L.divIcon({ className: "hidden" })}
-                    zIndexOffset={600}
-                  >
-                    <Tooltip permanent direction="center" className="bg-gray-900/95 text-blue-400 border border-blue-500/50 font-black text-xs px-2 py-1 rounded shadow-lg backdrop-blur-sm">
-                      Distance: {liveDistanceMeters >= 1000 
-                        ? `${(liveDistanceMeters / 1000).toFixed(2)} km` 
-                        : `${Math.round(liveDistanceMeters)} m`}
-                    </Tooltip>
-                  </Marker>
-                </Fragment>
+                <Polyline
+                  positions={[[v1.lat, v1.lng], [v2.lat, v2.lng]]}
+                  pathOptions={{
+                    color: "#2563eb", // Blue
+                    weight: 4,
+                    opacity: 0.8,
+                    dashArray: "6 6"
+                  }}
+                />
               );
             }
             return null;
