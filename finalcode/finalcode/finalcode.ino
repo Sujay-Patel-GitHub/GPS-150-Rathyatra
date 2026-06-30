@@ -11,9 +11,9 @@
 #include <HTTPClient.h>
 
 // ── CONFIG — edit these lines only ────────────────────────
-const char* TRUCK_NAME = "TRUCK2";
-const char* WIFI_SSID  = "surya2";
-const char* WIFI_PASS  = "Pilab@909090";
+const char* TRUCK_NAME = "TEST";
+const char* WIFI_SSID  = "PANIND";
+const char* WIFI_PASS  = "12AB89YZ";
 #define MOSFET_PIN 27
 // ──────────────────────────────────────────────────────────
 
@@ -53,6 +53,7 @@ struct SharedData {
   bool  gps_valid;
   float ax, ay, az;
   float gx, gy, gz;
+  char  motion[12];
 };
 static SharedData shared = {};
 uint32_t last_ota_time = 0;
@@ -119,10 +120,6 @@ void handleOTAResult() {
 // ── Task: GPS (Core 0)
 void TaskGPS(void* pv) {
   for (;;) {
-    if (WiFi.status() != WL_CONNECTED) {
-      vTaskDelay(pdMS_TO_TICKS(100));
-      continue;
-    }
     while (gpsSerial.available()) {
       if (gps.encode(gpsSerial.read()) && gps.location.isUpdated()) {
         if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(5)) == pdTRUE) {
@@ -151,11 +148,8 @@ void TaskOTA(void* pv) {
   }
 }
 
-// ── Task: MPU + motion (4-state) + push + MOSFET (Core 1)
+// ── Task: MPU + motion (4-state) (Core 1)
 void TaskMPU(void* pv) {
-  static uint32_t lastPushMs    = 0;
-  static uint32_t lastMosfetMs  = 0;
-
   // Motion state
   static float    deltaHistory[DELTA_SAMPLES] = {};
   static int      deltaIdx      = 0;
@@ -165,41 +159,6 @@ void TaskMPU(void* pv) {
   static const char* motionState = "still";
 
   for (;;) {
-    // ── WiFi reconnection logic: pause MPU/GPS and focus on reconnecting ──
-    if (WiFi.status() != WL_CONNECTED) {
-      Serial.println("\n[WiFi] Disconnected. Pausing MPU and GPS tasks. Focusing on reconnection...");
-      WiFi.disconnect(true);
-      delay(100);
-      WiFi.begin(WIFI_SSID, WIFI_PASS);
-      
-      uint32_t reconnectStart = millis();
-      uint32_t lastBegin = reconnectStart;
-      while (WiFi.status() != WL_CONNECTED) {
-        delay(500);
-        Serial.print(".");
-        
-        // If disconnected for more than 3 minutes, reboot the ESP32 to guarantee a clean reconnect
-        if (millis() - reconnectStart > 180000) {
-          Serial.println("\n[WiFi] Reconnection failed after 3 minutes. Rebooting ESP32...");
-          ESP.restart();
-        }
-        
-        // Retry WiFi.begin every 30 seconds
-        if (millis() - lastBegin > 30000) {
-          Serial.println("\n[WiFi] Connection attempt timed out. Retrying WiFi.begin...");
-          WiFi.disconnect(true);
-          delay(100);
-          WiFi.begin(WIFI_SSID, WIFI_PASS);
-          lastBegin = millis();
-        }
-      }
-      Serial.printf("\n[WiFi] Reconnected. IP: %s\n", WiFi.localIP().toString().c_str());
-      // Reset timers to avoid immediate polling/pushing
-      lastPushMs = millis();
-      lastMosfetMs = millis();
-      continue;
-    }
-
     // ── Read MPU ──
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x3B);
@@ -216,16 +175,16 @@ void TaskMPU(void* pv) {
     float gy_ = raw[5] * GYR_SCALE;
     float gz_ = raw[6] * GYR_SCALE;
 
+    SharedData snap;
     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(5)) == pdTRUE) {
       shared.ax = ax_; shared.ay = ay_; shared.az = az_;
       shared.gx = gx_; shared.gy = gy_; shared.gz = gz_;
+      snap = shared;
       xSemaphoreGive(dataMutex);
+    } else {
+      vTaskDelay(pdMS_TO_TICKS(5));
+      continue;
     }
-
-    SharedData snap;
-    xSemaphoreTake(dataMutex, portMAX_DELAY);
-    snap = shared;
-    xSemaphoreGive(dataMutex);
 
     uint32_t now = millis();
 
@@ -266,33 +225,107 @@ void TaskMPU(void* pv) {
     if (motionState != prevState)
       Serial.printf("[MOTION] --> %s\n", motionState);
 
+    // Write motion state back to shared state
+    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(5)) == pdTRUE) {
+      strncpy(shared.motion, motionState, sizeof(shared.motion) - 1);
+      shared.motion[sizeof(shared.motion) - 1] = '\0';
+      xSemaphoreGive(dataMutex);
+    }
+
     Serial.printf("[GPS] %s Lat:%.6f Lng:%.6f Spd:%.1f  [%s]\n",
       snap.gps_valid ? "OK" : "--", snap.lat, snap.lng, snap.speed_kmph, motionState);
     Serial.printf("[ACC] X:%.3fg Y:%.3fg Z:%.3fg  [GYR] X:%.1f Y:%.1f Z:%.1f  avgD:%.3fg\n",
       snap.ax, snap.ay, snap.az, snap.gx, snap.gy, snap.gz, avgDelta);
 
-    // WiFi reconnection is handled at the start of TaskMPU.
+    vTaskDelay(pdMS_TO_TICKS(100));
+  }
+}
 
-    // ── Push GPS + MPU + motion every 5s ──
-    if ((now - lastPushMs) >= 5000 && WiFi.status() == WL_CONNECTED) {
+// ── Task: Network (Core 0)
+void TaskNetwork(void* pv) {
+  static uint32_t lastPushMs    = 0;
+  static uint32_t lastMosfetMs  = 0;
+  uint32_t reconnectStart = 0;
+  uint32_t lastBegin = 0;
+  bool wasConnected = true;
+
+  for (;;) {
+    // ── WiFi reconnection logic: handled asynchronously without blocking other tasks ──
+    if (WiFi.status() != WL_CONNECTED) {
+      if (wasConnected) {
+        Serial.println("\n[WiFi] Disconnected. Focusing on reconnection...");
+        WiFi.disconnect(true);
+        vTaskDelay(pdMS_TO_TICKS(100));
+        WiFi.begin(WIFI_SSID, WIFI_PASS);
+        reconnectStart = millis();
+        lastBegin = reconnectStart;
+        wasConnected = false;
+      }
+
+      vTaskDelay(pdMS_TO_TICKS(500));
+      Serial.print(".");
+
+      // If disconnected for more than 3 minutes, reboot the ESP32 to guarantee a clean reconnect
+      if (millis() - reconnectStart > 180000) {
+        Serial.println("\n[WiFi] Reconnection failed after 3 minutes. Rebooting ESP32...");
+        ESP.restart();
+      }
+
+      // Retry WiFi.begin every 30 seconds
+      if (millis() - lastBegin > 30000) {
+        Serial.println("\n[WiFi] Connection attempt timed out. Retrying WiFi.begin...");
+        WiFi.disconnect(true);
+        vTaskDelay(pdMS_TO_TICKS(100));
+        WiFi.begin(WIFI_SSID, WIFI_PASS);
+        lastBegin = millis();
+      }
+      continue;
+    }
+
+    if (!wasConnected) {
+      Serial.printf("\n[WiFi] Reconnected. IP: %s\n", WiFi.localIP().toString().c_str());
+      // Reset timers to avoid immediate polling/pushing
+      lastPushMs = millis();
+      lastMosfetMs = millis();
+      wasConnected = true;
+    }
+
+    uint32_t now = millis();
+
+    // ── Push GPS + MPU + motion every 1s ──
+    if ((now - lastPushMs) >= 1000) {
       lastPushMs = now;
+      SharedData snap;
+      if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+        snap = shared;
+        xSemaphoreGive(dataMutex);
+      } else {
+        vTaskDelay(pdMS_TO_TICKS(10));
+        continue;
+      }
+
       char body[160];
       snprintf(body, sizeof(body),
         "{\"lat\":%.6f,\"lng\":%.6f,\"speed\":%.2f,\"motion\":\"%s\"}",
-        snap.lat, snap.lng, snap.speed_kmph, motionState);
+        snap.lat, snap.lng, snap.speed_kmph, snap.motion);
+      
       HTTPClient http;
       http.begin(String(SERVER_HOST) + "/api/truck_gps/" + TRUCK_NAME);
       http.addHeader("Content-Type", "application/json");
+      http.setTimeout(2000); // 2-second timeout to prevent long hangs
       int code = http.POST(body);
-      Serial.printf("[PUSH] HTTP %d | %s | motion=%s\n\n", code, TRUCK_NAME, motionState);
+      Serial.printf("[PUSH] HTTP %d | %s | motion=%s\n\n", code, TRUCK_NAME, snap.motion);
       http.end();
     }
 
+    now = millis(); // Refresh now since POST might have taken some time
+
     // ── Poll MOSFET state every 3s ──
-    if ((now - lastMosfetMs) >= 3000 && WiFi.status() == WL_CONNECTED) {
+    if ((now - lastMosfetMs) >= 3000) {
       lastMosfetMs = now;
       HTTPClient http;
       http.begin(String(SERVER_HOST) + "/api/mosfet_state/" + TRUCK_NAME);
+      http.setTimeout(2000); // 2-second timeout
       int code = http.GET();
       if (code == 200) {
         String resp = http.getString();
@@ -372,8 +405,13 @@ void setup() {
   ArduinoOTA.begin();
 
   dataMutex = xSemaphoreCreateMutex();
+  
+  // Initialize shared motion state
+  strcpy(shared.motion, "still");
+
   xTaskCreatePinnedToCore(TaskGPS, "GPS", 8192, NULL, 2, NULL, 0);
   xTaskCreatePinnedToCore(TaskOTA, "OTA", 4096, NULL, 1, NULL, 0);
+  xTaskCreatePinnedToCore(TaskNetwork, "Network", 8192, NULL, 1, NULL, 0);
   xTaskCreatePinnedToCore(TaskMPU, "MPU", 8192, NULL, 1, NULL, 1);
 }
 

@@ -251,7 +251,7 @@ async function loadTruckGrid() {
     <div class="toolbar">
       <h2>&#128666; new_devices</h2>
       <span style="font-size:.75rem;color:#94a3b8;background:#0f172a;padding:3px 10px;border-radius:999px;">${ids.length} truck${ids.length!==1?"s":""}</span>
-      <label class="auto-label" style="margin-left:auto;"><input type="checkbox" ${autoRefresh?"checked":""} onchange="toggleAuto(this)"> Auto-refresh (4s)</label>
+      <label class="auto-label" style="margin-left:auto;"><input type="checkbox" ${autoRefresh?"checked":""} onchange="toggleAuto(this)"> Auto-refresh (1s)</label>
       <button class="refresh-btn" onclick="loadTruckGrid()">&#8635; Refresh</button>
       <span style="font-size:.72rem;color:#475569;" id="lastRefresh"></span>
     </div>
@@ -261,7 +261,7 @@ async function loadTruckGrid() {
   
   // Clear again just in case another action happened, then set the interval
   clearInterval(refreshTimer);
-  if (autoRefresh) refreshTimer = setInterval(loadTruckGrid, 4000);
+  if (autoRefresh) refreshTimer = setInterval(loadTruckGrid, 1000);
 }
 
 // ── Truck detail table ────────────────────────────────────
@@ -310,7 +310,7 @@ async function showTruckDetail(truckId) {
 
   // Clear again just in case another action happened, then set the interval
   clearInterval(refreshTimer);
-  if (autoRefresh) refreshTimer = setInterval(() => showTruckDetail(truckId), 4000);
+  if (autoRefresh) refreshTimer = setInterval(() => showTruckDetail(truckId), 1000);
 }
 
 // ── Generic collection ────────────────────────────────────
@@ -372,7 +372,7 @@ async function loadData() {
     <div class="toolbar">
       <h2>${activeCol}</h2>
       <span style="font-size:.75rem;color:#94a3b8;background:#0f172a;padding:3px 10px;border-radius:999px;">${docs.length} rows</span>
-      <label class="auto-label" style="margin-left:auto;"><input type="checkbox" ${autoRefresh?"checked":""} onchange="toggleAuto(this)"> Auto-refresh (4s)</label>
+      <label class="auto-label" style="margin-left:auto;"><input type="checkbox" ${autoRefresh?"checked":""} onchange="toggleAuto(this)"> Auto-refresh (1s)</label>
       <button class="refresh-btn" onclick="loadData()">&#8635; Refresh</button>
       <span style="font-size:.72rem;color:#475569;" id="lastRefresh"></span>
     </div>
@@ -385,7 +385,7 @@ async function loadData() {
   
   // Clear again just in case another action happened, then set the interval
   clearInterval(refreshTimer);
-  if (autoRefresh) refreshTimer = setInterval(loadData, 4000);
+  if (autoRefresh) refreshTimer = setInterval(loadData, 1000);
 }
 
 function toggleAuto(cb) {
@@ -393,9 +393,9 @@ function toggleAuto(cb) {
   clearInterval(refreshTimer);
   if (!autoRefresh || !activeCol) return;
   if (activeCol === "new_devices") {
-    refreshTimer = activeTruck ? setInterval(()=>showTruckDetail(activeTruck),4000) : setInterval(loadTruckGrid,4000);
+    refreshTimer = activeTruck ? setInterval(()=>showTruckDetail(activeTruck),1000) : setInterval(loadTruckGrid,1000);
   } else {
-    refreshTimer = setInterval(loadData, 4000);
+    refreshTimer = setInterval(loadData, 1000);
   }
 }
 
