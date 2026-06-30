@@ -406,6 +406,62 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #4b5563;
         }
+
+        /* Collapsible Sub-sidebar */
+        .main {
+            position: relative;
+        }
+        
+        .sub-sidebar {
+            transition: width 0.3s ease, border-right-color 0.3s ease, padding 0.3s ease;
+            position: relative;
+        }
+        
+        .sub-sidebar.collapsed {
+            width: 0 !important;
+            padding: 0 !important;
+            overflow: hidden;
+            border-right: none !important;
+        }
+        
+        .sub-sidebar-toggle-btn {
+            position: absolute;
+            top: 50%;
+            left: 280px; /* Width of sub-sidebar */
+            transform: translateY(-50%);
+            width: 20px;
+            height: 80px;
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-left: none;
+            border-radius: 0 10px 10px 0;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            z-index: 100;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            transition: left 0.3s ease, background-color 0.3s, border-color 0.3s;
+            padding: 0;
+        }
+        
+        .sub-sidebar-toggle-btn span {
+            width: 4px;
+            height: 4px;
+            background-color: var(--text-secondary);
+            border-radius: 50%;
+        }
+        
+        .sub-sidebar-toggle-btn:hover {
+            background-color: var(--border-color);
+        }
+        
+        .sub-sidebar.collapsed + .sub-sidebar-toggle-btn {
+            left: 0;
+            border-left: 1px solid var(--border-color);
+        }
     </style>
 </head>
 <body>
@@ -417,7 +473,7 @@
 
     <div class="main">
         <!-- Sub-sidebar for Categories & Devices -->
-        <div class="sub-sidebar">
+        <div class="sub-sidebar" id="subSidebar">
             <div class="sub-sidebar-header">
                 <h3><i class="fas fa-video"></i> Live Cameras</h3>
             </div>
@@ -449,6 +505,13 @@
             </div>
         </div>
 
+        <!-- 3 dots toggle button -->
+        <button class="sub-sidebar-toggle-btn" id="subSidebarToggle" onclick="toggleSubSidebar()" title="Toggle Sidebar">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+
         <!-- Main Control Room Area -->
         <div class="control-room">
             <div class="control-room-header">
@@ -457,11 +520,9 @@
                     <p id="viewSubtitle">Displaying all live camera feeds</p>
                 </div>
                 
-                <!-- Layout Controls -->
+                <!-- Layout Controls (Only 2 and 4 columns, removing odd ones) -->
                 <div class="layout-selector">
-                    <button class="layout-btn" title="1 Column" onclick="changeGrid(1)"><i class="fas fa-square"></i></button>
                     <button class="layout-btn active" title="2 Columns" onclick="changeGrid(2)"><i class="fas fa-th-large"></i></button>
-                    <button class="layout-btn" title="3 Columns" onclick="changeGrid(3)"><i class="fas fa-th"></i></button>
                     <button class="layout-btn" title="4 Columns" onclick="changeGrid(4)"><i class="fas fa-grip"></i></button>
                 </div>
             </div>
@@ -644,14 +705,19 @@
             }
         }
 
+        function toggleSubSidebar() {
+            const sidebar = document.getElementById('subSidebar');
+            sidebar.classList.toggle('collapsed');
+        }
+
         function changeGrid(cols) {
             const grid = document.getElementById('cameraGrid');
             grid.className = 'camera-grid'; // Reset
             grid.classList.add(`grid-${cols}`);
 
             // Update active button
-            document.querySelectorAll('.layout-selector .layout-btn').forEach((btn, idx) => {
-                if (idx + 1 === cols) {
+            document.querySelectorAll('.layout-selector .layout-btn').forEach((btn) => {
+                if (btn.getAttribute('onclick').includes(cols.toString())) {
                     btn.classList.add('active');
                 } else {
                     btn.classList.remove('active');
