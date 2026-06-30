@@ -258,6 +258,18 @@ export default function App() {
     return result;
   }, [vehicles, filterTab]);
 
+  useEffect(() => {
+    fetch("/log_js_error", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: `App vehicles: ${Object.keys(vehicles).join(",")}, filtered: ${Object.keys(filteredVehicles).join(",")}, tab: ${filterTab}`,
+        source: "App.jsx",
+        lineno: 260
+      })
+    });
+  }, [vehicles, filteredVehicles, filterTab]);
+
   const liveDistanceMeters = useMemo(() => {
     if (!distanceToolEnabled || !distanceSource || !distanceTarget) return null;
     const v1 = vehicles?.[distanceSource];

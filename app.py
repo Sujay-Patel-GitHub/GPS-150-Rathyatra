@@ -2047,7 +2047,10 @@ def get_all_vehicle_locations():
 def log_js_error():
     try:
         data = request.get_json() or {}
-        print(f"❌ FRONTEND JS ERROR: {data.get('message')} at {data.get('source')}:{data.get('lineno')}:{data.get('colno')}\nStack: {data.get('error')}")
+        msg = f"JS LOG: {data.get('message')} at {data.get('source')}:{data.get('lineno')}\nStack: {data.get('error')}"
+        print(msg)
+        with open("js_debug.log", "a", encoding="utf-8") as f:
+            f.write(msg + "\n")
     except Exception as e:
         print(f"Error logging JS exception: {e}")
     return jsonify({"status": "logged"})

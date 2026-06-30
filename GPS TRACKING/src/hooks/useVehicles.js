@@ -410,6 +410,17 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
         setVehicleDetails(cleanedDetails);
         setLoading(false);
         setError(null);
+
+        // Send debug info to server
+        fetch("/log_js_error", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: `rawVehicles keys: ${Object.keys(mapped).join(",")}, vehicleDetails keys: ${Object.keys(cleanedDetails).join(",")}`,
+            source: "useVehicles.js",
+            lineno: 410
+          })
+        });
       } catch (err) {
         console.error("MongoDB fetch failed:", err);
         if (active) {
