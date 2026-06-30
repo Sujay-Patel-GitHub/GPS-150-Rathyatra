@@ -24,7 +24,10 @@ try:
 
     # 5. Registered Vehicles Folder (Assignments)
     # Stores: { "device_id": "...", "driver_name": "...", "transporter_name": "...", "rc_number": "..." }
-    col_vehicles = db["registered_vehicles"]
+    if "registered_trucks" in db.list_collection_names():
+        col_vehicles = db["registered_trucks"]
+    else:
+        col_vehicles = db["registered_vehicles"]
 
     # 6. Settings (General App Config)
     col_settings = db["settings"]
