@@ -7,6 +7,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
+        * {
+            box-sizing: border-box;
+        }
         /* Modern CSS Reset & variables */
         :root {
             --bg-primary: #f3f4f6;       /* Light grey background */
@@ -408,6 +411,19 @@
 <body>
     <!-- Standardized Sidebar -->
     {% include 'sidebar.html' %}
+
+    <!-- Top Navbar -->
+    <div class="navbar" style="position: fixed; top: 0; left: 0; right: 0; height: 70px; background: var(--bg-secondary); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; z-index: 1000; transition: background-color 0.3s, border-color 0.3s;">
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <img src="{{ logo_url }}" alt="Logo" style="height: 42px;">
+            <h2 style="margin: 0; font-size: 1.35rem; font-weight: 800; background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%); -webkit-background-clip: text; background-clip: text; color: transparent; letter-spacing: -0.02em;">Admin Dashboard</h2>
+        </div>
+        <div style="font-size: 0.9rem; color: var(--text-secondary); display: flex; align-items: center; gap: 20px; font-weight: 500;">
+            <span style="display: flex; align-items: center; gap: 8px;"><i class="fas fa-user-shield" style="color: var(--accent-color); font-size: 1rem;"></i> Welcome, <strong style="color: var(--text-primary);">Admin</strong></span>
+            <div style="width: 1px; height: 16px; background-color: var(--border-color);"></div>
+            <a href="/logout" style="color: var(--text-secondary); text-decoration: none; display: flex; align-items: center; gap: 8px; font-weight: 600; transition: color 0.2s;" onmouseover="this.style.color='var(--danger-color)'" onmouseout="this.style.color='var(--text-secondary)'"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
+    </div>
 
     <div class="main">
         <!-- Sub-sidebar for Categories & Devices -->

@@ -429,6 +429,16 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
     // Build enriched vehicle list
     idsToShow.forEach((id, idx) => {
       const data = rawVehicles[id] || null;
+      
+      // Filter out devices with 0.0000 coordinates
+      if (data) {
+        const isZero = (typeof data.lat === "number" && Math.abs(data.lat) < 0.01) || 
+                       (typeof data.lng === "number" && Math.abs(data.lng) < 0.01);
+        if (isZero) {
+          return; // Skip this device entirely
+        }
+      }
+
       const details = vehicleDetails[id] || {};
       const display_name = details.display_name || null;
       const cached = loadLastLocation(id);

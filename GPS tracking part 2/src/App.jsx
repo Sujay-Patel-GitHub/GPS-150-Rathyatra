@@ -30,6 +30,7 @@ export default function App() {
 
   const [selectedId, setSelectedId] = useState(null);
   const [useCompass, setUseCompass] = useState(true);
+  const [showDetailPanel, setShowDetailPanel] = useState(true);
 
   const [playbackMode, setPlaybackMode] = useState(false);
   const [playbackIndex, setPlaybackIndex] = useState(0);
@@ -811,10 +812,23 @@ export default function App() {
           totalRawPoints={totalRawPoints}
           playbackRoutePoints={playbackRoutePoints}
         />
+        
+        {/* Toggle Right Sidebar Button */}
+        <button
+          onClick={() => setShowDetailPanel(p => !p)}
+          className="absolute top-4 right-4 z-[1000] p-2.5 bg-gray-900/90 hover:bg-gray-800/90 border border-white/10 text-white rounded-xl shadow-2xl transition-all cursor-pointer flex items-center justify-center active:scale-95"
+          title={showDetailPanel ? "Hide Details Panel" : "Show Details Panel"}
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
       </div>
 
       {/* Detail panel */}
-      <div className="w-72 shrink-0 flex flex-col">
+      <div className={`shrink-0 flex flex-col border-l border-white/10 bg-gray-900 transition-all duration-300 ${
+        showDetailPanel ? "w-72" : "w-0 overflow-hidden border-l-0"
+      }`}>
         <DetailPanel 
           vehicleId={selectedId} 
           data={selectedVehicle} 

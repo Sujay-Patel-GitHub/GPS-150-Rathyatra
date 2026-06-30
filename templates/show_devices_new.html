@@ -1263,6 +1263,7 @@
             const data = await res.json();
             if (!data.ok) { document.getElementById('detailBody').innerHTML = '<p style="color:#dc2626;">Failed to load details.</p>'; return; }
             const d = data.doc;
+            const isAkhada = d.role === "AKHADA_USER";
             const row = (icon, lbl, val) => val ? `<div class="det-row"><div class="det-icon"><i class="fas ${icon}" style="color:#f97316;font-size:0.8rem;"></i></div><div><div class="det-lbl">${lbl}</div><div class="det-val">${val}</div></div></div>` : '';
             let html = row('fa-truck','Truck ID', d.truck_id)
                      + row('fa-user','Username', d.username)
@@ -1274,8 +1275,8 @@
                      + row('fa-id-card','Vehicle Plate', d.vehicle_plate)
                      + row('fa-id-badge','Driver Name', d.driver_name)
                      + row('fa-mobile-alt','Driver Mobile', d.driver_mobile)
-                     + row('fa-id-card','Contractor Name', d.contractor_name)
-                     + row('fa-phone-alt','Contractor Mobile', d.contractor_mobile)
+                     + (isAkhada ? '' : row('fa-id-card','Contractor Name', d.contractor_name))
+                     + (isAkhada ? '' : row('fa-phone-alt','Contractor Mobile', d.contractor_mobile))
                      + row('fa-video','Front RTMP', d.front_rtmp)
                      + row('fa-video','Rear RTMP', d.rear_rtmp);
             document.getElementById('detailBody').innerHTML = html || '<p style="color:#9ca3af;text-align:center;padding:20px;">No details found.</p>';
