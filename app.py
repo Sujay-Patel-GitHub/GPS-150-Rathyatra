@@ -5942,7 +5942,7 @@ def stream_player():
         video {
             width: 100%;
             height: 100%;
-            object-fit: contain;
+            object-fit: fill;
         }
         .overlay {
             position: absolute;
