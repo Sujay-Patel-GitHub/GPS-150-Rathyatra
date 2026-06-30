@@ -110,7 +110,9 @@ export function Sidebar({
   adminMode = false,
   onToggleAdminMode,
   frontBackRoutes = [],
-  orderedTrucks = []
+  orderedTrucks = [],
+  filterTab,
+  onFilterTabChange
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const onlineCount = Object.values(vehicles).filter((v) => v?.online).length;
@@ -210,8 +212,8 @@ export function Sidebar({
         </button>
       </div>
 
-      {/* Search Box */}
-      <div className="px-4 py-2.5 border-b border-white/10 bg-black/10">
+      {/* Search Box & Filter Tabs */}
+      <div className="px-4 py-2.5 border-b border-white/10 bg-black/10 flex flex-col gap-2">
         <div className="relative flex items-center">
           <span className="absolute left-3 text-white/35 text-xs">🔍</span>
           <input
@@ -229,6 +231,24 @@ export function Sidebar({
               ×
             </button>
           )}
+        </div>
+
+        {/* Filter Tabs */}
+        <div className="flex gap-1 bg-white/5 p-1 rounded-lg border border-white/5">
+          {["registered", "unregistered", "all"].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => onFilterTabChange(tab)}
+              className={`flex-1 py-1 rounded text-[10px] font-extrabold uppercase tracking-wide cursor-pointer transition-all duration-150 border border-transparent
+                ${
+                  filterTab === tab
+                    ? "bg-orange-500 text-white shadow-md shadow-orange-500/10"
+                    : "text-white/45 hover:text-white hover:bg-white/5"
+                }`}
+            >
+              {tab === "registered" ? "Registered" : tab === "unregistered" ? "Unregistered" : "All"}
+            </button>
+          ))}
         </div>
       </div>
 

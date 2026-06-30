@@ -615,6 +615,7 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
         enriched[id] = {
           ...data,
           display_name,
+          is_registered: !!vehicleDetails[id],
           key: id,
           status,
           online,
@@ -645,6 +646,7 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
       } else {
         enriched[id] = {
           display_name,
+          is_registered: !!vehicleDetails[id],
           key: id,
           status: "offline",
           online: false,

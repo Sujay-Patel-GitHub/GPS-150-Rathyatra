@@ -240,6 +240,23 @@ export default function App() {
     return mocked;
   }, [firebaseVehicles, playbackMode, playbackRoutePoints, playbackIndex, selectedRecordVehicleId, playbackIsPlaying, hidePlaybackTrail]);
 
+  const [filterTab, setFilterTab] = useState("registered");
+
+  const filteredVehicles = useMemo(() => {
+    const result = {};
+    Object.entries(vehicles).forEach(([id, v]) => {
+      const isReg = v.is_registered;
+      if (filterTab === "all") {
+        result[id] = v;
+      } else if (filterTab === "registered" && isReg) {
+        result[id] = v;
+      } else if (filterTab === "unregistered" && !isReg) {
+        result[id] = v;
+      }
+    });
+    return result;
+  }, [vehicles, filterTab]);
+
   const liveDistanceMeters = useMemo(() => {
     if (!distanceToolEnabled || !distanceSource || !distanceTarget) return null;
     const v1 = vehicles?.[distanceSource];
@@ -754,20 +771,22 @@ export default function App() {
       {/* Sidebar — vehicle list */}
       <div className="w-64 shrink-0 flex flex-col">
         <Sidebar
-          vehicles={vehicles}
+          vehicles={filteredVehicles}
           selectedId={selectedId}
           onSelect={handleSelect}
           adminMode={adminMode}
           onToggleAdminMode={setAdminMode}
           frontBackRoutes={frontBackRoutes}
           orderedTrucks={orderedTrucks}
+          filterTab={filterTab}
+          onFilterTabChange={setFilterTab}
         />
       </div>
 
       {/* Main map area */}
       <div className="flex-1 flex flex-col relative">
         <MapView
-          vehicles={vehicles}
+          vehicles={filteredVehicles}
           selectedId={selectedId}
           onVehicleSelect={handleSelect}
           yatraRoute={roadRoute}
