@@ -1095,9 +1095,7 @@
         }
 
         function toggleSnapToRoad() {
-            snapToRoad = document.getElementById('snapToRoadChk').checked;
-            localStorage.setItem('snapToRoad', snapToRoad);
-            refreshLocations();
+            // Unused since checkbox was removed
         }
 
         async function initMarkers() {
@@ -1630,7 +1628,6 @@
 
         // Initialize
         snapToRoad = localStorage.getItem('snapToRoad') === 'true';
-        document.getElementById('snapToRoadChk').checked = snapToRoad;
 
         initMarkers();
         renderList(vehicles);
