@@ -503,7 +503,7 @@ export function MapView({
   }, [yatraRoute]);
 
   const [centerTarget, setCenterTarget] = useState(null);
-  const [settingsMinimized, setSettingsMinimized] = useState(false);
+  const [settingsMinimized, setSettingsMinimized] = useState(true);
   const [selectedZoom, setSelectedZoom] = useState(17);
   const [hasAutoCentered, setHasAutoCentered] = useState(false);
 
