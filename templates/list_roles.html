@@ -514,6 +514,16 @@
                     <div class="role-btn-title">Maintenance User</div>
                     <div class="role-btn-count">{{ roles_data['MAINTENANCE_USER']|length }} users</div>
                 </button>
+                <button class="role-btn" onclick="showRole('police')" id="btn-police">
+                    <i class="fas fa-building role-btn-icon" style="color:#10b981;background:#ecfdf5;"></i>
+                    <div class="role-btn-title">Police Station</div>
+                    <div class="role-btn-count">{{ roles_data['POLICE_STATION']|length if roles_data['POLICE_STATION'] is defined else 0 }} users</div>
+                </button>
+                <button class="role-btn" onclick="showRole('extra')" id="btn-extra">
+                    <i class="fas fa-car-side role-btn-icon" style="color:#f59e0b;background:#fffbeb;"></i>
+                    <div class="role-btn-title">Extra Vehicle</div>
+                    <div class="role-btn-count">{{ roles_data['EXTRA_VEHICLE']|length if roles_data['EXTRA_VEHICLE'] is defined else 0 }} users</div>
+                </button>
             </div>
 
             {% set role_configs = [
@@ -521,7 +531,9 @@
                 ('rath',       'RATH_USER',   'Rath User',   'fa-gopuram',   '#06b6d4', '#ecfeff'),
                 ('akhada',     'AKHADA_USER', 'Akhada User', 'fa-users',     '#8b5cf6', '#f5f3ff'),
                 ('truck',      'TRUCK_USER',      'Truck User',      'fa-truck','#0ea5e9','#f0f9ff'),
-            ('maintenance','MAINTENANCE_USER','Maintenance User','fa-tools','#ef4444','#fef2f2')
+                ('maintenance','MAINTENANCE_USER','Maintenance User','fa-tools','#ef4444','#fef2f2'),
+                ('police',     'POLICE_STATION',  'Police Station',  'fa-building','#10b981','#ecfdf5'),
+                ('extra',      'EXTRA_VEHICLE',   'Extra Vehicle',   'fa-car-side','#f59e0b','#fffbeb')
             ] %}
 
             {% for key, role_key, label, icon, color, bg in role_configs %}
@@ -961,7 +973,7 @@
                             </div>`;
                     }
                     if (key === 'role') {
-                        const roles = ["SUPER_ADMIN", "RATH_USER", "AKHADA_USER", "TRUCK_USER", "MAINTENANCE_USER"];
+                        const roles = ["SUPER_ADMIN", "RATH_USER", "AKHADA_USER", "TRUCK_USER", "MAINTENANCE_USER", "POLICE_STATION", "EXTRA_VEHICLE"];
                         const options = roles.map(r => `<option value="${r}" ${r === val ? 'selected' : ''}>${r}</option>`).join('');
                         return `
                             <div style="display:flex;align-items:flex-start;gap:12px;padding:10px;background:#f9fafb;border-radius:8px;margin-bottom:8px;">

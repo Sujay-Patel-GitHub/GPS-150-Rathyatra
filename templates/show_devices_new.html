@@ -972,6 +972,8 @@
                         <option value="RATH_USER">RATH_USER</option>
                         <option value="TRUCK_USER">TRUCK_USER</option>
                         <option value="MAINTENANCE_USER">MAINTENANCE_USER</option>
+                        <option value="POLICE_STATION">POLICE_STATION</option>
+                        <option value="EXTRA_VEHICLE">EXTRA_VEHICLE</option>
                     </select>
                 </div>
                 <button onclick="goStep2()" class="obtn">Next <i class="fas fa-arrow-right"></i></button>
@@ -1154,11 +1156,11 @@
                 currentStep2Panel = "step2_super";
                 showPanel("step2_super");
                 setDots(2, 2);
-            } else if (role === "AKHADA_USER") {
+            } else if (role === "AKHADA_USER" || role === "POLICE_STATION") {
                 currentStep2Panel = "step2_akhada";
                 showPanel("step2_akhada");
                 setDots(2, 3);
-            } else if (role === "MAINTENANCE_USER" || role === "TRUCK_USER") {
+            } else if (role === "MAINTENANCE_USER" || role === "TRUCK_USER" || role === "EXTRA_VEHICLE") {
                 currentStep2Panel = "step2_maint";
                 showPanel("step2_maint");
                 setDots(2, 3);
@@ -1203,7 +1205,7 @@
                 if (np !== cp) { showMsg("Passwords do not match.", false); return; }
                 payload.password = np;
 
-            } else if (role === "AKHADA_USER") {
+            } else if (role === "AKHADA_USER" || role === "POLICE_STATION") {
                 payload.officer_pi     = document.getElementById('f_officer').value.trim();
                 payload.pi_contact     = document.getElementById('f_pi_contact').value.trim();
                 payload.police_station = document.getElementById('f_station').value.trim();
@@ -1218,7 +1220,7 @@
                 if (np !== cp) { showMsg("Passwords do not match.", false); return; }
                 payload.password = np;
 
-            } else if (role === "MAINTENANCE_USER" || role === "TRUCK_USER") {
+            } else if (role === "MAINTENANCE_USER" || role === "TRUCK_USER" || role === "EXTRA_VEHICLE") {
                 payload.vehicle_plate      = document.getElementById('m_plate').value.trim();
                 payload.driver_name        = document.getElementById('m_driver').value.trim();
                 payload.driver_mobile      = document.getElementById('m_driver_mobile').value.trim();
