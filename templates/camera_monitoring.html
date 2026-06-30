@@ -6,18 +6,28 @@
     <title>Camera Monitoring - Control Room</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <style>
         /* Modern CSS Reset & variables */
         :root {
-            --bg-primary: #0b0f19;
-            --bg-secondary: #111827;
-            --bg-card: #1f2937;
-            --border-color: #374151;
-            --text-primary: #f9fafb;
-            --text-secondary: #9ca3af;
-            --accent-color: #3b82f6;
-            --accent-hover: #2563eb;
-            --danger-color: #ef4444;
+            --bg-primary: #f3f4f6;       /* Light grey background */
+            --bg-secondary: #ffffff;     /* White sidebar/container */
+            --bg-card: #f9fafb;          /* Light card background */
+            --border-color: #e5e7eb;     /* Light grey border */
+            --text-primary: #111827;     /* Dark grey text */
+            --text-secondary: #4b5563;   /* Medium grey text */
+            --accent-color: #2563eb;     /* Rich blue accent */
+            --accent-hover: #1d4ed8;     /* Darker blue */
+            --danger-color: #ef4444;     /* Red */
+        }
+
+        body.dark-theme {
+            --bg-primary: #0b0f19;       /* Dark background */
+            --bg-secondary: #111827;     /* Dark sidebar/container */
+            --bg-card: #1f2937;          /* Dark card background */
+            --border-color: #374151;     /* Dark border */
+            --text-primary: #f9fafb;     /* White text */
+            --text-secondary: #9ca3af;   /* Light grey text */
+            --accent-color: #3b82f6;     /* Bright blue accent */
+            --accent-hover: #2563eb;     /* Rich blue */
         }
 
         body {
@@ -28,6 +38,7 @@
             padding: 0;
             display: flex;
             min-height: 100vh;
+            transition: background-color 0.3s, color 0.3s;
         }
 
         /* Layout structure */
@@ -56,6 +67,7 @@
             margin-top: -70px; /* Offset the body padding-top from sidebar.html */
             padding-top: 70px;
             box-sizing: border-box;
+            transition: background-color 0.3s, border-color 0.3s;
         }
 
         .sub-sidebar-header {
@@ -85,8 +97,8 @@
         }
 
         .category-btn {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
             color: var(--text-secondary);
             padding: 10px 14px;
             border-radius: 8px;
@@ -101,7 +113,7 @@
         }
 
         .category-btn:hover {
-            background: rgba(255, 255, 255, 0.08);
+            background: var(--bg-primary);
             color: var(--text-primary);
         }
 
@@ -109,15 +121,19 @@
             background: var(--accent-color);
             border-color: var(--accent-color);
             color: white;
-            box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
         }
 
         .category-btn .badge {
-            background: rgba(0, 0, 0, 0.2);
+            background: rgba(0, 0, 0, 0.06);
             color: inherit;
             padding: 2px 6px;
             border-radius: 999px;
             font-size: 0.75rem;
+        }
+
+        body.dark-theme .category-btn .badge {
+            background: rgba(255, 255, 255, 0.12);
         }
 
         /* Device List */
@@ -154,14 +170,18 @@
         }
 
         .device-btn:hover {
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--bg-primary);
             color: var(--text-primary);
         }
 
         .device-btn.active {
-            background: rgba(59, 130, 246, 0.15);
+            background: rgba(37, 99, 235, 0.08);
             color: var(--accent-color);
             font-weight: 600;
+        }
+
+        body.dark-theme .device-btn.active {
+            background: rgba(59, 130, 246, 0.15);
         }
 
         /* Main Control Room Area */
@@ -174,6 +194,7 @@
             margin-top: -70px; /* Offset body padding-top */
             padding-top: 70px;
             box-sizing: border-box;
+            transition: background-color 0.3s;
         }
 
         .control-room-header {
@@ -183,15 +204,26 @@
             justify-content: space-between;
             align-items: center;
             background-color: var(--bg-secondary);
+            transition: background-color 0.3s, border-color 0.3s;
         }
 
         .control-room-title h2 {
             margin: 0;
-            font-size: 1.3rem;
+            font-size: 1.5rem;
             font-weight: 800;
             display: flex;
             align-items: center;
             gap: 10px;
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        body.dark-theme .control-room-title h2 {
+            background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #1d4ed8 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
         }
 
         .control-room-title p {
@@ -259,8 +291,12 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 4px 12px rgba(0, 0, 0, 0.03);
+            transition: transform 0.2s, border-color 0.2s, background-color 0.3s, border-color 0.3s;
+        }
+
+        body.dark-theme .camera-card {
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-            transition: transform 0.2s, border-color 0.2s;
         }
 
         .camera-card:hover {
@@ -275,6 +311,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            transition: background-color 0.3s, border-color 0.3s;
         }
 
         .camera-title {
