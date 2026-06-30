@@ -1605,8 +1605,20 @@ def get_processed_vehicles_list():
                 latest_map[tid.upper()] = doc
         assign_map = {d["truck_id"]: d for d in gps_db["assign_devices"].find({}, {"_id":0})}
         threshold_sec = get_power_off_threshold() * 60
+        
+        # Collect all unique ESP truck IDs from both registered_trucks and new_devices
+        all_esp_tids = set()
         for doc in gps_db["registered_trucks"].find({}, {"truck_id":1}):
             tid = doc.get("truck_id")
+            if tid:
+                all_esp_tids.add(tid)
+        for tid_upper in latest_map.keys():
+            nd = latest_map[tid_upper]
+            tid = nd.get("truck_id")
+            if tid:
+                all_esp_tids.add(tid)
+                
+        for tid in all_esp_tids:
             if not tid or tid in existing_ids:
                 continue
             nd = latest_map.get(tid.upper(), {})
