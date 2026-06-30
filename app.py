@@ -7051,20 +7051,41 @@ def api_tracking_vehicles():
                 "vehicle_id": d_id
             }
             
-        # 2. Fetch vehicle registry details from col_vehicles
-        registry_docs = list(col_vehicles.find({}))
+        # 2. Fetch vehicle registry details from col_vehicles & assign_devices
         vehicle_details = {}
+        
+        # 2a. From col_vehicles (registered_vehicles or registered_trucks)
+        registry_docs = list(col_vehicles.find({}))
         for doc in registry_docs:
-            d_id = doc.get("device_id")
+            d_id = doc.get("device_id") or doc.get("truck_id")
             if d_id:
+                d_id = d_id.strip()
                 vehicle_details[d_id] = {
-                    "display_name": doc.get("display_name") or d_id,
+                    "display_name": doc.get("display_name") or doc.get("vehicle_plate") or d_id,
                     "driver_name": doc.get("driver_name", "N/A"),
-                    "driver_phone": doc.get("driver_phone", "N/A"),
+                    "driver_phone": doc.get("driver_phone") or doc.get("driver_mobile") or "N/A",
                     "transporter_name": doc.get("transporter_name", "N/A"),
                     "rc_number": doc.get("rc_number", "N/A"),
                     "config": doc.get("record_config")
                 }
+                
+        # 2b. Merge from assign_devices
+        try:
+            assign_col = col_settings.database["assign_devices"]
+            for doc in assign_col.find({}):
+                d_id = doc.get("truck_id")
+                if d_id:
+                    d_id = d_id.strip()
+                    vehicle_details[d_id] = {
+                        "display_name": doc.get("vehicle_plate") or doc.get("display_name") or d_id,
+                        "driver_name": doc.get("driver_name", "N/A"),
+                        "driver_phone": doc.get("driver_mobile") or doc.get("driver_phone") or "N/A",
+                        "transporter_name": doc.get("transporter_name", "N/A"),
+                        "rc_number": doc.get("rc_number", "N/A"),
+                        "config": doc.get("record_config")
+                    }
+        except Exception as e:
+            print(f"Error merging assign_devices: {e}")
                 
         # 3. Fetch global config
         config_doc = col_settings.find_one({"_id": "global_gps_config"})
