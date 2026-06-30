@@ -43,17 +43,12 @@
         }
 
         /* Layout structure */
-        .layout-container {
+        .main {
             display: flex;
-            width: 100%;
-            margin-left: 240px; /* Sidebar offset */
-            height: 100vh;
+            padding: 0 !important;
+            height: calc(100vh - 70px);
             overflow: hidden;
             transition: all 0.3s ease;
-        }
-
-        body.sidebar-collapsed .layout-container {
-            margin-left: 75px;
         }
 
         /* Sub-sidebar for categories and devices */
@@ -65,8 +60,6 @@
             flex-direction: column;
             height: 100%;
             flex-shrink: 0;
-            margin-top: -70px; /* Offset the body padding-top from sidebar.html */
-            padding-top: 70px;
             box-sizing: border-box;
             transition: background-color 0.3s, border-color 0.3s;
         }
@@ -192,8 +185,6 @@
             flex-direction: column;
             height: 100%;
             background-color: var(--bg-primary);
-            margin-top: -70px; /* Offset body padding-top */
-            padding-top: 70px;
             box-sizing: border-box;
             transition: background-color 0.3s;
         }
@@ -411,7 +402,7 @@
     <!-- Standardized Sidebar -->
     {% include 'sidebar.html' %}
 
-    <div class="layout-container">
+    <div class="main">
         <!-- Sub-sidebar for Categories & Devices -->
         <div class="sub-sidebar">
             <div class="sub-sidebar-header">
