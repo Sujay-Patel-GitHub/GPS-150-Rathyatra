@@ -179,6 +179,17 @@ export function Sidebar({
     <aside className="flex flex-col h-full bg-gray-900/85 backdrop-blur-xl border-r border-white/10 select-none">
       {/* Header */}
       <div className="px-5 py-5 border-b border-white/10 bg-black/10">
+        {/* Back to Dashboard Button */}
+        <button 
+          onClick={() => window.location.href = '/'}
+          className="flex items-center gap-1.5 text-white/45 hover:text-white text-[10px] uppercase tracking-wider font-extrabold mb-4 transition-colors cursor-pointer border-none bg-transparent outline-none"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to Dashboard
+        </button>
+
         <div className="flex items-center gap-3 mb-1">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-base shadow-lg shadow-orange-500/20 animate-pulse">
             🛕
