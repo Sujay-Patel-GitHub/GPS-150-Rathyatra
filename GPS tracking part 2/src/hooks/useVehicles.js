@@ -79,6 +79,11 @@ function sliceRoadRoute(roadRoute, p1, p2) {
 
 export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
   const [rawVehicles, setRawVehicles] = useState({});
+  const rawVehiclesRef = useRef({});
+  useEffect(() => {
+    rawVehiclesRef.current = rawVehicles;
+  }, [rawVehicles]);
+
   const [vehicleDetails, setVehicleDetails] = useState({});
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -348,14 +353,41 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
         Object.entries(raw).forEach(([dbId, item]) => {
           const displayId = (DEVICE_TO_DISPLAY_MAP[dbId] || dbId).trim();
           if (item) {
+            let lat = item.lat;
+            let lng = item.lng;
+            
+            // Check if coordinates are 0.0 or invalid (within 0.01 degrees of 0,0)
+            const isInvalidCoords = (typeof lat !== "number" || typeof lng !== "number" || Math.abs(lat) < 0.01 || Math.abs(lng) < 0.01);
+            
+            if (isInvalidCoords) {
+              // Try to fall back to the last known valid coordinates from rawVehicles state
+              const prev = rawVehiclesRef.current?.[displayId];
+              if (prev && typeof prev.lat === "number" && Math.abs(prev.lat) >= 0.01 && typeof prev.lng === "number" && Math.abs(prev.lng) >= 0.01) {
+                lat = prev.lat;
+                lng = prev.lng;
+              } else {
+                // If there's no previous valid coordinate in memory, try localStorage cache
+                const cached = loadLastLocation(displayId);
+                if (cached && typeof cached.lat === "number" && Math.abs(cached.lat) >= 0.01 && typeof cached.lng === "number" && Math.abs(cached.lng) >= 0.01) {
+                  lat = cached.lat;
+                  lng = cached.lng;
+                }
+              }
+            }
+
+            // Only update if we have a valid coordinate (or fallback coordinate)
+            const itemWithValidCoords = {
+              ...item,
+              lat,
+              lng,
+              truck_id: displayId,
+              vehicle_id: displayId
+            };
+
             const existing = mapped[displayId];
             // If duplicate display IDs exist, keep the one with the newest timestamp
             if (!existing || (item.timestamp && (!existing.timestamp || item.timestamp > existing.timestamp))) {
-              mapped[displayId] = {
-                ...item,
-                truck_id: displayId,
-                vehicle_id: displayId
-              };
+              mapped[displayId] = itemWithValidCoords;
             }
           }
         });
