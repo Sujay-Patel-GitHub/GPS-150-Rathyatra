@@ -795,6 +795,7 @@ export default function App() {
           orderedTrucks={orderedTrucks}
           filterTab={filterTab}
           onFilterTabChange={setFilterTab}
+          error={error}
         />
       </div>
 

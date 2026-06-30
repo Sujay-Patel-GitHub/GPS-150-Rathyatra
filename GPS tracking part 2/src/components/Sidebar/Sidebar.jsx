@@ -112,7 +112,8 @@ export function Sidebar({
   frontBackRoutes = [],
   orderedTrucks = [],
   filterTab,
-  onFilterTabChange
+  onFilterTabChange,
+  error = null
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const onlineCount = Object.values(vehicles).filter((v) => v?.online).length;
@@ -198,7 +199,11 @@ export function Sidebar({
         </div>
       </div>
 
-
+      {error && (
+        <div className="mx-3 my-2 p-2 bg-red-500/20 border border-red-500/40 text-red-200 text-xs rounded-lg text-center font-semibold">
+          ⚠️ {error}
+        </div>
+      )}
 
       {/* Search Box & Filter Tabs */}
       <div className="px-4 py-2.5 border-b border-white/10 bg-black/10 flex flex-col gap-2">
