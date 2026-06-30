@@ -224,18 +224,14 @@ async function loadTruckGrid() {
   clearInterval(refreshTimer);
   
   try {
-    const res = await fetch("/api/mongo_data/new_devices");
+    const res = await fetch("/api/mongo_trucks");
     if (!res.ok) throw new Error("HTTP error " + res.status);
-    const docs = await res.json();
+    const trucksData = await res.json();
     
     // Guard clause: If the user navigated away while the fetch was in flight, abort
     if (activeCol !== "new_devices" || activeTruck !== null) return;
 
-    const trucks = {};
-    for (const d of docs) { const t = d.truck_id || "unknown"; if (!trucks[t]) trucks[t] = []; trucks[t].push(d); }
-    const ids = Object.keys(trucks).sort();
-
-    if (!ids.length) {
+    if (!trucksData.length) {
       document.getElementById("mainPanel").innerHTML = `
         <div class="toolbar"><h2>&#128666; new_devices</h2>
           <label class="auto-label" style="margin-left:auto;"><input type="checkbox" ${autoRefresh?"checked":""} onchange="toggleAuto(this)"> Auto-refresh</label>
@@ -244,8 +240,10 @@ async function loadTruckGrid() {
       return;
     }
 
-    const cards = ids.map(tid => {
-      const latest = trucks[tid][0];
+    const cards = trucksData.map(tData => {
+      const tid = tData.truck_id;
+      const latest = tData.latest;
+      const count = tData.count;
       return `<div class="truck-card" onclick="showTruckDetail('${esc(tid)}')">
         <h3>&#128666; ${tid}</h3>
         <div class="tc-section">GPS</div>
@@ -253,14 +251,14 @@ async function loadTruckGrid() {
         <div class="tc-row">Lng: <span class="gv">${n2(latest.lng,6)}</span></div>
         <div class="tc-row">Speed: <span class="gv">${n2(latest.speed,1)} km/h</span></div>
         <div style="margin-top:10px">${motionBadge(latest.motion)}</div>
-        <div class="tc-foot">${trucks[tid].length} records &nbsp;&middot;&nbsp; ${latest.timestamp||""}</div>
+        <div class="tc-foot">${count} records &nbsp;&middot;&nbsp; ${latest.timestamp||""}</div>
       </div>`;
     }).join("");
 
     document.getElementById("mainPanel").innerHTML = `
       <div class="toolbar">
         <h2>&#128666; new_devices</h2>
-        <span style="font-size:.75rem;color:#94a3b8;background:#0f172a;padding:3px 10px;border-radius:999px;">${ids.length} truck${ids.length!==1?"s":""}</span>
+        <span style="font-size:.75rem;color:#94a3b8;background:#0f172a;padding:3px 10px;border-radius:999px;">${trucksData.length} truck${trucksData.length!==1?"s":""}</span>
         <label class="auto-label" style="margin-left:auto;"><input type="checkbox" ${autoRefresh?"checked":""} onchange="toggleAuto(this)"> Auto-refresh (1s)</label>
         <button class="refresh-btn" onclick="loadTruckGrid()">&#8635; Refresh</button>
         <span style="font-size:.72rem;color:#475569;" id="lastRefresh"></span>
@@ -286,14 +284,12 @@ async function showTruckDetail(truckId) {
   activeTruck = truckId;
   
   try {
-    const res = await fetch("/api/mongo_data/new_devices");
+    const res = await fetch(`/api/mongo_data/new_devices?truck_id=${encodeURIComponent(truckId)}`);
     if (!res.ok) throw new Error("HTTP error " + res.status);
-    const all = await res.json();
+    const docs = await res.json();
     
     // Guard clause: If the user navigated away while the fetch was in flight, abort
     if (activeTruck !== truckId || activeCol !== "new_devices") return;
-
-    const docs = all.filter(d => d.truck_id === truckId);
 
     const rows = docs.map(d => `<tr>
       <td class="truck-id">${d.truck_id||""}</td>

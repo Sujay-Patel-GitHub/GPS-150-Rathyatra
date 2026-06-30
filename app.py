@@ -372,11 +372,52 @@ def mongo_collections():
     return jsonify(result)
 
 
+@app.route("/api/mongo_trucks")
+def mongo_trucks():
+    from mongodb import mongo_client
+    db = mongo_client["gps_server_db"]
+    pipeline = [
+        {"$sort": {"timestamp": -1}},
+        {"$group": {
+            "_id": "$truck_id",
+            "latest": {"$first": "$$ROOT"},
+            "count": {"$sum": 1}
+        }}
+    ]
+    results = list(db["new_devices"].aggregate(pipeline, allowDiskUse=True))
+    
+    trucks_data = []
+    for r in results:
+        latest = r["latest"]
+        if "timestamp" in latest and hasattr(latest["timestamp"], "strftime"):
+            latest["timestamp"] = latest["timestamp"].strftime("%d-%b-%Y %I:%M:%S %p")
+        if "_id" in latest:
+            del latest["_id"]
+        trucks_data.append({
+            "truck_id": r["_id"] or "unknown",
+            "count": r["count"],
+            "latest": latest
+        })
+    # Sort trucks alphabetically by truck_id
+    trucks_data.sort(key=lambda x: str(x["truck_id"]).lower())
+    return jsonify(trucks_data)
+
+
 @app.route("/api/mongo_data/<collection>")
 def mongo_data(collection):
     from mongodb import mongo_client
     db = mongo_client["gps_server_db"]
-    docs = list(db[collection].find({}, {"_id": 0}).sort("timestamp", -1))
+    
+    query = {}
+    truck_id = request.args.get("truck_id")
+    if truck_id:
+        query["truck_id"] = truck_id
+        
+    limit = 5000
+    if truck_id:
+        limit = 2000
+        
+    docs = list(db[collection].find(query, {"_id": 0}).sort("timestamp", -1).limit(limit))
     for d in docs:
         if "timestamp" in d and hasattr(d["timestamp"], "strftime"):
             d["timestamp"] = d["timestamp"].strftime("%d-%b-%Y %I:%M:%S %p")
