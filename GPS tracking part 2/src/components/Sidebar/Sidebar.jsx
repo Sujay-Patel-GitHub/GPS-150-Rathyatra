@@ -1,6 +1,7 @@
 // src/components/Sidebar/Sidebar.jsx
 // Vehicle list panel — shows all vehicles with live status badges.
 
+import { useState } from "react";
 import { timeAgo } from "../../utils/formatters";
 import { vehicleLabels, vehicleIcons } from "../../lib/constants";
 import { haversine } from "../../utils/routeSnap";
@@ -111,13 +112,30 @@ export function Sidebar({
   frontBackRoutes = [],
   orderedTrucks = []
 }) {
+  const [searchQuery, setSearchQuery] = useState("");
   const onlineCount = Object.values(vehicles).filter((v) => v?.online).length;
 
-  const idsToShow = Object.keys(vehicles).sort((a, b) => {
-    const numA = parseInt((a.match(/\d+/) || [0])[0], 10);
-    const numB = parseInt((b.match(/\d+/) || [0])[0], 10);
-    if (numA !== numB) return numA - numB;
-    return a.localeCompare(b);
+  const sortedIds = Object.keys(vehicles).sort((a, b) => {
+    const matchA = a.match(/^([a-zA-Z]+)(\d+)?$/);
+    const matchB = b.match(/^([a-zA-Z]+)(\d+)?$/);
+    
+    const prefixA = matchA ? matchA[1] : a;
+    const prefixB = matchB ? matchB[1] : b;
+    
+    const comp = prefixA.localeCompare(prefixB);
+    if (comp !== 0) return comp;
+    
+    const numA = matchA && matchA[2] ? parseInt(matchA[2], 10) : 0;
+    const numB = matchB && matchB[2] ? parseInt(matchB[2], 10) : 0;
+    return numA - numB;
+  });
+
+  const idsToShow = sortedIds.filter((id) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    const label = (vehicles[id]?.display_name || vehicleLabels[id] || id).toLowerCase();
+    const vehicleId = id.toLowerCase();
+    return label.includes(query) || vehicleId.includes(query);
   });
 
   let frontTruck = null;
@@ -185,11 +203,33 @@ export function Sidebar({
           onClick={() => onToggleAdminMode(!adminMode)}
           className={`px-3 py-1 rounded-full text-[10px] font-extrabold transition-all duration-200 cursor-pointer border uppercase tracking-wider
             ${adminMode 
-              ? "bg-red-500/20 border-red-500/30 text-red-400 hover:bg-red-500/30 shadow-[0_0_10px_rgba(239,68,68,0.1)]" 
+              ? "bg-red-500/20 border-red-500/30 text-red-400 hover:bg-red-500/30 shadow-[0_0_10px_rgba(239,68,68,0.15)]" 
               : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white"}`}
         >
           {adminMode ? "🔓 Admin Mode" : "🔒 User Mode"}
         </button>
+      </div>
+
+      {/* Search Box */}
+      <div className="px-4 py-2.5 border-b border-white/10 bg-black/10">
+        <div className="relative flex items-center">
+          <span className="absolute left-3 text-white/35 text-xs">🔍</span>
+          <input
+            type="text"
+            placeholder="Search trucks..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-8 pr-7 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-white placeholder-white/35 outline-none focus:border-orange-500/50 focus:bg-white/10 transition-all"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2.5 text-white/35 hover:text-white text-sm cursor-pointer border-none bg-transparent outline-none"
+            >
+              ×
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Spacing Alerts Widget */}
