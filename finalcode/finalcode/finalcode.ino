@@ -304,11 +304,6 @@ void TaskNetwork(void* pv) {
         continue;
       }
 
-      // Skip sending if we don't have a valid GPS coordinate yet (lat/lng are 0.0)
-      if (snap.lat == 0.0f && snap.lng == 0.0f) {
-        continue;
-      }
-
       char body[160];
       snprintf(body, sizeof(body),
         "{\"lat\":%.6f,\"lng\":%.6f,\"speed\":%.2f,\"motion\":\"%s\"}",

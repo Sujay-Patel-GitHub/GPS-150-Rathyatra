@@ -126,10 +126,17 @@
 </div>
 <div class="toast" id="toast"></div>
 
-<div class="header">
+<div class="header" style="display:flex;align-items:center;width:100%;">
   <div class="dot"></div>
   <h1>MongoDB Live Viewer</h1>
-  <span class="sub">gps_server_db &nbsp;&middot;&nbsp; 150.129.165.162:27017</span>
+  <span class="sub" style="margin-left: 14px;">gps_server_db &nbsp;&middot;&nbsp; 150.129.165.162:27017</span>
+  
+  <div style="margin-left:auto; display:flex; align-items:center; gap:10px; background:#0f172a; padding:6px 14px; border-radius:8px; border:1px solid #334155;">
+    <label style="font-size:0.8rem; font-weight:600; color:#94a3b8; display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none;">
+      <input type="checkbox" id="gpsFilterToggle" onchange="toggleGpsFilter(this)" style="accent-color:#0ea5e9; cursor:pointer;">
+      Filter 0.00 Coordinates
+    </label>
+  </div>
 </div>
 
 <div class="layout">
@@ -509,6 +516,40 @@ loadCollections();
 loadDevicePanels();
 setInterval(loadCollections, 10000);
 setInterval(loadDevicePanels, 10000);
+
+// ── GPS Filter Toggle ──────────────────────────────────────
+async function loadGpsFilterState() {
+  try {
+    const res = await fetch("/api/settings/gps_filter");
+    const data = await res.json();
+    document.getElementById("gpsFilterToggle").checked = !!data.enabled;
+  } catch (e) {
+    console.error("Failed to load GPS filter state:", e);
+  }
+}
+
+async function toggleGpsFilter(cb) {
+  try {
+    const res = await fetch("/api/settings/gps_filter", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: cb.checked })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showToast(cb.checked ? "0.00 GPS filter enabled" : "0.00 GPS filter disabled", false);
+    } else {
+      showToast("Failed to update filter", true);
+      cb.checked = !cb.checked; // Revert
+    }
+  } catch (e) {
+    showToast("Network error", true);
+    cb.checked = !cb.checked; // Revert
+  }
+}
+
+// Call on load
+loadGpsFilterState();
 </script>
 </body>
 </html>

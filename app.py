@@ -251,6 +251,37 @@ def test_gps():
         return jsonify({"ok": True}), 200
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+# ── GPS 0.00 Filter Settings ──
+def is_gps_filter_enabled():
+    try:
+        from mongodb import mongo_client
+        db = mongo_client["gps_server_db"]
+        setting = db["settings"].find_one({"key": "gps_filter_enabled"})
+        if setting is not None:
+            return bool(setting.get("value", True))
+    except:
+        pass
+    return True
+
+@app.route("/api/settings/gps_filter", methods=["GET"])
+def get_gps_filter():
+    return jsonify({"enabled": is_gps_filter_enabled()})
+
+@app.route("/api/settings/gps_filter", methods=["POST"])
+def post_gps_filter():
+    data = request.get_json(silent=True) or {}
+    enabled = bool(data.get("enabled", True))
+    try:
+        from mongodb import mongo_client
+        db = mongo_client["gps_server_db"]
+        db["settings"].update_one(
+            {"key": "gps_filter_enabled"},
+            {"$set": {"key": "gps_filter_enabled", "value": enabled}},
+            upsert=True
+        )
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @app.route("/api/truck_gps/<truck_id>", methods=["POST"])
@@ -266,9 +297,10 @@ def truck_gps(truck_id):
         lat_val = f("lat")
         lng_val = f("lng")
         
-        # Filter out 0.0/0.0 coordinates (invalid GPS lock)
-        if abs(lat_val) < 0.00001 and abs(lng_val) < 0.00001:
-            return jsonify({"ok": True, "message": "Ignored zero coordinates"}), 200
+        # Filter out 0.0/0.0 coordinates (invalid GPS lock) if the filter is enabled
+        if is_gps_filter_enabled():
+            if abs(lat_val) < 0.00001 and abs(lng_val) < 0.00001:
+                return jsonify({"ok": True, "message": "Ignored zero coordinates (filter enabled)"}), 200
             
         speed_val = f("speed")
         motion_val = str(data.get("motion", "unknown"))
