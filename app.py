@@ -7054,14 +7054,27 @@ def api_tracking_vehicles():
         # 2. Fetch vehicle registry details from col_vehicles & assign_devices
         vehicle_details = {}
         
+        ROLE_MAP = {
+            "AKHADA_USER": "Akhada",
+            "TRUCK_USER": "Truck",
+            "RATH_USER": "Rath",
+            "MAINTENANCE_USER": "Maintenance",
+            "POLICE_STATION": "Police Station",
+            "EXTRA_VEHICLE": "Extra Vehicle"
+        }
+        
         # 2a. From col_vehicles (registered_vehicles or registered_trucks)
         registry_docs = list(col_vehicles.find({}))
         for doc in registry_docs:
             d_id = doc.get("device_id") or doc.get("truck_id")
             if d_id:
                 d_id = d_id.strip()
+                role_raw = doc.get("role")
+                role_name = ROLE_MAP.get(role_raw) if role_raw else None
+                display_name = role_name or doc.get("display_name") or doc.get("vehicle_plate") or d_id
+                
                 vehicle_details[d_id] = {
-                    "display_name": doc.get("display_name") or doc.get("vehicle_plate") or d_id,
+                    "display_name": display_name,
                     "driver_name": doc.get("driver_name", "N/A"),
                     "driver_phone": doc.get("driver_phone") or doc.get("driver_mobile") or "N/A",
                     "transporter_name": doc.get("transporter_name", "N/A"),
@@ -7076,8 +7089,12 @@ def api_tracking_vehicles():
                 d_id = doc.get("truck_id")
                 if d_id:
                     d_id = d_id.strip()
+                    role_raw = doc.get("role")
+                    role_name = ROLE_MAP.get(role_raw) if role_raw else None
+                    display_name = role_name or doc.get("vehicle_plate") or doc.get("display_name") or d_id
+                    
                     vehicle_details[d_id] = {
-                        "display_name": doc.get("vehicle_plate") or doc.get("display_name") or d_id,
+                        "display_name": display_name,
                         "driver_name": doc.get("driver_name", "N/A"),
                         "driver_phone": doc.get("driver_mobile") or doc.get("driver_phone") or "N/A",
                         "transporter_name": doc.get("transporter_name", "N/A"),
