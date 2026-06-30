@@ -831,6 +831,7 @@
                                 </div>
                             </div>
 
+                            {% if device.role != 'AKHADA_USER' %}
                             <div class="info-item">
                                 <i class="fas fa-hard-hat" style="color:#f97316;background:#fff7ed;"></i>
                                 <div class="info-content">
@@ -838,6 +839,7 @@
                                     <span class="info-value">{{ device.assign_contractor or '—' }}</span>
                                 </div>
                             </div>
+                            {% endif %}
 
                             <div class="info-item">
                                 <i class="fas fa-map-marker-alt"></i>
