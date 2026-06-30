@@ -5894,7 +5894,7 @@ def play_rtmp():
         if stream_id not in PROCESS_TABLE or PROCESS_TABLE[stream_id].poll() is not None:
             PROCESS_TABLE[stream_id] = start_ffmpeg(src, out_dir)
 
-    for _ in range(60):
+    for _ in range(10):
         if (out_dir / "index.m3u8").exists(): break
         time.sleep(0.5)
 
@@ -6156,7 +6156,7 @@ def stream_player():
             if (reconnectTimer) clearTimeout(reconnectTimer);
             reconnectTimer = setTimeout(() => {
                 startStream();
-            }, 10000); // Retry every 10 seconds
+            }, 2000); // Retry every 2 seconds
         }
 
         // Start playing on page load
