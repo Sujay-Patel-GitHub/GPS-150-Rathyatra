@@ -982,7 +982,14 @@
             const recording = vehicles.filter(v => v.is_recording).length;
             // document.getElementById('onlineCount').textContent = online; // Removed UI element
             document.getElementById('recordingCount').textContent = recording;
-            document.getElementById('listCount').textContent = `${vehicles.length} Total`;
+            
+            const query = document.getElementById('globalSearch').value.toLowerCase();
+            const filteredCount = vehicles.filter(v => {
+                return (v.device_id && v.device_id.toLowerCase().includes(query)) ||
+                    (v.godown_manager && v.godown_manager.toLowerCase().includes(query)) ||
+                    (v.rc_number && v.rc_number.toLowerCase().includes(query));
+            }).length;
+            document.getElementById('listCount').textContent = `${filteredCount} / ${vehicles.length}`;
         }
 
         function createVehicleCard(v) {
@@ -1039,9 +1046,22 @@
         function filterVehicleList() {
             const query = document.getElementById('globalSearch').value.toLowerCase();
             const filtered = vehicles.filter(v => {
-                return (v.device_id && v.device_id.toLowerCase().includes(query)) ||
+                const matches = (v.device_id && v.device_id.toLowerCase().includes(query)) ||
                     (v.godown_manager && v.godown_manager.toLowerCase().includes(query)) ||
                     (v.rc_number && v.rc_number.toLowerCase().includes(query));
+                
+                if (markers[v.device_id]) {
+                    if (matches) {
+                        if (!map.hasLayer(markers[v.device_id])) {
+                            markers[v.device_id].addTo(map);
+                        }
+                    } else {
+                        if (map.hasLayer(markers[v.device_id])) {
+                            markers[v.device_id].remove();
+                        }
+                    }
+                }
+                return matches;
             });
             renderList(filtered);
         }
@@ -1273,7 +1293,7 @@
 
         function focusVehicle(id, lat, lng) {
             if (!lat || !lng) return;
-            map.flyTo([lat, lng], 15, { duration: 1.5 });
+            map.flyTo([lat, lng], Math.max(map.getZoom(), 17), { duration: 1.5 });
 
             // Highlight card
             document.querySelectorAll('.vehicle-card').forEach(c => c.classList.remove('active'));
