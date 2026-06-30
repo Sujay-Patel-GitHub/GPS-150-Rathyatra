@@ -456,6 +456,13 @@ export function MapView({
   mapRotationMode = "course-up",
   onToggleAndroidAuto,
   frontBackRoutes = [],
+  distanceToolEnabled = false,
+  onDistanceToolEnabledChange = () => {},
+  distanceSource = "",
+  onDistanceSourceChange = () => {},
+  distanceTarget = "",
+  onDistanceTargetChange = () => {},
+  liveDistanceMeters = null,
   playbackMode = false,
   onTogglePlaybackMode = () => {},
   playbackIndex = 0,
@@ -1108,6 +1115,44 @@ export function MapView({
           </Fragment>
         ))}
 
+        {/* ── CUSTOM TRUCK DISTANCE LINE ────────────────────────────────── */}
+        {distanceToolEnabled && distanceSource && distanceTarget && (
+          (() => {
+            const v1 = vehicles?.[distanceSource];
+            const v2 = vehicles?.[distanceTarget];
+            if (v1 && v2 && typeof v1.lat === "number" && typeof v1.lng === "number" && typeof v2.lat === "number" && typeof v2.lng === "number") {
+              return (
+                <Fragment>
+                  <Polyline
+                    positions={[[v1.lat, v1.lng], [v2.lat, v2.lng]]}
+                    pathOptions={{
+                      color: "#2563eb", // Blue
+                      weight: 4,
+                      opacity: 0.8,
+                      dashArray: "6 6"
+                    }}
+                  />
+                  <Marker
+                    position={[
+                      (v1.lat + v2.lat) / 2,
+                      (v1.lng + v2.lng) / 2
+                    ]}
+                    icon={L.divIcon({ className: "hidden" })}
+                    zIndexOffset={600}
+                  >
+                    <Tooltip permanent direction="center" className="bg-gray-900/95 text-blue-400 border border-blue-500/50 font-black text-xs px-2 py-1 rounded shadow-lg backdrop-blur-sm">
+                      Distance: {liveDistanceMeters >= 1000 
+                        ? `${(liveDistanceMeters / 1000).toFixed(2)} km` 
+                        : `${Math.round(liveDistanceMeters)} m`}
+                    </Tooltip>
+                  </Marker>
+                </Fragment>
+              );
+            }
+            return null;
+          })()
+        )}
+
         {/* ── Recording trail overlay ─────────────────────────────────────── */}
         {recording && recPoints.length >= 2 && (
           <Polyline
@@ -1218,30 +1263,62 @@ export function MapView({
 
           <div className="h-7 w-px bg-white/10 shrink-0" />
 
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]" />
+          <div className="flex items-center gap-3 shrink-0">
             <div className="flex flex-col justify-center">
-              <span className="text-[9px] font-bold text-white/50 uppercase tracking-wider">Avg Speed</span>
-              <span 
-                className="text-sm font-extrabold text-green-400 font-mono tracking-wide" 
-                style={{ textShadow: "0 0 8px rgba(34, 197, 94, 0.4)" }}
-              >
-                {processionAnalytics.avgSpeed}
-              </span>
+              <span className="text-[9px] font-bold text-white/50 uppercase tracking-wider">Distance Tool</span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <button
+                  onClick={() => onDistanceToolEnabledChange(!distanceToolEnabled)}
+                  className={`px-2 py-0.5 rounded text-[9px] font-extrabold transition-all duration-200 cursor-pointer border uppercase tracking-wider
+                    ${distanceToolEnabled 
+                      ? "bg-orange-500/25 border-orange-500/40 text-orange-400 shadow-[0_0_8px_rgba(249,115,22,0.2)]" 
+                      : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white"}`}
+                >
+                  {distanceToolEnabled ? "On" : "Off"}
+                </button>
+                
+                {distanceToolEnabled && (
+                  <div className="flex items-center gap-1.5">
+                    <select
+                      value={distanceSource}
+                      onChange={(e) => onDistanceSourceChange(e.target.value)}
+                      className="px-1.5 py-0.5 bg-gray-900 border border-white/10 rounded text-[10px] text-white outline-none focus:border-orange-500/50 cursor-pointer"
+                      style={{ maxWidth: "90px" }}
+                    >
+                      <option value="" style={{background: "#111827"}}>-- Truck 1 --</option>
+                      {Object.keys(vehicles || {}).sort().map(id => (
+                        <option key={id} value={id} style={{background: "#111827"}}>{vehicles?.[id]?.display_name || id}</option>
+                      ))}
+                    </select>
+                    
+                    <span className="text-[10px] text-white/30 font-bold">➔</span>
+                    
+                    <select
+                      value={distanceTarget}
+                      onChange={(e) => onDistanceTargetChange(e.target.value)}
+                      className="px-1.5 py-0.5 bg-gray-900 border border-white/10 rounded text-[10px] text-white outline-none focus:border-orange-500/50 cursor-pointer"
+                      style={{ maxWidth: "90px" }}
+                    >
+                      <option value="" style={{background: "#111827"}}>-- Truck 2 --</option>
+                      {Object.keys(vehicles || {}).sort().map(id => (
+                        <option key={id} value={id} style={{background: "#111827"}}>{vehicles?.[id]?.display_name || id}</option>
+                      ))}
+                    </select>
+                    
+                    {liveDistanceMeters !== null && (
+                      <span 
+                        className="text-xs font-black text-orange-400 font-mono ml-1 bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 rounded shadow-[0_0_8px_rgba(249,115,22,0.1)]"
+                        style={{ textShadow: "0 0 6px rgba(249, 115, 22, 0.3)" }}
+                      >
+                        {liveDistanceMeters >= 1000 
+                          ? `${(liveDistanceMeters / 1000).toFixed(2)} km` 
+                          : `${Math.round(liveDistanceMeters)} m`}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-
-          <div className="h-7 w-px bg-white/10 shrink-0" />
-
-          <div className="flex flex-col justify-center min-w-[120px] md:min-w-[160px] max-w-[130px] md:max-w-[180px]">
-            <span className="text-[9px] font-bold text-white/50 uppercase tracking-wider">Next Landmark (ETA)</span>
-            <span 
-              className="text-xs font-extrabold text-blue-400 truncate" 
-              style={{ textShadow: "0 0 8px rgba(59, 130, 246, 0.4)" }}
-              title={processionAnalytics.nextLandmark}
-            >
-              {processionAnalytics.nextLandmark}
-            </span>
           </div>
 
         </div>

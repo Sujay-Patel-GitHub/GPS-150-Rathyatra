@@ -17,8 +17,7 @@ export default function App() {
   const [isAndroidAuto, setIsAndroidAuto] = useState(false);
   const [mapRotationMode, setMapRotationMode] = useState("course-up"); // "course-up" or "north-up"
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [liveDistanceMeters, setLiveDistanceMeters] = useState(null);
-  const [truckDistanceRoute, setTruckDistanceRoute] = useState([]);
+  const [distanceToolEnabled, setDistanceToolEnabled] = useState(false);
   const [distanceSource, setDistanceSource] = useState("");
   const [distanceTarget, setDistanceTarget] = useState("");
   const [adminMode, setAdminMode] = useState(false);
@@ -239,6 +238,16 @@ export default function App() {
     }
     return mocked;
   }, [firebaseVehicles, playbackMode, playbackRoutePoints, playbackIndex, selectedRecordVehicleId, playbackIsPlaying, hidePlaybackTrail]);
+
+  const liveDistanceMeters = useMemo(() => {
+    if (!distanceToolEnabled || !distanceSource || !distanceTarget) return null;
+    const v1 = vehicles?.[distanceSource];
+    const v2 = vehicles?.[distanceTarget];
+    if (!v1 || !v2 || typeof v1.lat !== "number" || typeof v2.lat !== "number" || typeof v1.lng !== "number" || typeof v2.lng !== "number") {
+      return null;
+    }
+    return haversine(v1.lat, v1.lng, v2.lat, v2.lng);
+  }, [distanceToolEnabled, distanceSource, distanceTarget, vehicles]);
 
   // Procession Analytics HUD calculations
   const processionAnalytics = useMemo(() => {
@@ -740,11 +749,6 @@ export default function App() {
           vehicles={vehicles}
           selectedId={selectedId}
           onSelect={handleSelect}
-          liveDistanceMeters={liveDistanceMeters}
-          distanceSource={distanceSource}
-          onDistanceSourceChange={setDistanceSource}
-          distanceTarget={distanceTarget}
-          onDistanceTargetChange={setDistanceTarget}
           adminMode={adminMode}
           onToggleAdminMode={setAdminMode}
           frontBackRoutes={frontBackRoutes}
@@ -764,6 +768,13 @@ export default function App() {
           onToggleSnapping={setUseSnapping}
           useCompass={useCompass}
           onToggleCompass={setUseCompass}
+          distanceToolEnabled={distanceToolEnabled}
+          onDistanceToolEnabledChange={setDistanceToolEnabled}
+          distanceSource={distanceSource}
+          onDistanceSourceChange={setDistanceSource}
+          distanceTarget={distanceTarget}
+          onDistanceTargetChange={setDistanceTarget}
+          liveDistanceMeters={liveDistanceMeters}
           isAndroidAuto={false}
           onToggleAndroidAuto={setIsAndroidAuto}
           frontBackRoutes={frontBackRoutes}
