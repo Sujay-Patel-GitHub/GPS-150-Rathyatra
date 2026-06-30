@@ -11,7 +11,7 @@
 #include <HTTPClient.h>
 
 // ── CONFIG — edit these lines only ────────────────────────
-const char* TRUCK_NAME = "TEST";
+const char* TRUCK_NAME = "TRUCK2";
 const char* WIFI_SSID  = "PANIND";
 const char* WIFI_PASS  = "12AB89YZ";
 #define MOSFET_PIN 27
@@ -292,8 +292,8 @@ void TaskNetwork(void* pv) {
 
     uint32_t now = millis();
 
-    // ── Push GPS + MPU + motion every 1s ──
-    if ((now - lastPushMs) >= 1000) {
+    // ── Push GPS + MPU + motion every 5s ──
+    if ((now - lastPushMs) >= 5000) {
       lastPushMs = now;
       SharedData snap;
       if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
