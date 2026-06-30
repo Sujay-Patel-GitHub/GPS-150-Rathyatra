@@ -833,10 +833,10 @@
 
                             <div class="info-item">
                                 {% if device.assign_role == 'AKHADA_USER' %}
-                                <i class="fas fa-info-circle" style="color:#f97316;background:#fff7ed;"></i>
+                                <i class="fas fa-building" style="color:#f97316;background:#fff7ed;"></i>
                                 <div class="info-content">
-                                    <span class="info-label">Extra</span>
-                                    <span class="info-value">{{ device.assign_contractor or '—' }}</span>
+                                    <span class="info-label">Police Station</span>
+                                    <span class="info-value">{{ device.assign_police_station or '—' }}</span>
                                 </div>
                                 {% else %}
                                 <i class="fas fa-hard-hat" style="color:#f97316;background:#fff7ed;"></i>
@@ -1283,7 +1283,7 @@
                      + row('fa-id-card','Vehicle Plate', d.vehicle_plate)
                      + row('fa-id-badge','Driver Name', d.driver_name)
                      + row('fa-mobile-alt','Driver Mobile', d.driver_mobile)
-                     + (isAkhada ? row('fa-info-circle','Extra', d.contractor_name) : row('fa-id-card','Contractor Name', d.contractor_name))
+                     + (isAkhada ? '' : row('fa-id-card','Contractor Name', d.contractor_name))
                      + (isAkhada ? '' : row('fa-phone-alt','Contractor Mobile', d.contractor_mobile))
                      + row('fa-video','Front RTMP', d.front_rtmp)
                      + row('fa-video','Rear RTMP', d.rear_rtmp);

@@ -1455,6 +1455,7 @@ def admin_dashboard():
                 dev.setdefault("assign_contractor", a.get("contractor_name", ""))
                 dev.setdefault("assign_plate",      a.get("vehicle_plate", ""))
                 dev.setdefault("assign_officer",    a.get("officer_pi", ""))
+                dev.setdefault("assign_police_station", a.get("police_station", ""))
                 dev.setdefault("assign_front_rtmp", a.get("front_rtmp", ""))
 
         existing_ids = set(d["device_name"] for d in devices_display_list)
@@ -1479,6 +1480,7 @@ def admin_dashboard():
                 "assign_contractor":  a.get("contractor_name", ""),
                 "assign_plate":       a.get("vehicle_plate", ""),
                 "assign_officer":     a.get("officer_pi", ""),
+                "assign_police_station": a.get("police_station", ""),
                 "assign_front_rtmp":  a.get("front_rtmp", ""),
                 # legacy fields (kept blank)
                 "rc_number": "", "transporter": "", "transporter_phone": "",
