@@ -774,7 +774,7 @@ export function MapView({
       lastSelectedIdRef.current = selectedId;
       const v = vehicles[selectedId];
       if (v && typeof v.lat === "number") {
-        setCenterTarget({ id: selectedId, t: Date.now(), zoom: 16 });
+        setCenterTarget({ id: selectedId, t: Date.now(), zoom: 20 });
       }
     } else if (!selectedId) {
       lastSelectedIdRef.current = "";
@@ -1248,20 +1248,7 @@ export function MapView({
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-4 md:gap-6
           bg-gray-950/90 backdrop-blur-xl border border-white/10 px-5 py-3 rounded-2xl shadow-2xl pointer-events-auto select-none max-w-[95%] md:max-w-2xl transition-all duration-300">
           
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.8)]" />
-            <div className="flex flex-col justify-center">
-              <span className="text-[9px] font-bold text-white/50 uppercase tracking-wider">Procession Spread</span>
-              <span 
-                className="text-sm font-extrabold text-orange-400 font-mono tracking-wide" 
-                style={{ textShadow: "0 0 8px rgba(249, 115, 22, 0.4)" }}
-              >
-                {processionAnalytics.spread}
-              </span>
-            </div>
-          </div>
 
-          <div className="h-7 w-px bg-white/10 shrink-0" />
 
           <div className="flex items-center gap-3 shrink-0">
             <div className="flex flex-col justify-center">
