@@ -265,6 +265,11 @@ def truck_gps(truck_id):
         
         lat_val = f("lat")
         lng_val = f("lng")
+        
+        # Filter out 0.0/0.0 coordinates (invalid GPS lock)
+        if abs(lat_val) < 0.00001 and abs(lng_val) < 0.00001:
+            return jsonify({"ok": True, "message": "Ignored zero coordinates"}), 200
+            
         speed_val = f("speed")
         motion_val = str(data.get("motion", "unknown"))
         now = datetime.now()
