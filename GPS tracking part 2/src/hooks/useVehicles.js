@@ -455,8 +455,9 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
     idsToShow.forEach((id, idx) => {
       const data = rawVehicles[id] || null;
       
-      // Filter out devices with 0.0000 coordinates
-      if (data) {
+      // Filter out devices with 0.0000 coordinates (only if not registered)
+      const isRegistered = !!vehicleDetails[id];
+      if (data && !isRegistered) {
         const isZero = (typeof data.lat === "number" && Math.abs(data.lat) < 0.01) || 
                        (typeof data.lng === "number" && Math.abs(data.lng) < 0.01);
         if (isZero) {
