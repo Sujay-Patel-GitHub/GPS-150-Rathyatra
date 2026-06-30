@@ -53,6 +53,7 @@ def inject_sidebar_sections():
         if config_doc and "sections" in config_doc:
             sections = config_doc["sections"]
             updated = False
+            
             # Check if tracking section exists, and update its href to force cache bust
             for s in sections:
                 if s.get("id") == "tracking":
@@ -71,6 +72,24 @@ def inject_sidebar_sections():
                 else:
                     sections.append({"id": "tracking", "name": "Tracking", "href": "/tracking?v=5", "icon": "fas fa-route", "visible": True})
                 updated = True
+
+            # Check if camera_monitoring section exists
+            has_camera = False
+            for s in sections:
+                if s.get("id") == "camera_monitoring":
+                    has_camera = True
+                    break
+            if not has_camera:
+                idx = -1
+                for i, s in enumerate(sections):
+                    if s.get("id") == "gps_monitoring":
+                        idx = i
+                        break
+                if idx != -1:
+                    sections.insert(idx + 1, {"id": "camera_monitoring", "name": "Camera Monitoring", "href": "/camera_monitoring", "icon": "fas fa-video", "visible": True})
+                else:
+                    sections.append({"id": "camera_monitoring", "name": "Camera Monitoring", "href": "/camera_monitoring", "icon": "fas fa-video", "visible": True})
+                updated = True
             
             if updated:
                 col_settings.update_one({"_id": "sidebar_sections"}, {"$set": {"sections": sections}}, upsert=True)
@@ -79,6 +98,7 @@ def inject_sidebar_sections():
                 {"id": "add_user", "name": "Add New User", "href": "/add_user", "icon": "fas fa-user-plus", "visible": True},
                 {"id": "show_devices", "name": "Show Devices", "href": "/admin_dashboard", "icon": "fas fa-list-ul", "visible": True},
                 {"id": "gps_monitoring", "name": "GPS Monitoring", "href": "/gps_monitoring", "icon": "fas fa-map-marked-alt", "visible": True},
+                {"id": "camera_monitoring", "name": "Camera Monitoring", "href": "/camera_monitoring", "icon": "fas fa-video", "visible": True},
                 {"id": "tracking", "name": "Tracking", "href": "/tracking?v=5", "icon": "fas fa-route", "visible": True},
                 {"id": "detailed_report", "name": "Detailed Report", "href": "/monthly_report", "icon": "fas fa-file-invoice", "visible": True},
                 {"id": "list_roles", "name": "List Roles", "href": "/list_roles", "icon": "fas fa-users", "visible": True},
@@ -95,6 +115,7 @@ def inject_sidebar_sections():
             {"id": "add_user", "name": "Add New User", "href": "/add_user", "icon": "fas fa-user-plus", "visible": True},
             {"id": "show_devices", "name": "Show Devices", "href": "/admin_dashboard", "icon": "fas fa-list-ul", "visible": True},
             {"id": "gps_monitoring", "name": "GPS Monitoring", "href": "/gps_monitoring", "icon": "fas fa-map-marked-alt", "visible": True},
+            {"id": "camera_monitoring", "name": "Camera Monitoring", "href": "/camera_monitoring", "icon": "fas fa-video", "visible": True},
             {"id": "tracking", "name": "Tracking", "href": "/tracking?v=5", "icon": "fas fa-route", "visible": True},
             {"id": "detailed_report", "name": "Detailed Report", "href": "/monthly_report", "icon": "fas fa-file-invoice", "visible": True},
             {"id": "list_roles", "name": "List Roles", "href": "/list_roles", "icon": "fas fa-users", "visible": True},
@@ -1719,6 +1740,82 @@ def gps_monitoring():
         vehicles=vehicles_list,
         assign_map=assign_map
     )
+
+
+@app.route("/camera_monitoring")
+def camera_monitoring():
+    if session.get('user_type') != 'admin':
+        return redirect(url_for('login'))
+        
+    try:
+        from mongodb import mongo_client
+        db = mongo_client["gps_server_db"]
+        
+        # 1. Get all assignments to map truck_id to role and details
+        assignments = list(db["assign_devices"].find({}, {"_id": 0}))
+        assign_map = {a["truck_id"]: a for a in assignments if "truck_id" in a}
+        
+        # 2. Get all registered vehicles to get their RTMP configurations
+        registered_vehicles = list(col_vehicles.find({}))
+        vehicles_rtmp_map = {v["device_id"]: v for v in registered_vehicles if "device_id" in v}
+        
+        # 3. Build a list of devices with their role and active RTMP cameras
+        devices_by_role = {
+            "SUPER_ADMIN": [],
+            "AKHADA_USER": [],
+            "RATH_USER": [],
+            "MAINTENANCE_USER": [],
+            "POLICE_STATION": [],
+            "EXTRA_VEHICLE": []
+        }
+        
+        global_source = get_rtmp_source()
+        
+        # We iterate over all assignments since we only care about devices assigned to these roles
+        for truck_id, assign in assign_map.items():
+            role = assign.get("role")
+            if role not in devices_by_role:
+                continue
+                
+            # Gather all active RTMP streams for this device
+            cameras = []
+            
+            # Check front_rtmp and rear_rtmp from assign_devices
+            if assign.get("front_rtmp") and assign["front_rtmp"].strip() not in ["", "ADD_LATER"]:
+                cameras.append({"name": "Front Camera", "url": assign["front_rtmp"].strip()})
+            if assign.get("rear_rtmp") and assign["rear_rtmp"].strip() not in ["", "ADD_LATER"]:
+                cameras.append({"name": "Rear Camera", "url": assign["rear_rtmp"].strip()})
+                
+            # Check mongo_rtmp/fb_rtmp from col_vehicles
+            reg_info = vehicles_rtmp_map.get(truck_id, {})
+            vehicle_source = reg_info.get("rtmp_source", global_source)
+            mongo_links = reg_info.get("mongo_rtmp", {})
+            firebase_links = reg_info.get("fb_rtmp", {})
+            primary_data = mongo_links if vehicle_source == 'mongo' else firebase_links
+            
+            for i in range(1, 5):
+                url = primary_data.get(f"rtmp{i}", "")
+                if url and url.strip() not in ["", "ADD_LATER"]:
+                    cameras.append({"name": f"CH {i}", "url": url.strip()})
+            
+            devices_by_role[role].append({
+                "truck_id": truck_id,
+                "display_name": assign.get("username") or truck_id,
+                "cameras": cameras
+            })
+            
+        # Sort devices alphabetically
+        for role in devices_by_role:
+            devices_by_role[role].sort(key=lambda x: x["display_name"].lower())
+            
+        return render_template(
+            "camera_monitoring.html",
+            devices_by_role=devices_by_role,
+            logo_url=LOGO_URL
+        )
+    except Exception as e:
+        print(f"Error in camera_monitoring: {e}")
+        return f"Error loading Camera Monitoring: {e}", 500
 
 
 @app.route("/get_vehicle_gps/<device_id>")
