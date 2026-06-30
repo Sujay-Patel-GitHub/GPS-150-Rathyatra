@@ -22,8 +22,9 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { fetchRoadRoute } from "../../utils/routeSnap";
-import { DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM, LANDMARKS } from "../../lib/constants";
+import { ref as fbRef, set } from "firebase/database";
+import { db } from "../../lib/firebase";
+import { DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM, LANDMARKS, vehicleLabels } from "../../lib/constants";
 import { fmtCoord, fmtSpeed, timeAgo } from "../../utils/formatters";
 import { AnimatedMarker, AnimatedCircle } from "./AnimatedMarker";
 
@@ -172,9 +173,23 @@ function VehiclePopup({ vehicleId, data }) {
             fontWeight: 800,
             textTransform: "uppercase",
             letterSpacing: "0.05em",
-            color: data.online ? "#4ade80" : "#9ca3af"
+            color: data.status === "online" 
+              ? "#4ade80" 
+              : data.status === "weak"
+              ? "#fbbf24"
+              : data.status === "jammed"
+              ? "#f87171"
+              : "#9ca3af"
           }}>
-            {data.online ? "● Online" : "○ Offline"}
+            {data.status === "online" 
+              ? "● Online" 
+              : data.status === "weak" 
+              ? "● Weak Signal" 
+              : data.status === "jammed" 
+              ? "● Jammed" 
+              : data.status === "lost" 
+              ? "○ Signal Low" 
+              : "○ Offline"}
             {data.is_estimated && data.online && (
               <span style={{ color: "#fb923c", marginLeft: 8 }}>
                 ⚠️ IMU Est.
@@ -223,18 +238,6 @@ function VehiclePopup({ vehicleId, data }) {
       </a>
     </div>
   );
-}
-
-// Helper component to capture map click events during Route Selection Mode
-function MapRouteSelector({ enabled, onAddPoint }) {
-  useMapEvents({
-    click(e) {
-      if (!enabled) return;
-      const { lat, lng } = e.latlng;
-      onAddPoint([lat, lng]);
-    }
-  });
-  return null;
 }
 
 // ── Map Click Inspector ───────────────────────────────────────────────────────
@@ -391,25 +394,53 @@ function downloadKML(points, vehicleId, sessionId) {
   URL.revokeObjectURL(url);
 }
 
-async function saveRouteToBackend(points, vehicleId, sessionId) {
+async function saveRouteToFirebase(points, vehicleId, sessionId) {
   try {
-    const res = await fetch("/api/v1/tracking/save_recording", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        vehicleId,
-        sessionId,
-        points
-      })
+    const path = fbRef(db, `recordings/${vehicleId}/${sessionId}`);
+    await set(path, {
+      vehicleId,
+      sessionId,
+      startTime:  points[0]?.timestamp ?? "",
+      endTime:    points[points.length - 1]?.timestamp ?? "",
+      pointCount: points.length,
+      points,
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    console.log("[Recording] Saved custom recording to MongoDB:", vehicleId, sessionId);
+    console.log("[Recording] Saved to Firebase:", `recordings/${vehicleId}/${sessionId}`);
     return true;
   } catch (e) {
-    console.error("[Recording] MongoDB save failed:", e);
+    console.error("[Recording] Firebase save failed:", e);
     return false;
   }
 }
+
+function MapAssignClickHandler({ enabled, onAddPoint }) {
+  useMapEvents({
+    click(e) {
+      if (!enabled) return;
+      onAddPoint([e.latlng.lat, e.latlng.lng]);
+    }
+  });
+  return null;
+}
+function MapZoomListener({ onZoomChange }) {
+  const map = useMapEvents({
+    zoomend() {
+      onZoomChange(map.getZoom());
+    }
+  });
+  return null;
+}
+
+const makeAssignPin = (label) => {
+  const isStart = label === "Start";
+  const isEnd = label === "End";
+  const bgColor = isStart ? "#10B981" : isEnd ? "#EF4444" : "#3B82F6";
+  return L.divIcon({
+    html: `<div style="background-color: ${bgColor}; color: white; font-weight: 800; font-size: 8px; border: 1.5px solid white; border-radius: 9999px; padding: 2px 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.4); white-space: nowrap; display: inline-block; transform: translate(-50%, -50%);">${label}</div>`,
+    className: "custom-assign-pin",
+    iconSize: [0, 0]
+  });
+};
 
 export function MapView({ 
   vehicles, 
@@ -417,7 +448,6 @@ export function MapView({
   onVehicleSelect, 
   yatraRoute, 
   rawYatraRoute, 
-  onRouteGenerate = () => {},
   useSnapping, 
   onToggleSnapping, 
   useCompass, 
@@ -426,6 +456,13 @@ export function MapView({
   mapRotationMode = "course-up",
   onToggleAndroidAuto,
   frontBackRoutes = [],
+  distanceToolEnabled = false,
+  onDistanceToolEnabledChange = () => {},
+  distanceSource = "",
+  onDistanceSourceChange = () => {},
+  distanceTarget = "",
+  onDistanceTargetChange = () => {},
+  liveDistanceMeters = null,
   playbackMode = false,
   onTogglePlaybackMode = () => {},
   playbackIndex = 0,
@@ -435,11 +472,22 @@ export function MapView({
   playbackSpeed = 2,
   onPlaybackSpeedChange = () => {},
   processionAnalytics = null,
-  recordings = {},
+  playbackVehicleId = "",
+  onPlaybackVehicleIdChange = () => {},
+  playbackDate = "",
+  onPlaybackDateChange = () => {},
+  playbackStartTime = "",
+  onPlaybackStartTimeChange = () => {},
+  playbackEndTime = "",
+  onPlaybackEndTimeChange = () => {},
+  loadingPlayback = false,
+  onLoadPlayback = () => {},
   selectedRecordingKey = "",
   onSelectedRecordingKeyChange = () => {},
   playbackRoutePoints = [],
   selectedRecordVehicleId = null,
+  totalRawPoints = 0,
+  deviceList = [],
 }) {
   const vehicleIds  = Object.keys(vehicles);
   
@@ -455,18 +503,247 @@ export function MapView({
   }, [yatraRoute]);
 
   const [centerTarget, setCenterTarget] = useState(null);
+  const [settingsMinimized, setSettingsMinimized] = useState(true);
   const [selectedZoom, setSelectedZoom] = useState(17);
   const [hasAutoCentered, setHasAutoCentered] = useState(false);
-
-  // ── Route Selection state ──────────────────────────────────────────────
-  const [routeSelectionActive, setRouteSelectionActive] = useState(false);
-  const [tempWaypoints, setTempWaypoints] = useState([]);
-  const [generatingRoute, setGeneratingRoute] = useState(false);
 
   // ── GPS Inspector state ────────────────────────────────────────────────
   const [inspectorEnabled, setInspectorEnabled] = useState(false);
   const [inspectorResult, setInspectorResult] = useState(null);
   const [copiedField, setCopiedField] = useState(null);
+
+  // ── Active Snapped Route State (Activated from MongoDB) ───────────────────
+  const [savedRoutes, setSavedRoutes] = useState([]);
+  const [activeRouteId, setActiveRouteId] = useState("");
+  const [activeRoutePoints, setActiveRoutePoints] = useState([]);
+
+  const fetchSavedRoutes = useCallback(async () => {
+    try {
+      const res = await fetch("/api/mongo_data/route");
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setSavedRoutes(data);
+      }
+    } catch (e) {
+      console.error("Failed to fetch saved routes:", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSavedRoutes();
+  }, [fetchSavedRoutes]);
+
+  const handleActivateRoute = useCallback((idxStr) => {
+    if (idxStr === "") {
+      setActiveRouteId("");
+      setActiveRoutePoints([]);
+    } else {
+      const idx = Number(idxStr);
+      const route = savedRoutes[idx];
+      if (route && Array.isArray(route.points)) {
+        setActiveRouteId(idxStr);
+        setActiveRoutePoints(route.points);
+      }
+    }
+  }, [savedRoutes]);
+
+  // ── Route Tracking Adherence State ────────────────────────────────────────
+  const [registeredRoute, setRegisteredRoute] = useState(null);
+  const [trackingActive, setTrackingActive] = useState(false);
+  const [trackMessage, setTrackMessage] = useState(null);
+  const [trackVehicleId, setTrackVehicleId] = useState("");
+  const [trackRange, setTrackRange] = useState(15); // in meters
+  const [mapZoom, setMapZoom] = useState(17);
+  const hasReportedOutRef = useRef(false);
+
+  const corridorPixelWeight = useMemo(() => {
+    const lat = activeRoutePoints.length > 0 ? activeRoutePoints[0][0] : 23.0225;
+    const metersPerPixel = 40075016.686 * Math.cos(lat * Math.PI / 180) / Math.pow(2, mapZoom + 8);
+    const calcWeight = (2 * trackRange) / metersPerPixel;
+    return Math.max(4, Math.min(300, calcWeight));
+  }, [mapZoom, trackRange, activeRoutePoints]);
+
+  // Sync track selector when map selection changes
+  useEffect(() => {
+    if (selectedId && !trackingActive) {
+      setTrackVehicleId(selectedId);
+    }
+  }, [selectedId, trackingActive]);
+
+  const closestPointOnSegment = useCallback((pLat, pLng, aLat, aLng, bLat, bLng) => {
+    const degToRad = Math.PI / 180;
+    const earthR = 6371000;
+    const cosLat = Math.cos(((aLat + bLat) / 2) * degToRad);
+    const bx = (bLng - aLng) * degToRad * earthR * cosLat;
+    const by = (bLat - aLat) * degToRad * earthR;
+    const px = (pLng - aLng) * degToRad * earthR * cosLat;
+    const py = (pLat - aLat) * degToRad * earthR;
+    const dx = bx, dy = by;
+    const lenSq = dx * dx + dy * dy;
+    let t = 0;
+    if (lenSq > 0) {
+      t = (px * dx + py * dy) / lenSq;
+      t = Math.max(0, Math.min(1, t));
+    }
+    const snapX = t * dx;
+    const snapY = t * dy;
+    const snapLat = aLat + (snapY / earthR) * (180 / Math.PI);
+    const snapLng = aLng + (snapX / (earthR * cosLat)) * (180 / Math.PI);
+    return { lat: snapLat, lng: snapLng };
+  }, []);
+
+  const haversineDist = useCallback((lat1, lng1, lat2, lng2) => {
+    const R = 6371e3; // meters
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }, []);
+
+  useEffect(() => {
+    if (!trackingActive || !registeredRoute || registeredRoute.length < 2) {
+      setTrackMessage(null);
+      return;
+    }
+
+    const checkAdherence = () => {
+      const activeId = trackVehicleId;
+      if (!activeId) {
+        setTrackMessage({
+          text: "⚠️ No vehicle selected to track route adherence",
+          isOut: true,
+          visible: true
+        });
+        setTimeout(() => setTrackMessage(prev => prev ? { ...prev, visible: false } : null), 2000);
+        return;
+      }
+
+      const v = vehicles[activeId];
+      if (!v || typeof v.lat !== "number") {
+        setTrackMessage({
+          text: `📡 Waiting for GPS signal from ${activeId}...`,
+          isOut: true,
+          visible: true
+        });
+        setTimeout(() => setTrackMessage(prev => prev ? { ...prev, visible: false } : null), 2000);
+        return;
+      }
+
+      let minDistance = Infinity;
+      for (let i = 0; i < registeredRoute.length - 1; i++) {
+        const segStart = registeredRoute[i];
+        const segEnd = registeredRoute[i + 1];
+        const snapped = closestPointOnSegment(v.lat, v.lng, segStart[0], segStart[1], segEnd[0], segEnd[1]);
+        const d = haversineDist(v.lat, v.lng, snapped.lat, snapped.lng);
+        if (d < minDistance) {
+          minDistance = d;
+        }
+      }
+
+      const isInside = minDistance <= trackRange;
+      const displayName = v.display_name || activeId;
+
+      if (isInside) {
+        hasReportedOutRef.current = false;
+        setTrackMessage({
+          text: `🟢 ${displayName} in route`,
+          isOut: false,
+          visible: true
+        });
+      } else {
+        if (!hasReportedOutRef.current) {
+          hasReportedOutRef.current = true;
+          fetch("/api/report_out_of_route", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              truckId: activeId,
+              lat: v.lat,
+              lng: v.lng
+            })
+          }).then(res => res.json())
+            .then(data => {
+              console.log("Out-of-route report response:", data);
+            })
+            .catch(err => {
+              console.error("Error sending out-of-route report:", err);
+            });
+        }
+        setTrackMessage({
+          text: `🚨 ${displayName} OUT OF ROUTE!`,
+          isOut: true,
+          visible: true
+        });
+      }
+
+      setTimeout(() => {
+        setTrackMessage(prev => prev ? { ...prev, visible: false } : null);
+      }, 2500);
+    };
+
+    checkAdherence();
+    const intervalId = setInterval(checkAdherence, 5000);
+    return () => clearInterval(intervalId);
+  }, [trackingActive, registeredRoute, trackVehicleId, vehicles, vehicleIds, closestPointOnSegment, haversineDist, trackRange]);
+
+  // ── Route Assigning Mode State ───────────────────────────────────────────
+  const [assignMode, setAssignMode] = useState(false);
+  const [assignPoints, setAssignPoints] = useState([]);
+  const [fetchedRoute, setFetchedRoute] = useState([]);
+  const [routeName, setRouteName] = useState("");
+  const [assignStatus, setAssignStatus] = useState("");
+
+  const handleAddAssignPoint = useCallback((latlng) => {
+    setAssignPoints(prev => [...prev, latlng]);
+  }, []);
+
+  useEffect(() => {
+    if (assignMode && assignPoints.length >= 1) {
+      setFetchedRoute(assignPoints);
+      setAssignStatus(assignPoints.length === 1 ? "Click map to set End point" : "Route updated point-to-point!");
+    } else {
+      setFetchedRoute([]);
+      setAssignStatus("");
+    }
+  }, [assignPoints, assignMode]);
+
+  const handleSaveRoute = useCallback(async () => {
+    if (fetchedRoute.length === 0) return;
+    setAssignStatus("Saving to MongoDB...");
+    try {
+      const res = await fetch("/api/save_route", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          route_name: routeName || `Assigned Route ${new Date().toLocaleDateString()}`,
+          start_point: assignPoints[0],
+          end_point: assignPoints[assignPoints.length - 1],
+          points: fetchedRoute
+        })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setAssignStatus("Saved successfully to MongoDB!");
+        fetchSavedRoutes();
+        setTimeout(() => {
+          setAssignMode(false);
+          setAssignPoints([]);
+          setFetchedRoute([]);
+          setRouteName("");
+          setAssignStatus("");
+        }, 1500);
+      } else {
+        setAssignStatus("Failed to save: " + data.error);
+      }
+    } catch (e) {
+      console.error(e);
+      setAssignStatus("Error saving route");
+    }
+  }, [fetchedRoute, routeName, assignPoints, fetchSavedRoutes]);
+
 
   const copyToClipboard = useCallback((text, field) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -490,6 +767,20 @@ export function MapView({
       setHasAutoCentered(true);
     }
   }, [vehicles, selectedId, vehicleIds, selectedZoom, hasAutoCentered]);
+
+  // Fly to and zoom in on a vehicle when it is selected
+  const lastSelectedIdRef = useRef("");
+  useEffect(() => {
+    if (selectedId && selectedId !== lastSelectedIdRef.current) {
+      lastSelectedIdRef.current = selectedId;
+      const v = vehicles[selectedId];
+      if (v && typeof v.lat === "number") {
+        setCenterTarget({ id: selectedId, t: Date.now(), zoom: 20 });
+      }
+    } else if (!selectedId) {
+      lastSelectedIdRef.current = "";
+    }
+  }, [selectedId, vehicles]);
 
   // ── Recording state ─────────────────────────────────────────────────────
   const [recording,    setRecording]    = useState(false);
@@ -545,8 +836,8 @@ export function MapView({
     const sid = recSessionId.current;
     const vid = recVehicleId;
 
-    // Save to MongoDB
-    await saveRouteToBackend(recPoints, vid, sid);
+    // Save to Firebase
+    await saveRouteToFirebase(recPoints, vid, sid);
 
     // Download CSV
     downloadCSV(recPoints, vid, sid);
@@ -573,11 +864,12 @@ export function MapView({
         preferCanvas={true}
       >
         {!isAndroidAuto && <ZoomControl position="bottomright" />}
+        <MapZoomListener onZoomChange={setMapZoom} />
 
         {/* ── Tile layers ────────────────────────────────────────────────── */}
         <LayersControl position="topright">
 
-          <BaseLayer checked name="🗺️ OSM Street">
+          <BaseLayer name="🗺️ OSM Street">
             <TileLayer
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -585,7 +877,7 @@ export function MapView({
             />
           </BaseLayer>
 
-          <BaseLayer name="🗺️ Google Streets">
+          <BaseLayer checked name="🗺️ Google Streets">
             <TileLayer
               url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
               attribution="&copy; Google Maps"
@@ -620,45 +912,6 @@ export function MapView({
           onClickResult={setInspectorResult}
         />
 
-        {/* ── Route Selector Events ── */}
-        <MapRouteSelector
-          enabled={routeSelectionActive}
-          onAddPoint={(pt) => setTempWaypoints((prev) => [...prev, pt])}
-        />
-
-        {/* ── Route Selector Temporary Drawing ── */}
-        {routeSelectionActive && tempWaypoints.length >= 2 && (
-          <Polyline
-            positions={tempWaypoints}
-            pathOptions={{
-              color: "#3b82f6",
-              weight: 2,
-              dashArray: "6 4",
-              opacity: 0.7
-            }}
-          />
-        )}
-
-        {routeSelectionActive && tempWaypoints.map((wp, idx) => (
-          <Circle
-            key={`temp_wp_${idx}`}
-            center={wp}
-            radius={idx === 0 || idx === tempWaypoints.length - 1 ? 16 : 8}
-            pathOptions={{
-              color: idx === 0 ? "#22c55e" : idx === tempWaypoints.length - 1 ? "#ef4444" : "#3b82f6",
-              fillColor: idx === 0 ? "#22c55e" : idx === tempWaypoints.length - 1 ? "#ef4444" : "#3b82f6",
-              fillOpacity: 0.8,
-              weight: 2
-            }}
-          >
-            <Tooltip permanent direction="top" offset={[0, -5]}>
-              <span className="text-[9px] font-extrabold text-gray-900">
-                {idx === 0 ? "Start" : idx === tempWaypoints.length - 1 ? "End" : `P${idx}`}
-              </span>
-            </Tooltip>
-          </Circle>
-        ))}
-
         {isAndroidAuto && (
           <>
             <AndroidAutoFollowController
@@ -676,50 +929,28 @@ export function MapView({
           </>
         )}
 
-        {/* ── Yatra Route Highlight (Google Maps style cased route) ──────── */}
-        {rawYatraRoute && rawYatraRoute.length >= 2 && (
-          <Polyline
-            positions={rawYatraRoute}
-            pathOptions={{
-              color: "#f59e0b", // Amber/orange color for raw route waypoints path
-              weight: 2,
-              opacity: 0.8,
-              dashArray: "6 4",
-              lineJoin: "round",
-              lineCap: "round",
-            }}
-          />
-        )}
 
-        {formattedYatraRoute && formattedYatraRoute.length >= 2 && (
+
+
+        {/* ── Active Snapped Route (Activated from MongoDB) ── */}
+        {activeRoutePoints && activeRoutePoints.length >= 2 && (
           <>
-            {/* Light corridor buffer representing the allowed off-route threshold range */}
+            {/* Reddish/purple corridor buffer around the active route */}
             <Polyline
-              positions={formattedYatraRoute}
+              positions={activeRoutePoints}
               pathOptions={{
-                color: "#a855f7", // Soft purple corridor
-                weight: 80,
+                color: "#ef4444", // Reddish corridor
+                weight: corridorPixelWeight,
                 opacity: 0.15,
                 lineJoin: "round",
                 lineCap: "round",
               }}
             />
-            {/* Outer border/shadow line */}
+            {/* Inner glowing blue route line */}
             <Polyline
-              positions={formattedYatraRoute}
+              positions={activeRoutePoints}
               pathOptions={{
-                color: "#1d4ed8", // Dark blue border
-                weight: 9,
-                opacity: 0.3,
-                lineJoin: "round",
-                lineCap: "round",
-              }}
-            />
-            {/* Inner glowing route line */}
-            <Polyline
-              positions={formattedYatraRoute}
-              pathOptions={{
-                color: "#3b82f6", // Google Maps bright blue
+                color: "#2563eb", // Deep blue line
                 weight: 5,
                 opacity: 0.9,
                 lineJoin: "round",
@@ -728,6 +959,59 @@ export function MapView({
             />
           </>
         )}
+
+        {/* ── Route Assigning Drawing Overlays ──────────────────────────────── */}
+        <MapAssignClickHandler
+          enabled={assignMode}
+          onAddPoint={handleAddAssignPoint}
+        />
+
+        {fetchedRoute.length > 0 && (
+          <>
+            {/* Reddish/purple corridor buffer around the snapped route */}
+            <Polyline
+              positions={fetchedRoute}
+              pathOptions={{
+                color: "#ef4444", // Reddish corridor
+                weight: 80,
+                opacity: 0.15,
+                lineJoin: "round",
+                lineCap: "round",
+              }}
+            />
+            {/* Inner glowing blue route line */}
+            <Polyline
+              positions={fetchedRoute}
+              pathOptions={{
+                color: "#2563eb", // Deep blue snapped road line
+                weight: 5,
+                opacity: 0.9,
+                lineJoin: "round",
+                lineCap: "round",
+              }}
+            />
+          </>
+        )}
+
+        {/* Individual clicked assign points markers */}
+        {assignPoints.map((p, idx) => (
+          <Marker
+            key={idx}
+            position={p}
+            icon={makeAssignPin(idx === 0 ? "Start" : idx === assignPoints.length - 1 ? "End" : `Pt ${idx + 1}`)}
+          >
+            <Popup closeButton={false}>
+              <div className="text-xs font-bold p-1">
+                <span className="text-orange-500 font-extrabold uppercase">
+                  {idx === 0 ? "Start Point" : idx === assignPoints.length - 1 ? "End Point" : `Waypoint ${idx + 1}`}
+                </span>
+                <div className="text-[10px] text-gray-500 font-mono mt-0.5">
+                  Lat: {p[0].toFixed(6)}<br />Lng: {p[1].toFixed(6)}
+                </div>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
 
         {/* ── Geofenced Landmarks ─────────────────────────────────────────── */}
         {LANDMARKS.map((landmark) => (
@@ -832,6 +1116,28 @@ export function MapView({
           </Fragment>
         ))}
 
+        {/* ── CUSTOM TRUCK DISTANCE LINE ────────────────────────────────── */}
+        {distanceToolEnabled && distanceSource && distanceTarget && (
+          (() => {
+            const v1 = vehicles?.[distanceSource];
+            const v2 = vehicles?.[distanceTarget];
+            if (v1 && v2 && typeof v1.lat === "number" && typeof v1.lng === "number" && typeof v2.lat === "number" && typeof v2.lng === "number") {
+              return (
+                <Polyline
+                  positions={[[v1.lat, v1.lng], [v2.lat, v2.lng]]}
+                  pathOptions={{
+                    color: "#2563eb", // Blue
+                    weight: 4,
+                    opacity: 0.8,
+                    dashArray: "6 6"
+                  }}
+                />
+              );
+            }
+            return null;
+          })()
+        )}
+
         {/* ── Recording trail overlay ─────────────────────────────────────── */}
         {recording && recPoints.length >= 2 && (
           <Polyline
@@ -927,45 +1233,64 @@ export function MapView({
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-4 md:gap-6
           bg-gray-950/90 backdrop-blur-xl border border-white/10 px-5 py-3 rounded-2xl shadow-2xl pointer-events-auto select-none max-w-[95%] md:max-w-2xl transition-all duration-300">
           
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.8)]" />
+
+
+          <div className="flex items-center gap-3 shrink-0">
             <div className="flex flex-col justify-center">
-              <span className="text-[9px] font-bold text-white/50 uppercase tracking-wider">Procession Spread</span>
-              <span 
-                className="text-sm font-extrabold text-orange-400 font-mono tracking-wide" 
-                style={{ textShadow: "0 0 8px rgba(249, 115, 22, 0.4)" }}
-              >
-                {processionAnalytics.spread}
-              </span>
+              <span className="text-[9px] font-bold text-white/50 uppercase tracking-wider">Distance Tool</span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <button
+                  onClick={() => onDistanceToolEnabledChange(!distanceToolEnabled)}
+                  className={`px-2 py-0.5 rounded text-[9px] font-extrabold transition-all duration-200 cursor-pointer border uppercase tracking-wider
+                    ${distanceToolEnabled 
+                      ? "bg-orange-500/25 border-orange-500/40 text-orange-400 shadow-[0_0_8px_rgba(249,115,22,0.2)]" 
+                      : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white"}`}
+                >
+                  {distanceToolEnabled ? "On" : "Off"}
+                </button>
+                
+                {distanceToolEnabled && (
+                  <div className="flex items-center gap-1.5">
+                    <select
+                      value={distanceSource}
+                      onChange={(e) => onDistanceSourceChange(e.target.value)}
+                      className="px-1.5 py-0.5 bg-gray-900 border border-white/10 rounded text-[10px] text-white outline-none focus:border-orange-500/50 cursor-pointer"
+                      style={{ maxWidth: "90px" }}
+                    >
+                      <option value="" style={{background: "#111827"}}>-- Truck 1 --</option>
+                      {Object.keys(vehicles || {}).sort().map(id => (
+                        <option key={id} value={id} style={{background: "#111827"}}>{vehicles?.[id]?.display_name || id}</option>
+                      ))}
+                    </select>
+                    
+                    <span className="text-[10px] text-white/30 font-bold">➔</span>
+                    
+                    <select
+                      value={distanceTarget}
+                      onChange={(e) => onDistanceTargetChange(e.target.value)}
+                      className="px-1.5 py-0.5 bg-gray-900 border border-white/10 rounded text-[10px] text-white outline-none focus:border-orange-500/50 cursor-pointer"
+                      style={{ maxWidth: "90px" }}
+                    >
+                      <option value="" style={{background: "#111827"}}>-- Truck 2 --</option>
+                      {Object.keys(vehicles || {}).sort().map(id => (
+                        <option key={id} value={id} style={{background: "#111827"}}>{vehicles?.[id]?.display_name || id}</option>
+                      ))}
+                    </select>
+                    
+                    {liveDistanceMeters !== null && (
+                      <span 
+                        className="text-xs font-black text-orange-400 font-mono ml-1 bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 rounded shadow-[0_0_8px_rgba(249,115,22,0.1)]"
+                        style={{ textShadow: "0 0 6px rgba(249, 115, 22, 0.3)" }}
+                      >
+                        {liveDistanceMeters >= 1000 
+                          ? `${(liveDistanceMeters / 1000).toFixed(2)} km` 
+                          : `${Math.round(liveDistanceMeters)} m`}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-
-          <div className="h-7 w-px bg-white/10 shrink-0" />
-
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]" />
-            <div className="flex flex-col justify-center">
-              <span className="text-[9px] font-bold text-white/50 uppercase tracking-wider">Avg Speed</span>
-              <span 
-                className="text-sm font-extrabold text-green-400 font-mono tracking-wide" 
-                style={{ textShadow: "0 0 8px rgba(34, 197, 94, 0.4)" }}
-              >
-                {processionAnalytics.avgSpeed}
-              </span>
-            </div>
-          </div>
-
-          <div className="h-7 w-px bg-white/10 shrink-0" />
-
-          <div className="flex flex-col justify-center min-w-[120px] md:min-w-[160px] max-w-[130px] md:max-w-[180px]">
-            <span className="text-[9px] font-bold text-white/50 uppercase tracking-wider">Next Landmark (ETA)</span>
-            <span 
-              className="text-xs font-extrabold text-blue-400 truncate" 
-              style={{ textShadow: "0 0 8px rgba(59, 130, 246, 0.4)" }}
-              title={processionAnalytics.nextLandmark}
-            >
-              {processionAnalytics.nextLandmark}
-            </span>
           </div>
 
         </div>
@@ -973,12 +1298,16 @@ export function MapView({
 
       {/* ── LIVE badge (top-left) ── */}
       {!isAndroidAuto && (
-        <div className="absolute top-3 left-3 z-[1000] flex items-center gap-2
-          px-3 py-1.5 bg-gray-950/90 backdrop-blur-md border border-white/10
-          rounded-full text-xs font-bold text-white pointer-events-none select-none shadow-md">
+        <button
+          onClick={() => setSettingsMinimized(!settingsMinimized)}
+          className="absolute top-3 left-16 z-[1100] flex items-center gap-2
+            px-3 py-1.5 bg-gray-950/90 hover:bg-gray-900/90 active:scale-95 border border-white/10
+            rounded-full text-xs font-bold text-white pointer-events-auto cursor-pointer select-none shadow-md transition-all"
+          title={settingsMinimized ? "Maximize Settings" : "Minimize Settings"}
+        >
           <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-[0_0_6px_#22c55e]" />
-          Live GPS Tracking
-        </div>
+          Live GPS Tracking {settingsMinimized ? "＋" : "－"}
+        </button>
       )}
 
       {/* ── GPS Inspector floating panel ── */}
@@ -1051,7 +1380,7 @@ export function MapView({
       )}
 
       {/* ── Settings & Recording Dock (top-left) ── */}
-      {!isAndroidAuto && (
+      {!isAndroidAuto && !settingsMinimized && (
         <div className="absolute top-12 left-3 z-[1000] flex flex-col gap-3 p-4
           bg-gray-950/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl pointer-events-auto select-none min-w-[210px] transition-all duration-300">
           
@@ -1089,77 +1418,193 @@ export function MapView({
                 <div className="w-8 h-4.5 bg-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-orange-500" />
               </div>
             </label>
+
+            {/* Route Assigning Toggle Switch */}
+            <label htmlFor="routeAssignToggle" className="flex items-center justify-between text-xs font-bold text-white/85 cursor-pointer select-none w-full border-t border-white/5 pt-2 mt-1">
+              <span className="flex items-center gap-1">🗺️ Route Assigning</span>
+              <div className="relative inline-flex items-center">
+                <input
+                  type="checkbox"
+                  id="routeAssignToggle"
+                  checked={assignMode}
+                  onChange={(e) => {
+                    setAssignMode(e.target.checked);
+                    if (!e.target.checked) {
+                      setAssignPoints([]);
+                      setFetchedRoute([]);
+                      setRouteName("");
+                      setAssignStatus("");
+                    }
+                  }}
+                  className="sr-only peer"
+                />
+                <div className="w-8 h-4.5 bg-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-orange-500" />
+              </div>
+            </label>
           </div>
 
-          {/* Route Selection controls */}
-          <div className="border-t border-white/10 pt-3 flex flex-col gap-2">
-            <button
-              onClick={() => {
-                if (routeSelectionActive) {
-                  setRouteSelectionActive(false);
-                  setTempWaypoints([]);
-                } else {
-                  setRouteSelectionActive(true);
-                  setTempWaypoints([]);
-                }
-              }}
-              className={`w-full flex items-center justify-center gap-2 py-2 px-3
-                border text-xs font-bold rounded-xl transition-all cursor-pointer
-                ${routeSelectionActive 
-                  ? "bg-red-500/20 border-red-500/30 text-red-400" 
-                  : "bg-white/5 border-white/10 hover:bg-orange-500/10 hover:border-orange-500/30 hover:text-orange-400 text-white"}`}
-            >
-              <span>🧭</span> {routeSelectionActive ? "Cancel Route Select" : "Route Selection"}
-            </button>
-
-            {routeSelectionActive && (
-              <div className="flex flex-col gap-2 p-2 bg-orange-500/10 border border-orange-500/20 rounded-xl mt-1">
-                <span className="text-orange-400 font-bold text-[9px] uppercase tracking-wider">
-                  Select Route on Map
-                </span>
-                <span className="text-white/60 text-[10px] leading-relaxed">
-                  Click map to add waypoints in order (Start → Waypoints → End).
-                </span>
-                <div className="text-[10px] text-white font-bold bg-white/5 px-2.5 py-1 rounded-lg">
-                  Waypoints Set: {tempWaypoints.length}
-                </div>
-                <div className="flex gap-1.5">
+          {assignMode && (
+            <div className="border-t border-white/10 pt-3 mt-1 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold text-orange-400 uppercase tracking-wider">Assign Points</span>
+                {assignPoints.length > 0 && (
                   <button
-                    onClick={async () => {
-                      if (tempWaypoints.length < 2) {
-                        alert("Please select at least a Start and End point on the map!");
-                        return;
-                      }
-                      setGeneratingRoute(true);
-                      try {
-                        const routedPath = await fetchRoadRoute(tempWaypoints);
-                        if (routedPath && routedPath.length > 0) {
-                          onRouteGenerate(routedPath);
-                          setRouteSelectionActive(false);
-                          setTempWaypoints([]);
-                        } else {
-                          alert("Failed to generate route. Please try again.");
-                        }
-                      } catch (err) {
-                        console.error(err);
-                        alert("Error generating route: " + err.message);
-                      } finally {
-                        setGeneratingRoute(false);
-                      }
+                    onClick={() => {
+                      setAssignPoints([]);
+                      setFetchedRoute([]);
+                      setAssignStatus("");
                     }}
-                    disabled={generatingRoute || tempWaypoints.length < 2}
-                    className="flex-1 py-1.5 bg-green-500/20 hover:bg-green-500/30 disabled:opacity-40 disabled:hover:bg-green-500/20 text-green-400 font-black text-[9px] rounded-lg transition-all border border-green-500/30 cursor-pointer"
+                    className="text-[9px] text-red-400 hover:text-red-300 font-bold uppercase transition"
                   >
-                    {generatingRoute ? "Generating..." : "Generate"}
+                    Reset
                   </button>
-                  <button
-                    onClick={() => setTempWaypoints([])}
-                    disabled={tempWaypoints.length === 0}
-                    className="flex-1 py-1.5 bg-white/5 hover:bg-white/10 disabled:opacity-40 disabled:hover:bg-white/5 text-white/80 font-black text-[9px] rounded-lg transition-all border border-white/10 cursor-pointer"
-                  >
-                    Clear
-                  </button>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <div className="text-[10px] text-white/60 leading-relaxed bg-white/5 rounded-lg p-2 border border-white/5">
+                  {assignPoints.length === 0 ? (
+                    <span>👉 Click map to set <strong className="text-green-400">Start point</strong></span>
+                  ) : assignPoints.length === 1 ? (
+                    <span>👉 Click map to set <strong className="text-red-400">End point</strong></span>
+                  ) : (
+                    <span>✅ Snap line calculated!</span>
+                  )}
                 </div>
+
+                {assignPoints.length >= 2 && (
+                  <div className="flex flex-col gap-2 mt-1">
+                    <input
+                      type="text"
+                      placeholder="Route Name (e.g. Route A)"
+                      value={routeName}
+                      onChange={(e) => setRouteName(e.target.value)}
+                      className="bg-gray-900 border border-white/10 rounded-lg px-2.5 py-1 text-xs font-bold text-white focus:outline-none focus:border-orange-500 w-full"
+                    />
+                    <button
+                      onClick={handleSaveRoute}
+                      disabled={fetchedRoute.length === 0}
+                      className="w-full py-1.5 bg-orange-500 hover:bg-orange-600 disabled:bg-white/10 disabled:text-white/30 text-white text-xs font-extrabold rounded-lg shadow-lg active:scale-[0.98] transition uppercase tracking-wider"
+                    >
+                      Save to MongoDB
+                    </button>
+                  </div>
+                )}
+
+                {assignStatus && (
+                  <div className="text-[9px] font-semibold text-white/50 text-center animate-pulse mt-0.5">
+                    {assignStatus}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+
+          {/* Activate Route Dropdown Selector */}
+          <div className="flex flex-col gap-1 border-t border-white/10 pt-3 mt-1">
+            <label className="text-[9px] text-white/40 font-bold uppercase tracking-wider">Activate Route</label>
+            <div className="flex gap-2">
+              <select
+                value={activeRouteId}
+                onChange={(e) => handleActivateRoute(e.target.value)}
+                className="bg-gray-900 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] font-bold text-white focus:outline-none focus:border-orange-500 cursor-pointer flex-1 min-w-0 transition-all"
+              >
+                <option value="">-- Select Route --</option>
+                {savedRoutes.map((r, idx) => (
+                  <option key={idx} value={idx}>{r.route_name || `Route ${idx + 1}`}</option>
+                ))}
+              </select>
+              {activeRouteId !== "" && (
+                <button
+                  onClick={() => {
+                    setActiveRouteId("");
+                    setActiveRoutePoints([]);
+                  }}
+                  className="px-2.5 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-[10px] font-extrabold rounded-lg uppercase tracking-wider transition active:scale-[0.97]"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            {activeRouteId !== "" && (
+              <div className="flex flex-col gap-1.5 mt-2.5 border-t border-white/5 pt-2">
+                <label className="text-[9px] text-white/40 font-bold uppercase tracking-wider">Track Vehicle</label>
+                <select
+                  value={trackVehicleId}
+                  onChange={(e) => setTrackVehicleId(e.target.value)}
+                  disabled={trackingActive}
+                  className="bg-gray-900 border border-white/10 rounded-lg px-2 py-1 text-[11px] font-bold text-white focus:outline-none focus:border-orange-500 cursor-pointer w-full transition-all disabled:opacity-50"
+                >
+                  <option value="">-- Choose Truck --</option>
+                  {vehicleIds.slice().sort((a, b) => {
+                    const numA = parseInt(a.replace(/\D/g, ""), 10);
+                    const numB = parseInt(b.replace(/\D/g, ""), 10);
+                    if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                    return a.localeCompare(b);
+                  }).map(vid => (
+                    <option key={vid} value={vid}>{vehicles[vid]?.display_name || vid}</option>
+                  ))}
+                </select>
+
+                {/* Deviation Range (meters) Input */}
+                <div className="flex flex-col gap-1 mt-1">
+                  <label className="text-[9px] text-white/40 font-bold uppercase tracking-wider">Allowed Deviation (meters)</label>
+                  <input
+                    type="number"
+                    min="5"
+                    max="500"
+                    value={trackRange}
+                    onChange={(e) => setTrackRange(Math.max(5, Number(e.target.value)))}
+                    disabled={trackingActive}
+                    className="bg-gray-900 border border-white/10 rounded-lg px-2.5 py-1 text-xs font-bold text-white focus:outline-none focus:border-orange-500 w-full transition-all disabled:opacity-50"
+                  />
+                </div>
+
+                <button
+                  onClick={() => {
+                    if (!trackVehicleId) {
+                      setTrackMessage({
+                        text: "⚠️ Please choose a truck to track first!",
+                        isOut: true,
+                        visible: true
+                      });
+                      setTimeout(() => setTrackMessage(prev => prev ? { ...prev, visible: false } : null), 2000);
+                      return;
+                    }
+                    setRegisteredRoute(activeRoutePoints);
+                    setTrackingActive(true);
+                    setTrackMessage({
+                      text: `🎯 Route registered! Tracking ${vehicles[trackVehicleId]?.display_name || trackVehicleId}...`,
+                      isOut: false,
+                      visible: true
+                    });
+                    setTimeout(() => setTrackMessage(prev => prev ? { ...prev, visible: false } : null), 2000);
+                  }}
+                  className={`w-full py-1.5 text-[10px] font-extrabold rounded-lg shadow-lg transition duration-200 active:scale-[0.98] border uppercase tracking-wider cursor-pointer
+                    ${trackingActive 
+                      ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.2)] animate-pulse" 
+                      : "bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30"}`}
+                >
+                  {trackingActive ? "✓ Tracking Active" : "Register and Follow"}
+                </button>
+                {trackingActive && (
+                  <button
+                    onClick={() => {
+                      setTrackingActive(false);
+                      setRegisteredRoute(null);
+                      setTrackMessage({
+                        text: "🛑 Route tracking stopped.",
+                        isOut: true,
+                        visible: true
+                      });
+                      setTimeout(() => setTrackMessage(prev => prev ? { ...prev, visible: false } : null), 2000);
+                    }}
+                    className="w-full py-1 bg-white/5 hover:bg-white/10 text-white/70 border border-white/10 text-[9px] font-extrabold rounded-lg uppercase tracking-wider transition cursor-pointer"
+                  >
+                    Stop Following
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -1236,24 +1681,7 @@ export function MapView({
         </div>
       )}
 
-      {/* ── CENTER button ── */}
-      {vehicleIds.length > 0 && !isAndroidAuto && (
-        <div className="absolute bottom-20 left-3 z-[1000] flex items-center gap-2
-          bg-gray-950/90 backdrop-blur-md border border-white/10 p-1.5 rounded-xl shadow-lg pointer-events-auto select-none">
-          <button
-            onClick={() => {
-              const target = selectedId || vehicleIds[0];
-              setCenterTarget({ id: target, t: Date.now(), zoom: selectedZoom });
-            }}
-            className="flex items-center gap-1.5 px-3 py-2
-              bg-orange-500 hover:bg-orange-600 active:scale-[0.98]
-              text-white text-xs font-bold rounded-lg
-              transition-all duration-200 cursor-pointer"
-          >
-            🎯 Center
-          </button>
-        </div>
-      )}
+
 
       {/* ── Trail legend (bottom-left) ── */}
       {!isAndroidAuto && vehicleIds.some((id) => (vehicles[id]?.trail?.length || 0) >= 2) && (
@@ -1307,37 +1735,79 @@ export function MapView({
             <div className="w-full flex flex-col gap-4 animate-slide-in">
               
               {/* Row 1: Recording Selector & Device ID Info */}
-              <div className="flex items-center justify-between gap-3 bg-white/3 border border-white/5 rounded-xl p-3">
-                <div className="flex flex-col gap-1 flex-1 min-w-0">
-                  <label className="text-[9px] text-white/40 font-bold uppercase tracking-wider">Recorded Session</label>
-                  <select
-                    value={selectedRecordingKey}
-                    onChange={(e) => onSelectedRecordingKeyChange(e.target.value)}
-                    className="bg-gray-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-orange-500 cursor-pointer w-full transition-all"
-                  >
-                    {(() => {
-                      const filteredRecordings = selectedId 
-                        ? (recordings[selectedId] ? { [selectedId]: recordings[selectedId] } : {})
-                        : recordings;
-                      
-                      const options = Object.entries(filteredRecordings).flatMap(([vehicleId, sessions]) => 
-                        Object.entries(sessions).map(([sessionId, session]) => (
-                          <option key={`${vehicleId}/${sessionId}`} value={`${vehicleId}/${sessionId}`}>
-                            {vehicleId} — {sessionId.replace("session_", "").split("T")[0]} ({session.pointCount} pts)
-                          </option>
-                        ))
-                      );
+              <div className="flex flex-col gap-3 bg-white/3 border border-white/5 rounded-xl p-3">
+                <div className="flex flex-wrap md:flex-nowrap items-end gap-3 w-full">
+                  <div className="flex flex-col gap-1 flex-1 min-w-0 w-full">
+                    <label className="text-[9px] text-white/40 font-bold uppercase tracking-wider">Select Vehicle</label>
+                    <select
+                      value={playbackVehicleId}
+                      onChange={(e) => onPlaybackVehicleIdChange(e.target.value)}
+                      className="bg-gray-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-orange-500 cursor-pointer w-full transition-all"
+                    >
+                      <option value="">-- Choose Truck --</option>
+                      {(() => {
+                        const list = (Array.isArray(deviceList) && deviceList.length > 0) ? deviceList : Object.keys(vehicleLabels);
+                        return [...list].sort((a, b) => {
+                          const numA = parseInt(a.replace(/\D/g, ""), 10);
+                          const numB = parseInt(b.replace(/\D/g, ""), 10);
+                          if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                          return a.localeCompare(b);
+                        }).map(vid => (
+                          <option key={vid} value={vid}>{vehicles[vid]?.display_name || vehicleLabels[vid] || vid}</option>
+                        ));
+                      })()}
+                    </select>
+                  </div>
 
-                      return options.length > 0 
-                        ? options 
-                        : <option value="">{selectedId ? `No recordings found for ${selectedId}` : "No recordings"}</option>;
-                    })()}
-                  </select>
+                  <div className="flex flex-col gap-1 shrink-0 w-full md:w-36">
+                    <label className="text-[9px] text-white/40 font-bold uppercase tracking-wider">Select Date</label>
+                    <input
+                      type="date"
+                      value={playbackDate}
+                      onChange={(e) => onPlaybackDateChange(e.target.value)}
+                      className="bg-gray-900 border border-white/10 rounded-lg px-2.5 py-1 text-xs font-bold text-white focus:outline-none focus:border-orange-500 cursor-pointer w-full transition-all"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1 shrink-0 w-full md:w-24">
+                    <label className="text-[9px] text-white/40 font-bold uppercase tracking-wider">Start Time</label>
+                    <input
+                      type="time"
+                      value={playbackStartTime}
+                      onChange={(e) => onPlaybackStartTimeChange(e.target.value)}
+                      className="bg-gray-900 border border-white/10 rounded-lg px-2.5 py-1 text-xs font-bold text-white focus:outline-none focus:border-orange-500 cursor-pointer w-full transition-all"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1 shrink-0 w-full md:w-24">
+                    <label className="text-[9px] text-white/40 font-bold uppercase tracking-wider">End Time</label>
+                    <input
+                      type="time"
+                      value={playbackEndTime}
+                      onChange={(e) => onPlaybackEndTimeChange(e.target.value)}
+                      className="bg-gray-900 border border-white/10 rounded-lg px-2.5 py-1 text-xs font-bold text-white focus:outline-none focus:border-orange-500 cursor-pointer w-full transition-all"
+                    />
+                  </div>
+
+                  <button
+                    onClick={() => onLoadPlayback(playbackVehicleId, playbackDate, playbackStartTime, playbackEndTime)}
+                    disabled={loadingPlayback}
+                    className="px-4 py-2 text-xs font-extrabold rounded-lg bg-orange-500 hover:bg-orange-600 text-white disabled:opacity-50 cursor-pointer shrink-0 transition-all uppercase tracking-wider w-full md:w-auto shadow-md"
+                  >
+                    {loadingPlayback ? "Loading..." : "Load"}
+                  </button>
                 </div>
 
-                <div className="flex flex-col justify-center items-end text-right border-l border-white/10 pl-3 shrink-0">
-                  <span className="text-[9px] text-white/40 font-bold uppercase tracking-wider">Active Device</span>
-                  <span className="text-sm font-black text-orange-400">{selectedRecordVehicleId || "—"}</span>
+                <div className="flex items-center justify-between border-t border-white/10 pt-2 w-full">
+                  <span className="text-[9px] text-white/40 font-bold uppercase tracking-wider">Active Device: <span className="text-orange-400 font-extrabold">{selectedRecordVehicleId || "None"}</span></span>
+                  {playbackRoutePoints.length > 0 && (
+                    <span className="text-[9px] text-white/40 font-bold uppercase tracking-wider">
+                      Points Loaded: <span className="text-white font-extrabold">{playbackRoutePoints.length}</span>
+                      {totalRawPoints > playbackRoutePoints.length && (
+                        <span className="text-white/40"> (Total: {totalRawPoints})</span>
+                      )}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -1396,6 +1866,19 @@ export function MapView({
 
             </div>
           )}
+        </div>
+      )}
+      {/* ── Route Adherence Popup Toast Alert ── */}
+      {trackMessage && (
+        <div className={`absolute top-4 left-1/2 -translate-x-1/2 z-[2000] px-4 py-2 rounded-xl shadow-2xl border backdrop-blur-md transition-all duration-300 transform pointer-events-none select-none
+          ${trackMessage.visible ? "translate-y-0 opacity-100 scale-100" : "-translate-y-4 opacity-0 scale-95"}
+          ${trackMessage.isOut 
+            ? "bg-red-500/25 border-red-500/40 text-red-400 font-extrabold shadow-[0_0_15px_rgba(239,68,68,0.25)] animate-bounce" 
+            : "bg-emerald-500/20 border-emerald-500/40 text-emerald-400 font-bold shadow-[0_0_15px_rgba(16,185,129,0.2)]"}`}
+        >
+          <div className="flex items-center gap-2 text-xs">
+            <span>{trackMessage.text}</span>
+          </div>
         </div>
       )}
     </div>

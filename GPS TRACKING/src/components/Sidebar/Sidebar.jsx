@@ -1,12 +1,13 @@
 // src/components/Sidebar/Sidebar.jsx
 // Vehicle list panel — shows all vehicles with live status badges.
 
+import { useState } from "react";
 import { timeAgo } from "../../utils/formatters";
 import { vehicleLabels, vehicleIcons } from "../../lib/constants";
 import { haversine } from "../../utils/routeSnap";
 
 function VehicleCard({ vehicleId, data, isSelected, onSelect }) {
-  const online = data?.online ?? false;
+  const status = data?.status ?? "offline";
   const label = data?.display_name || vehicleLabels[vehicleId] || vehicleId;
   const icon = vehicleIcons[vehicleId] ?? "🚛";
 
@@ -24,7 +25,7 @@ function VehicleCard({ vehicleId, data, isSelected, onSelect }) {
         <div className="flex items-center gap-3 min-w-0">
           <span className="text-2xl transition-transform duration-200 group-hover:scale-110">{icon}</span>
           <div className="min-w-0">
-            <p className="font-bold text-white text-sm truncate">{label}</p>
+            <p className="font-bold text-white text-sm">{label}</p>
             <p className="text-[10px] text-white/35 font-mono tracking-wider mt-0.5">{vehicleId}</p>
           </div>
         </div>
@@ -32,14 +33,33 @@ function VehicleCard({ vehicleId, data, isSelected, onSelect }) {
         {/* Status badge */}
         <div
           className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide shrink-0 border
-            ${online 
+            ${status === "online" 
               ? "bg-green-500/10 border-green-500/20 text-green-400 shadow-[0_0_8px_rgba(34,197,94,0.15)]" 
+              : status === "weak"
+              ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
+              : status === "jammed"
+              ? "bg-red-500/10 border-red-500/20 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.15)]"
               : "bg-gray-500/10 border-gray-500/20 text-gray-400"}`}
         >
           <span
-            className={`w-1.5 h-1.5 rounded-full ${online ? "bg-green-400 animate-pulse shadow-[0_0_4px_#22c55e]" : "bg-gray-400"}`}
+            className={`w-1.5 h-1.5 rounded-full 
+              ${status === "online" 
+                ? "bg-green-400 animate-pulse shadow-[0_0_4px_#22c55e]" 
+                : status === "weak"
+                ? "bg-amber-400"
+                : status === "jammed"
+                ? "bg-red-400 shadow-[0_0_4px_#ef4444]"
+                : "bg-gray-400"}`}
           />
-          {online ? "Online" : "Offline"}
+          {status === "online" 
+            ? "Online" 
+            : status === "weak" 
+            ? "Weak" 
+            : status === "jammed" 
+            ? "Jammed" 
+            : status === "lost" 
+            ? "Signal Low" 
+            : "Offline"}
         </div>
       </div>
 
@@ -62,12 +82,20 @@ function VehicleCard({ vehicleId, data, isSelected, onSelect }) {
         )}
 
         {data && (
-          <div className="flex items-center justify-between text-[11px] text-white/40 font-medium">
-            <span>Sats / HDOP</span>
-            <span className="text-white/80 font-semibold font-mono">
-              {data.satellites ?? 0}sats · {data.hdop ? Number(data.hdop).toFixed(1) : "—"}
-            </span>
-          </div>
+          <>
+            <div className="flex items-center justify-between text-[11px] text-white/40 font-medium">
+              <span>Latitude</span>
+              <span className="text-white/80 font-semibold font-mono">
+                {data.lat !== undefined && data.lat !== null ? Number(data.lat).toFixed(6) : "—"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-[11px] text-white/40 font-medium">
+              <span>Longitude</span>
+              <span className="text-white/80 font-semibold font-mono">
+                {data.lng !== undefined && data.lng !== null ? Number(data.lng).toFixed(6) : "—"}
+              </span>
+            </div>
+          </>
         )}
       </div>
     </button>
@@ -82,15 +110,34 @@ export function Sidebar({
   adminMode = false,
   onToggleAdminMode,
   frontBackRoutes = [],
-  orderedTrucks = []
+  orderedTrucks = [],
+  filterTab,
+  onFilterTabChange
 }) {
+  const [searchQuery, setSearchQuery] = useState("");
   const onlineCount = Object.values(vehicles).filter((v) => v?.online).length;
 
-  const idsToShow = Object.keys(vehicles).sort((a, b) => {
-    const numA = parseInt((a.match(/\d+/) || [0])[0], 10);
-    const numB = parseInt((b.match(/\d+/) || [0])[0], 10);
-    if (numA !== numB) return numA - numB;
-    return a.localeCompare(b);
+  const sortedIds = Object.keys(vehicles).sort((a, b) => {
+    const matchA = a.match(/^([a-zA-Z]+)(\d+)?$/);
+    const matchB = b.match(/^([a-zA-Z]+)(\d+)?$/);
+    
+    const prefixA = matchA ? matchA[1] : a;
+    const prefixB = matchB ? matchB[1] : b;
+    
+    const comp = prefixA.localeCompare(prefixB);
+    if (comp !== 0) return comp;
+    
+    const numA = matchA && matchA[2] ? parseInt(matchA[2], 10) : 0;
+    const numB = matchB && matchB[2] ? parseInt(matchB[2], 10) : 0;
+    return numA - numB;
+  });
+
+  const idsToShow = sortedIds.filter((id) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    const label = (vehicles[id]?.display_name || vehicleLabels[id] || id).toLowerCase();
+    const vehicleId = id.toLowerCase();
+    return label.includes(query) || vehicleId.includes(query);
   });
 
   let frontTruck = null;
@@ -152,6 +199,46 @@ export function Sidebar({
       </div>
 
 
+
+      {/* Search Box & Filter Tabs */}
+      <div className="px-4 py-2.5 border-b border-white/10 bg-black/10 flex flex-col gap-2">
+        <div className="relative flex items-center">
+          <span className="absolute left-3 text-white/35 text-xs">🔍</span>
+          <input
+            type="text"
+            placeholder="Search trucks..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-8 pr-7 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-white placeholder-white/35 outline-none focus:border-orange-500/50 focus:bg-white/10 transition-all"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2.5 text-white/35 hover:text-white text-sm cursor-pointer border-none bg-transparent outline-none"
+            >
+              ×
+            </button>
+          )}
+        </div>
+
+        {/* Filter Tabs */}
+        <div className="flex gap-1 bg-white/5 p-1 rounded-lg border border-white/5">
+          {["registered", "unregistered", "all"].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => onFilterTabChange(tab)}
+              className={`flex-1 py-1 rounded text-[10px] font-extrabold uppercase tracking-wide cursor-pointer transition-all duration-150 border border-transparent
+                ${
+                  filterTab === tab
+                    ? "bg-orange-500 text-white shadow-md shadow-orange-500/10"
+                    : "text-white/45 hover:text-white hover:bg-white/5"
+                }`}
+            >
+              {tab === "registered" ? "Registered" : tab === "unregistered" ? "Unregistered" : "All"}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Spacing Alerts Widget */}
       {selectedId && (frontTruck || backTruck) && (

@@ -2,8 +2,7 @@
 // Real-time Firebase subscription for all 150 vehicles.
 // Subscribes to the /vehicles node once and returns raw data (no filters, no snapping).
 
-import { useEffect, useState, useRef, useMemo, useCallback } from "react";
-
+import { useEffect, useState, useRef, useMemo } from "react";
 import { ACTIVE_VEHICLE_IDS, OFFLINE_THRESHOLD_SECONDS, ALERT, YATRA_ROUTE, DEVICE_TO_DISPLAY_MAP, LANDMARKS, TRUCK_PHONES } from "../lib/constants";
 import { parseTimestamp } from "../utils/formatters";
 import { snapToRoute, haversine } from "../utils/routeSnap";
@@ -13,14 +12,13 @@ const MAX_TRAIL = 300;
 
 
 function getStatus(data) {
-  // No Firebase data at all — device never connected
+  // No data at all — device never connected
   if (!data || typeof data.lat !== "number") return "offline";
 
   const age = (Date.now() - parseTimestamp(data.timestamp).getTime()) / 1000;
 
-  // 1. Age/Inactivity checks must come first to detect disconnects
-  if (age > OFFLINE_THRESHOLD_SECONDS) return "offline";
-  if (age > ALERT.SIGNAL_LOST_SEC) return "lost";
+  // 1. Inactivity checks: if no update for more than 2 minutes, signal is lost/low
+  if (age > 120) return "lost";
 
   // 2. Active status flags
   if (data.is_jammed) return "jammed";
@@ -81,8 +79,12 @@ function sliceRoadRoute(roadRoute, p1, p2) {
 
 export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
   const [rawVehicles, setRawVehicles] = useState({});
+  const rawVehiclesRef = useRef({});
+  useEffect(() => {
+    rawVehiclesRef.current = rawVehicles;
+  }, [rawVehicles]);
+
   const [vehicleDetails, setVehicleDetails] = useState({});
-  const [globalConfig, setGlobalConfig] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -100,33 +102,6 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
   const lastRenderedPositionsRef = useRef({}); // Stores { vehicleId: { lat, lng, snappedLat, ... } }
   const prevStatusesRef = useRef({});
   const lastOnTrackSmsRef = useRef({}); // Tracks last on-track SMS time per vehicle (ms)
-
-  const writeLogToBackend = useCallback((key, log) => {
-    fetch("/api/v1/tracking/logs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key: String(key), log })
-    })
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-      .then(d => console.log(`[Log] Alert logged in MongoDB:`, d))
-      .catch(e => console.error(`[Log] Alert logging failed:`, e));
-  }, []);
-
-  const sendSmsToBackend = useCallback((phone, message, vehicleId, lat, lng, type) => {
-    fetch("/api/v1/tracking/sms_queue", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        to: phone,
-        message,
-        lat,
-        lng
-      })
-    })
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-      .then(d => console.log(`[SMS] ${type} queued for ${vehicleId}:`, d))
-      .catch(e => console.error(`[SMS] ${type} queue failed for ${vehicleId}:`, e));
-  }, []);
 
   // Tick state to force re-render when async OSRM calls resolve
   const [tick, setTick] = useState(0);
@@ -369,29 +344,70 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
     const fetchVehicles = async () => {
       try {
         const res = await fetch("/api/v1/tracking/vehicles");
-        if (!res.ok) throw new Error("Failed to fetch vehicles");
+        if (!res.ok) throw new Error("Failed to fetch vehicles from MongoDB");
         const data = await res.json();
         if (!active) return;
         
-        // Apply universal physical-to-display device mapping
+        const raw = data.vehicles || {};
         const mapped = {};
-        Object.entries(data.vehicles || {}).forEach(([dbId, vData]) => {
+        Object.entries(raw).forEach(([dbId, item]) => {
           const displayId = (DEVICE_TO_DISPLAY_MAP[dbId] || dbId).trim();
-          if (vData) {
+          if (item) {
+            let lat = item.lat;
+            let lng = item.lng;
+            
+            // Check if coordinates are 0.0 or invalid (within 0.01 degrees of 0,0)
+            const isInvalidCoords = (typeof lat !== "number" || typeof lng !== "number" || Math.abs(lat) < 0.01 || Math.abs(lng) < 0.01);
+            
+            if (isInvalidCoords) {
+              // Try to fall back to the last known valid coordinates from rawVehicles state
+              const prev = rawVehiclesRef.current?.[displayId];
+              if (prev && typeof prev.lat === "number" && Math.abs(prev.lat) >= 0.01 && typeof prev.lng === "number" && Math.abs(prev.lng) >= 0.01) {
+                lat = prev.lat;
+                lng = prev.lng;
+              } else {
+                // If there's no previous valid coordinate in memory, try localStorage cache
+                const cached = loadLastLocation(displayId);
+                if (cached && typeof cached.lat === "number" && Math.abs(cached.lat) >= 0.01 && typeof cached.lng === "number" && Math.abs(cached.lng) >= 0.01) {
+                  lat = cached.lat;
+                  lng = cached.lng;
+                }
+              }
+            }
+
+            // Only update if we have a valid coordinate (or fallback coordinate)
+            const itemWithValidCoords = {
+              ...item,
+              lat,
+              lng,
+              truck_id: displayId,
+              vehicle_id: displayId
+            };
+
             const existing = mapped[displayId];
-            if (!existing || (vData.timestamp && (!existing.timestamp || vData.timestamp > existing.timestamp))) {
-              mapped[displayId] = {
-                ...vData,
-                truck_id: displayId,
-                vehicle_id: displayId
-              };
+            // If duplicate display IDs exist, keep the one with the newest timestamp
+            if (!existing || (item.timestamp && (!existing.timestamp || item.timestamp > existing.timestamp))) {
+              mapped[displayId] = itemWithValidCoords;
             }
           }
         });
         
+        // Clean and map vehicle details keys to display IDs
+        const cleanedDetails = {};
+        Object.entries(data.vehicle_details || {}).forEach(([dbId, details]) => {
+          const displayId = (DEVICE_TO_DISPLAY_MAP[dbId] || dbId).trim();
+          cleanedDetails[displayId] = details;
+        });
+
+        // Ensure all registered vehicles from vehicle_details are in mapped
+        Object.keys(cleanedDetails).forEach((displayId) => {
+          if (!mapped[displayId]) {
+            mapped[displayId] = null;
+          }
+        });
+        
         setRawVehicles(mapped);
-        setVehicleDetails(data.vehicle_details || {});
-        setGlobalConfig(data.global_config || null);
+        setVehicleDetails(cleanedDetails);
         setLoading(false);
         setError(null);
       } catch (err) {
@@ -414,8 +430,7 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
   // Compute enriched vehicle map
   const vehicles = useMemo(() => {
     const enriched = {};
-    const firebaseIds = Object.keys(rawVehicles);
-    const idsToShow = [...new Set([...ACTIVE_VEHICLE_IDS, ...firebaseIds])];
+    const idsToShow = Object.keys(rawVehicles);
 
     const getTrail = (id) => {
       if (useSnapping) {
@@ -428,6 +443,16 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
     // Build enriched vehicle list
     idsToShow.forEach((id, idx) => {
       const data = rawVehicles[id] || null;
+      
+      // Filter out devices with 0.0000 coordinates
+      if (data) {
+        const isZero = (typeof data.lat === "number" && Math.abs(data.lat) < 0.01) || 
+                       (typeof data.lng === "number" && Math.abs(data.lng) < 0.01);
+        if (isZero) {
+          return; // Skip this device entirely
+        }
+      }
+
       const details = vehicleDetails[id] || {};
       const display_name = details.display_name || null;
       const cached = loadLastLocation(id);
@@ -604,6 +629,7 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
         enriched[id] = {
           ...data,
           display_name,
+          is_registered: !!vehicleDetails[id],
           key: id,
           status,
           online,
@@ -634,6 +660,7 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
       } else {
         enriched[id] = {
           display_name,
+          is_registered: !!vehicleDetails[id],
           key: id,
           status: "offline",
           online: false,
@@ -698,13 +725,20 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
         
         if (logMsg) {
           const logTime = Date.now();
-          writeLogToBackend(logTime, {
-            timestamp: new Date().toISOString(),
-            type,
-            severity,
-            message: logMsg,
-            vehicleId: id
-          });
+          fetch("/api/v1/tracking/logs", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              key: String(logTime),
+              log: {
+                timestamp: new Date().toISOString(),
+                type,
+                severity,
+                message: logMsg,
+                vehicleId: id
+              }
+            })
+          }).catch(err => console.error("Failed to post status log to MongoDB:", err));
         }
       }
       prevStatusesRef.current[id] = newStatus;
@@ -752,8 +786,21 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
         });
       });
 
-    const sendSmsToFirebase = (phone, message, vehicleId, lat, lng, type) => {
-      sendSmsToBackend(phone, message, vehicleId, lat, lng, type);
+    // ── Helper: push a message to local SMS queue ─────────────────────────
+    const sendSms = (phone, message, vehicleId, lat, lng, type) => {
+      fetch("/api/v1/tracking/sms_queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: phone,
+          message,
+          lat,
+          lng
+        })
+      })
+        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+        .then(d => console.log(`[SMS] ${type} queued for ${vehicleId}:`, d))
+        .catch(e => console.error(`[SMS] ${type} queue failed for ${vehicleId}:`, e));
     };
 
     // Off-Route Alert Trigger (SMS Alert when device is online but out of range/off-route)
@@ -785,17 +832,24 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
         if (phone) {
           const message = "the truck is outside track ";
           console.log(`[SMS Queue] Triggering off-route SMS for ${id}`);
-          sendSmsToFirebase(phone, message, id, v.lat, v.lng, "off_route");
+          sendSms(phone, message, id, v.lat, v.lng, "off_route");
 
           // Write persistent log to MongoDB
           const logTime = Date.now();
-          writeLogToBackend(logTime, {
-            timestamp: new Date().toISOString(),
-            type: "OFF_ROUTE",
-            severity: "critical",
-            message: `${id} went off-route (${Math.round(v.distanceMeters)}m). SMS queued to ${phone}.`,
-            vehicleId: id
-          });
+          fetch("/api/v1/tracking/logs", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              key: String(logTime),
+              log: {
+                timestamp: new Date().toISOString(),
+                type: "OFF_ROUTE",
+                severity: "critical",
+                message: `${id} went off-route (${Math.round(v.distanceMeters)}m). SMS queued to ${phone}.`,
+                vehicleId: id
+              }
+            })
+          }).catch(err => console.error("Failed to post off-route log to MongoDB:", err));
         }
       } else if (!isOffRouteAlert && prevOffRoute) {
         try {
@@ -806,13 +860,20 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
 
         // Write persistent recovery log to MongoDB
         const logTime = Date.now();
-        writeLogToBackend(logTime, {
-          timestamp: new Date().toISOString(),
-          type: "ON_ROUTE",
-          severity: "normal",
-          message: `${id} returned to the route.`,
-          vehicleId: id
-        });
+        fetch("/api/v1/tracking/logs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            key: String(logTime),
+            log: {
+              timestamp: new Date().toISOString(),
+              type: "ON_ROUTE",
+              severity: "normal",
+              message: `${id} returned to the route.`,
+              vehicleId: id
+            }
+          })
+        }).catch(err => console.error("Failed to post on-route log to MongoDB:", err));
       }
 
       // ── Every-60-second "on track" heartbeat SMS ────────────────────────────
@@ -824,7 +885,7 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
           lastOnTrackSmsRef.current[id] = now;
           let phone = TRUCK_PHONES[id] || "8469091377";
           if (phone && !phone.startsWith("+")) phone = "+91" + phone;
-          sendSmsToFirebase(phone, "the truck is on track ", id, v.lat, v.lng, "on_track");
+          sendSms(phone, "the truck is on track ", id, v.lat, v.lng, "on_track");
           console.log(`[SMS] On-track heartbeat sent for ${id}`);
         }
       }
@@ -866,7 +927,7 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
     return r;
   }, [vehicles]);
 
-  return { vehicles: refreshed, alerts, loading, stats, error, globalConfig };
+  return { vehicles: refreshed, alerts, loading, stats, error };
 }
 
 

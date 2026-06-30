@@ -392,8 +392,22 @@ export function useVehicles(snappingRoute = YATRA_ROUTE, useSnapping = true) {
           }
         });
         
+        // Clean and map vehicle details keys to display IDs
+        const cleanedDetails = {};
+        Object.entries(data.vehicle_details || {}).forEach(([dbId, details]) => {
+          const displayId = (DEVICE_TO_DISPLAY_MAP[dbId] || dbId).trim();
+          cleanedDetails[displayId] = details;
+        });
+
+        // Ensure all registered vehicles from vehicle_details are in mapped
+        Object.keys(cleanedDetails).forEach((displayId) => {
+          if (!mapped[displayId]) {
+            mapped[displayId] = null;
+          }
+        });
+        
         setRawVehicles(mapped);
-        setVehicleDetails(data.vehicle_details || {});
+        setVehicleDetails(cleanedDetails);
         setLoading(false);
         setError(null);
       } catch (err) {

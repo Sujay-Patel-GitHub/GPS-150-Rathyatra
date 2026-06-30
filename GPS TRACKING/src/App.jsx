@@ -1,29 +1,7 @@
 // src/App.jsx
 // Root component — wires together Firebase data, map, sidebar, and detail panel.
 
-import { useState, useEffect, useMemo, useRef, Component } from "react";
-
-// ── Global Error Boundary ────────────────────────────────────────────────────
-class ErrorBoundary extends Component {
-  constructor(props) { super(props); this.state = { hasError: false, error: null, info: null }; }
-  static getDerivedStateFromError(error) { return { hasError: true, error }; }
-  componentDidCatch(error, info) { this.setState({ info }); console.error("[ErrorBoundary]", error, info); }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{ position:"fixed",inset:0,background:"#030712",color:"#f87171",fontFamily:"monospace",padding:"2rem",overflowY:"auto",zIndex:9999 }}>
-          <h1 style={{ fontSize:"1.5rem",marginBottom:"1rem" }}>⚠️ Tracking App Crashed</h1>
-          <p style={{ color:"#fbbf24",marginBottom:"0.5rem" }}>{String(this.state.error)}</p>
-          <pre style={{ background:"#111",padding:"1rem",borderRadius:"0.5rem",fontSize:"0.75rem",color:"#94a3b8",whiteSpace:"pre-wrap" }}>
-            {this.state.info?.componentStack}
-          </pre>
-          <button onClick={() => window.location.reload()} style={{ marginTop:"1rem",padding:"0.5rem 1rem",background:"#f97316",color:"#fff",border:"none",borderRadius:"0.5rem",cursor:"pointer" }}>Reload</button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useVehicles } from "./hooks/useVehicles";
 import { Sidebar } from "./components/Sidebar/Sidebar";
 import { MapView } from "./components/MapView/MapView";
@@ -33,19 +11,18 @@ import { YATRA_ROUTE, LANDMARKS, vehicleLabels } from "./lib/constants";
 import { haversine, fetchLiveDistanceRoute } from "./utils/routeSnap";
 
 export default function App() {
-  // Route state (starts empty, user selects manually on map)
-  const [roadRoute, setRoadRoute] = useState([]);
+  // Route drawn exactly on YATRA_ROUTE coordinates — no OSRM road snapping
+  const roadRoute = YATRA_ROUTE;
   const [useSnapping, setUseSnapping] = useState(true);
   const [isAndroidAuto, setIsAndroidAuto] = useState(false);
   const [mapRotationMode, setMapRotationMode] = useState("course-up"); // "course-up" or "north-up"
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [liveDistanceMeters, setLiveDistanceMeters] = useState(null);
-  const [truckDistanceRoute, setTruckDistanceRoute] = useState([]);
+  const [distanceToolEnabled, setDistanceToolEnabled] = useState(false);
   const [distanceSource, setDistanceSource] = useState("");
   const [distanceTarget, setDistanceTarget] = useState("");
   const [adminMode, setAdminMode] = useState(false);
 
-  const { vehicles: firebaseVehicles, alerts, loading, error, globalConfig } = useVehicles(roadRoute, useSnapping);
+  const { vehicles: firebaseVehicles, alerts, loading, error } = useVehicles(roadRoute, useSnapping);
   const firebaseVehiclesRef = useRef(firebaseVehicles);
   useEffect(() => {
     firebaseVehiclesRef.current = firebaseVehicles;
@@ -53,121 +30,115 @@ export default function App() {
 
   const [selectedId, setSelectedId] = useState(null);
   const [useCompass, setUseCompass] = useState(true);
+  const [showDetailPanel, setShowDetailPanel] = useState(true);
+  const [showSidebar, setShowSidebar] = useState(true);
 
   const [playbackMode, setPlaybackMode] = useState(false);
   const [playbackIndex, setPlaybackIndex] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState(2);
   const [playbackIsPlaying, setPlaybackIsPlaying] = useState(false);
-  const [recordings, setRecordings] = useState({});
-  const [selectedRecordingKey, setSelectedRecordingKey] = useState(""); // "vehicleId/sessionId"
+  const [playbackVehicleId, setPlaybackVehicleId] = useState("");
+  const [playbackDate, setPlaybackDate] = useState(() => {
+    // Current IST date
+    const d = new Date();
+    const ist = new Date(d.getTime() + 5.5 * 3600 * 1000);
+    return ist.toISOString().split("T")[0];
+  });
+  const [playbackStartTime, setPlaybackStartTime] = useState("");
+  const [playbackEndTime, setPlaybackEndTime] = useState("");
+  const [loadingPlayback, setLoadingPlayback] = useState(false);
+  const [playbackRoutePoints, setPlaybackRoutePoints] = useState([]);
+  const [totalRawPoints, setTotalRawPoints] = useState(0);
+  const [selectedRecordVehicleId, setSelectedRecordVehicleId] = useState("");
+  const [selectedRecordingKey, setSelectedRecordingKey] = useState(""); // Set to "mongo" when mongo playback loads
+
+  // Default playback vehicle ID once on entering playback mode
+  useEffect(() => {
+    if (playbackMode && !playbackVehicleId) {
+      if (selectedId) {
+        setPlaybackVehicleId(selectedId);
+      } else {
+        setPlaybackVehicleId("TRUCK_1");
+      }
+    }
+  }, [playbackMode]);
+
+  const loadMongoPlayback = async (vehicleId, dateStr, startTime, endTime) => {
+    if (!vehicleId || !dateStr) {
+      alert("Please select a vehicle and a date first.");
+      return;
+    }
+    setLoadingPlayback(true);
+    try {
+      let url = `/api/get_map_recordings_data?device_id=${encodeURIComponent(vehicleId)}&date=${encodeURIComponent(dateStr)}`;
+      if (startTime) url += `&start_time=${encodeURIComponent(startTime)}`;
+      if (endTime) url += `&end_time=${encodeURIComponent(endTime)}`;
+      
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.points && data.points.length > 0) {
+        setPlaybackRoutePoints(data.points);
+        setTotalRawPoints(data.total_raw || data.points.length);
+        setPlaybackIndex(0);
+        setSelectedRecordVehicleId(vehicleId);
+        setPlaybackIsPlaying(true);
+        setSelectedRecordingKey("mongo");
+      } else {
+        alert(`No GPS coordinates found for "${vehicleId}" in the selected range.`);
+        setPlaybackRoutePoints([]);
+        setTotalRawPoints(0);
+        setPlaybackIndex(0);
+        setPlaybackIsPlaying(false);
+        setSelectedRecordingKey("");
+      }
+    } catch (e) {
+      console.error("Failed to load playback data:", e);
+      alert("Connection error: Failed to fetch playback data from MongoDB.");
+    } finally {
+      setLoadingPlayback(false);
+    }
+  };
+
+  // Auto-load playback data when vehicle, date, or times change
+  useEffect(() => {
+    if (playbackMode && playbackVehicleId && playbackDate) {
+      loadMongoPlayback(playbackVehicleId, playbackDate, playbackStartTime, playbackEndTime);
+    }
+  }, [playbackMode, playbackVehicleId, playbackDate, playbackStartTime, playbackEndTime]);
 
   // Poll persistent logs from MongoDB
   const [logs, setLogs] = useState({});
   useEffect(() => {
-    let active = true;
     const fetchLogs = async () => {
       try {
         const res = await fetch("/api/v1/tracking/logs");
-        if (res.ok) {
-          const data = await res.json();
-          if (active) setLogs(data || {});
-        }
+        const data = await res.json();
+        setLogs(data || {});
       } catch (e) {
         console.error("Failed to fetch logs:", e);
       }
     };
     fetchLogs();
-    const interval = setInterval(fetchLogs, 2000);
-    return () => {
-      active = false;
-      clearInterval(interval);
-    };
+    const interval = setInterval(fetchLogs, 10000);
+    return () => clearInterval(interval);
   }, []);
-
-  const availableDates = useMemo(() => {
-    const list = [];
-    for (let i = 0; i < 14; i++) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split("T")[0]; // YYYY-MM-DD
-      list.push(dateStr);
-    }
-    return list;
-  }, []);
-
-  // Update recordings list when selected vehicle changes
+  // Fetch full device list from MongoDB for playback selection
+  const [deviceList, setDeviceList] = useState([]);
   useEffect(() => {
-    if (!selectedId) return;
-    
-    // Initialize sessions for selectedId with empty points
-    const sessions = {};
-    availableDates.forEach(date => {
-      sessions[date] = {
-        points: [],
-        pointCount: "Select to load"
-      };
-    });
-    
-    setRecordings(prev => ({
-      ...prev,
-      [selectedId]: sessions
-    }));
-  }, [selectedId, availableDates]);
-
-  // Lazy load points when a specific recording date/session is selected
-  useEffect(() => {
-    if (!selectedRecordVehicleId || !selectedRecordSessionId) return;
-    
-    // Check if we already have the points loaded
-    const session = recordings[selectedRecordVehicleId]?.[selectedRecordSessionId];
-    if (session && session.points && session.points.length > 0) return;
-    
-    let active = true;
-    const loadSessionPoints = async () => {
+    const fetchDevices = async () => {
       try {
-        const res = await fetch(`/api/get_map_recordings_data?device_id=${selectedRecordVehicleId}&date=${selectedRecordSessionId}`);
-        if (res.ok) {
-          const pts = await res.json();
-          if (!active) return;
-          const formattedPts = pts.map(p => ({
-            lat: p.lat,
-            lng: p.lng,
-            speed: p.speed,
-            timestamp: p.timestamp
-          }));
-          
-          setRecordings(prev => ({
-            ...prev,
-            [selectedRecordVehicleId]: {
-              ...(prev[selectedRecordVehicleId] || {}),
-              [selectedRecordSessionId]: {
-                points: formattedPts,
-                pointCount: formattedPts.length
-              }
-            }
-          }));
+        const res = await fetch("/api/get_devices_list");
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setDeviceList(data);
         }
-      } catch (err) {
-        console.error("Failed to load recording points:", err);
+      } catch (e) {
+        console.error("Failed to fetch device list:", e);
       }
     };
-    loadSessionPoints();
-    return () => { active = false; };
-  }, [selectedRecordVehicleId, selectedRecordSessionId]);
-  // Extract selected recording details
-  const [selectedRecordVehicleId, selectedRecordSessionId] = useMemo(() => {
-    if (!selectedRecordingKey || selectedRecordingKey === "yatra") return [null, null];
-    const parts = selectedRecordingKey.split("/");
-    if (parts.length === 2) return [parts[0], parts[1]];
-    return [null, null];
-  }, [selectedRecordingKey]);
+    fetchDevices();
+  }, []);
 
-  // Selected simulation path points (loaded from recording)
-  const playbackRoutePoints = useMemo(() => {
-    if (!selectedRecordVehicleId || !selectedRecordSessionId) return [];
-    const session = recordings[selectedRecordVehicleId]?.[selectedRecordSessionId];
-    return session?.points || [];
-  }, [selectedRecordVehicleId, selectedRecordSessionId, recordings]);
 
   const [hidePlaybackTrail, setHidePlaybackTrail] = useState(false);
 
@@ -190,33 +161,7 @@ export default function App() {
     }
   }, [playbackMode, playbackIsPlaying, playbackIndex, playbackRoutePoints.length]);
 
-  // Set default selectedRecordingKey to the selected vehicle's first recording if available,
-  // or fallback to the first recording in the entire database.
-  useEffect(() => {
-    if (playbackMode) {
-      const targetVehicleId = selectedId || Object.keys(recordings)[0];
-      const vehicleRecordings = recordings[targetVehicleId];
 
-      if (vehicleRecordings && Object.keys(vehicleRecordings).length > 0) {
-        const firstSession = Object.keys(vehicleRecordings)[0];
-        const key = `${targetVehicleId}/${firstSession}`;
-        if (selectedRecordingKey !== key && (!selectedRecordingKey || !selectedRecordingKey.startsWith(`${targetVehicleId}/`))) {
-          setSelectedRecordingKey(key);
-          setPlaybackIndex(0);
-        }
-      } else if (!selectedRecordingKey || selectedRecordingKey === "yatra" || selectedRecordingKey === "") {
-        const vids = Object.keys(recordings);
-        if (vids.length > 0) {
-          const firstVid = vids[0];
-          const sids = Object.keys(recordings[firstVid]);
-          if (sids.length > 0) {
-            setSelectedRecordingKey(`${firstVid}/${sids[0]}`);
-            setPlaybackIndex(0);
-          }
-        }
-      }
-    }
-  }, [playbackMode, recordings, selectedId, selectedRecordingKey]);
 
   // Reset index when path changes
   useEffect(() => {
@@ -268,8 +213,11 @@ export default function App() {
       }
 
       mocked[vid] = {
+        display_name: vehicleLabels[vid] || vid,
+        icon: "🚛",
         ...firebaseVehicles[vid],
         key: vid,
+        id: vid,
         lat: currentPoint.lat,
         lng: currentPoint.lng,
         rawLat: currentPoint.lat,
@@ -292,6 +240,40 @@ export default function App() {
     }
     return mocked;
   }, [firebaseVehicles, playbackMode, playbackRoutePoints, playbackIndex, selectedRecordVehicleId, playbackIsPlaying, hidePlaybackTrail]);
+
+  const [filterTab, setFilterTab] = useState("registered");
+
+  const filteredVehicles = useMemo(() => {
+    const result = {};
+    Object.entries(vehicles).forEach(([id, v]) => {
+      const isReg = v.is_registered;
+      if (filterTab === "all") {
+        result[id] = v;
+      } else if (filterTab === "registered" && isReg) {
+        result[id] = v;
+      } else if (filterTab === "unregistered" && !isReg) {
+        result[id] = v;
+      }
+    });
+    return result;
+  }, [vehicles, filterTab]);
+
+  const liveDistanceMeters = useMemo(() => {
+    if (!distanceToolEnabled || !distanceSource || !distanceTarget) return null;
+    const v1 = vehicles?.[distanceSource];
+    const v2 = vehicles?.[distanceTarget];
+    if (!v1 || !v2) return null;
+
+    const lat1 = typeof v1.rawLat === "number" ? v1.rawLat : v1.lat;
+    const lng1 = typeof v1.rawLng === "number" ? v1.rawLng : v1.lng;
+    const lat2 = typeof v2.rawLat === "number" ? v2.rawLat : v2.lat;
+    const lng2 = typeof v2.rawLng === "number" ? v2.rawLng : v2.lng;
+
+    if (typeof lat1 !== "number" || typeof lng1 !== "number" || typeof lat2 !== "number" || typeof lng2 !== "number") {
+      return null;
+    }
+    return haversine(lat1, lng1, lat2, lng2);
+  }, [distanceToolEnabled, distanceSource, distanceTarget, vehicles]);
 
   // Procession Analytics HUD calculations
   const processionAnalytics = useMemo(() => {
@@ -602,21 +584,6 @@ export default function App() {
 
   if (loading) return <LoadingScreen />;
 
-  if (error) {
-    return (
-      <div className="fixed inset-0 bg-gray-950 flex items-center justify-center text-center p-6">
-        <div>
-          <p className="text-4xl mb-4">⚠️</p>
-          <h2 className="text-xl font-bold text-red-400 mb-2">Firebase Connection Error</h2>
-          <p className="text-white/50 text-sm max-w-sm">{error}</p>
-          <p className="text-white/30 text-xs mt-3">
-            Check your .env.local Firebase configuration
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   // Helper to compute Turn-by-Turn Guidance instructions for Android Auto HUD
   const getGuidance = (vehicle) => {
     if (!vehicle) return { instruction: "Searching...", sub: "Wait for GPS lock", icon: "🗺️" };
@@ -666,8 +633,7 @@ export default function App() {
             selectedId={selectedId}
             onVehicleSelect={handleSelect}
             yatraRoute={roadRoute}
-            rawYatraRoute={roadRoute}
-            onRouteGenerate={setRoadRoute}
+            rawYatraRoute={YATRA_ROUTE}
             useSnapping={useSnapping}
             onToggleSnapping={setUseSnapping}
             useCompass={useCompass}
@@ -802,39 +768,43 @@ export default function App() {
   }
 
   return (
-    <ErrorBoundary>
     <div className="fixed inset-0 flex bg-gray-950 overflow-hidden">
       {/* Sidebar — vehicle list */}
-      <div className="w-64 shrink-0 flex flex-col">
+      <div className={`shrink-0 flex flex-col border-r border-white/10 bg-gray-900 transition-all duration-300 ${
+        showSidebar ? "w-64" : "w-0 overflow-hidden border-r-0"
+      }`}>
         <Sidebar
-          vehicles={vehicles}
+          vehicles={filteredVehicles}
           selectedId={selectedId}
           onSelect={handleSelect}
-          liveDistanceMeters={liveDistanceMeters}
-          distanceSource={distanceSource}
-          onDistanceSourceChange={setDistanceSource}
-          distanceTarget={distanceTarget}
-          onDistanceTargetChange={setDistanceTarget}
           adminMode={adminMode}
           onToggleAdminMode={setAdminMode}
           frontBackRoutes={frontBackRoutes}
           orderedTrucks={orderedTrucks}
+          filterTab={filterTab}
+          onFilterTabChange={setFilterTab}
         />
       </div>
 
       {/* Main map area */}
       <div className="flex-1 flex flex-col relative">
         <MapView
-          vehicles={vehicles}
+          vehicles={filteredVehicles}
           selectedId={selectedId}
           onVehicleSelect={handleSelect}
           yatraRoute={roadRoute}
-          rawYatraRoute={roadRoute}
-          onRouteGenerate={setRoadRoute}
+          rawYatraRoute={YATRA_ROUTE}
           useSnapping={useSnapping}
           onToggleSnapping={setUseSnapping}
           useCompass={useCompass}
           onToggleCompass={setUseCompass}
+          distanceToolEnabled={distanceToolEnabled}
+          onDistanceToolEnabledChange={setDistanceToolEnabled}
+          distanceSource={distanceSource}
+          onDistanceSourceChange={setDistanceSource}
+          distanceTarget={distanceTarget}
+          onDistanceTargetChange={setDistanceTarget}
+          liveDistanceMeters={liveDistanceMeters}
           isAndroidAuto={false}
           onToggleAndroidAuto={setIsAndroidAuto}
           frontBackRoutes={frontBackRoutes}
@@ -847,16 +817,51 @@ export default function App() {
           playbackSpeed={playbackSpeed}
           onPlaybackSpeedChange={setPlaybackSpeed}
           processionAnalytics={processionAnalytics}
-          recordings={recordings}
+          playbackVehicleId={playbackVehicleId}
+          onPlaybackVehicleIdChange={setPlaybackVehicleId}
+          playbackDate={playbackDate}
+          onPlaybackDateChange={setPlaybackDate}
+          playbackStartTime={playbackStartTime}
+          onPlaybackStartTimeChange={setPlaybackStartTime}
+          playbackEndTime={playbackEndTime}
+          onPlaybackEndTimeChange={setPlaybackEndTime}
+          loadingPlayback={loadingPlayback}
+          onLoadPlayback={loadMongoPlayback}
           selectedRecordingKey={selectedRecordingKey}
           onSelectedRecordingKeyChange={setSelectedRecordingKey}
-          playbackRoutePoints={playbackRoutePoints}
           selectedRecordVehicleId={selectedRecordVehicleId}
+          deviceList={deviceList}
+          totalRawPoints={totalRawPoints}
+          playbackRoutePoints={playbackRoutePoints}
         />
+        
+        {/* Toggle Left Sidebar Button */}
+        <button
+          onClick={() => setShowSidebar(p => !p)}
+          className="absolute top-4 left-4 z-[1000] p-2.5 bg-gray-900/90 hover:bg-gray-800/90 border border-white/10 text-white rounded-xl shadow-2xl transition-all cursor-pointer flex items-center justify-center active:scale-95"
+          title={showSidebar ? "Hide Sidebar" : "Show Sidebar"}
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+
+        {/* Toggle Right Sidebar Button */}
+        <button
+          onClick={() => setShowDetailPanel(p => !p)}
+          className="absolute top-4 right-4 z-[1000] p-2.5 bg-gray-900/90 hover:bg-gray-800/90 border border-white/10 text-white rounded-xl shadow-2xl transition-all cursor-pointer flex items-center justify-center active:scale-95"
+          title={showDetailPanel ? "Hide Details Panel" : "Show Details Panel"}
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
       </div>
 
       {/* Detail panel */}
-      <div className="w-72 shrink-0 flex flex-col">
+      <div className={`shrink-0 flex flex-col border-l border-white/10 bg-gray-900 transition-all duration-300 ${
+        showDetailPanel ? "w-72" : "w-0 overflow-hidden border-l-0"
+      }`}>
         <DetailPanel 
           vehicleId={selectedId} 
           data={selectedVehicle} 
@@ -864,11 +869,9 @@ export default function App() {
           onToggleCompass={setUseCompass}
           adminMode={adminMode}
           logs={logs}
-          globalConfig={globalConfig}
           onSelectVehicle={handleSelect}
         />
       </div>
     </div>
-    </ErrorBoundary>
   );
 }
