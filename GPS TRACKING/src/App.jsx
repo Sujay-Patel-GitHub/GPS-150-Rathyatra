@@ -851,7 +851,7 @@ export default function App() {
         {/* Toggle Left Sidebar Button */}
         <button
           onClick={() => setShowSidebar(p => !p)}
-          className="absolute top-4 left-4 z-[1000] p-2.5 bg-gray-900/90 hover:bg-gray-800/90 border border-white/10 text-white rounded-xl shadow-2xl transition-all cursor-pointer flex items-center justify-center active:scale-95"
+          className="absolute top-24 left-4 z-[1000] p-2.5 bg-gray-900/90 hover:bg-gray-800/90 border border-white/10 text-white rounded-xl shadow-2xl transition-all cursor-pointer flex items-center justify-center active:scale-95"
           title={showSidebar ? "Hide Sidebar" : "Show Sidebar"}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -862,7 +862,7 @@ export default function App() {
         {/* Toggle Right Sidebar Button */}
         <button
           onClick={() => setShowDetailPanel(p => !p)}
-          className="absolute top-4 right-4 z-[1000] p-2.5 bg-gray-900/90 hover:bg-gray-800/90 border border-white/10 text-white rounded-xl shadow-2xl transition-all cursor-pointer flex items-center justify-center active:scale-95"
+          className="absolute top-16 right-4 z-[1000] p-2.5 bg-gray-900/90 hover:bg-gray-800/90 border border-white/10 text-white rounded-xl shadow-2xl transition-all cursor-pointer flex items-center justify-center active:scale-95"
           title={showDetailPanel ? "Hide Details Panel" : "Show Details Panel"}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
