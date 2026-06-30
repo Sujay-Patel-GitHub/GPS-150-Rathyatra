@@ -809,13 +809,7 @@
 
                 <div style="flex:1;"></div>
 
-                <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600; color: #4b5563; margin-right: 12px; cursor: pointer; user-select: none;">
-                    <input type="checkbox" id="snapToRoadChk" onchange="toggleSnapToRoad()" style="width: 14px; height: 14px; cursor: pointer; accent-color: #f97316;">
-                    <span>Snap to Road</span>
-                </label>
-                <button class="action-btn" onclick="showAllVehicles()">
-                    <i class="fas fa-expand-arrows-alt"></i> Fit Map
-                </button>
+
                 <button class="action-btn" onclick="refreshLocations()">
                     <i class="fas fa-sync-alt"></i> Refresh
                 </button>
@@ -849,78 +843,12 @@
                     </div>
                 </div>
                 
-                <!-- Route Replay Bottom Player Bar -->
-                <div id="playbackBar" class="playback-bar">
-                    <div class="playback-bar-content" id="playbackBarDefault">
-                        <span class="playback-title"><i class="fas fa-history"></i> Route Replay Player</span>
-                        <button id="playbackStartBtn" class="playback-start-btn" onclick="openPlaybackModal()">Start Playback</button>
-                    </div>
-                    <div class="active-replay-controls hidden" id="playbackBarActive">
-                        <button class="replay-control-btn" id="replayPlayPauseBtn" onclick="toggleReplayPlayPause()">
-                            <i class="fas fa-play"></i>
-                        </button>
-                        <span id="replayCurrentTime" class="replay-time-display">00:00:00</span>
-                        <input type="range" id="replayTimeline" class="replay-timeline" min="0" max="100" value="0" oninput="seekReplay(this.value)">
-                        <span id="replayTotalTime" class="replay-time-display">00:00:00</span>
-                        <select id="replaySpeedSelect" class="replay-speed-select" onchange="changeReplaySpeed(this.value)">
-                            <option value="1">1x</option>
-                            <option value="5">5x</option>
-                            <option value="10" selected>10x</option>
-                            <option value="30">30x</option>
-                            <option value="60">60x</option>
-                            <option value="120">120x</option>
-                        </select>
-                        <button class="replay-close-btn" onclick="exitReplayMode()" title="Exit Replay">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                </div>
+
             </div>
         </div>
     </div>
 
-    <!-- Replay Settings Pop-up Modal -->
-    <div id="playbackModal" class="playback-modal hidden">
-        <div class="playback-modal-content">
-            <div class="playback-modal-header">
-                <h3><i class="fas fa-sliders-h"></i> Replay Settings</h3>
-                <button class="close-modal-btn" onclick="closePlaybackModal()">&times;</button>
-            </div>
-            <div class="playback-modal-body">
-                <!-- Device Selection -->
-                <div class="input-group">
-                    <label>Select Devices:</label>
-                    <div class="device-checkbox-container" id="playbackDeviceList">
-                        <!-- Dynamically populated checkboxes -->
-                    </div>
-                </div>
-                <!-- Date Selection -->
-                <div class="input-row">
-                    <div class="input-group flex-1">
-                        <label for="playbackDate">Date:</label>
-                        <input type="date" id="playbackDate" class="modern-input">
-                    </div>
-                </div>
-                <!-- Time range selection -->
-                <div class="input-row">
-                    <div class="input-group flex-1">
-                        <label for="playbackStartTime">Start Time:</label>
-                        <input type="time" id="playbackStartTime" class="modern-input" value="00:00">
-                    </div>
-                    <div class="input-group flex-1">
-                        <label for="playbackEndTime">End Time:</label>
-                        <input type="time" id="playbackEndTime" class="modern-input" value="23:59">
-                    </div>
-                </div>
-                <!-- Actions -->
-                <div class="modal-actions">
-                    <button id="loadHistoryBtn" class="modern-btn primary" onclick="loadReplayHistory()">
-                        <i class="fas fa-download"></i> Load Route History
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+
 
     <!-- Data Injection -->
     <script id="vehicles-data" type="application/json">
