@@ -1634,6 +1634,7 @@ def get_processed_vehicles_list():
 
         vehicles_list.append({
             "device_id": device_id,
+            "is_registered": True,
             "display_name": vehicle_data.get("display_name", device_id),
             "record_config": vehicle_data.get("record_config"),
             "calibrate_pending": vehicle_data.get("calibrate_pending"),
@@ -1682,6 +1683,7 @@ def get_processed_vehicles_list():
             if tid:
                 all_esp_tids.add(tid)
                 
+        registered_tids = set(doc.get("truck_id").upper() for doc in gps_db["registered_trucks"].find({}, {"truck_id":1}) if doc.get("truck_id"))
         for tid in all_esp_tids:
             if not tid or tid in existing_ids:
                 continue
@@ -1699,6 +1701,7 @@ def get_processed_vehicles_list():
             vehicle_data = vehicles_dict.get(tid.strip(), {})
             vehicles_list.append({
                 "device_id": tid,
+                "is_registered": tid.upper() in registered_tids,
                 "display_name": vehicle_data.get("display_name", tid),
                 "record_config": vehicle_data.get("record_config"),
                 "calibrate_pending": vehicle_data.get("calibrate_pending"),

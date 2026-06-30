@@ -951,7 +951,7 @@
         L.control.layers({ "Streets": googleStreets, "Satellite": googleHybrid }).addTo(map);
 
         // --- Data & State ---
-        let vehicles = JSON.parse(document.getElementById('vehicles-data').textContent);
+        let vehicles = JSON.parse(document.getElementById('vehicles-data').textContent).filter(v => v.is_registered);
         const assignMap = JSON.parse(document.getElementById('assign-data').textContent);
         let markers = {};
         let snapToRoad = false;
@@ -989,6 +989,18 @@
             const recordingHtml = v.is_recording ? `<span class="pulse-dot" title="Recording"></span>` : '';
             const powerOffHtml = ''; // Moved below clock
 
+            const info = assignMap[v.device_id] || {};
+            const role = info.role || '';
+            const roleInfo = {
+                'SUPER_ADMIN': { name: 'Super Admin', icon: 'fa-user-shield' },
+                'AKHADA_USER': { name: 'Akhada', icon: 'fa-place-of-worship' },
+                'RATH_USER': { name: 'Rath', icon: 'fa-dharmachakra' },
+                'MAINTENANCE_USER': { name: 'Maintenance', icon: 'fa-tools' },
+                'POLICE_STATION': { name: 'Police Station', icon: 'fa-shield-alt' },
+                'EXTRA_VEHICLE': { name: 'Extra Vehicle', icon: 'fa-truck-pickup' }
+            };
+            const rInfo = roleInfo[role.toUpperCase()] || { name: 'Unassigned', icon: 'fa-tag' };
+
             // Build card HTML
             const div = document.createElement('div');
             div.className = 'vehicle-card';
@@ -1002,7 +1014,7 @@
                     </div>
                 </div>
                 <div class="vc-details">
-                    <div><i class="fas fa-warehouse"></i> ${v.godown_manager || 'No Godown'}</div>
+                    <div><i class="fas ${rInfo.icon}"></i> ${rInfo.name}</div>
                     <div style="margin-top:2px; display:flex; justify-content:space-between; align-items: center;">
                         <div style="display: flex; flex-direction: column; gap: 2px;">
                             <span><i class="fas fa-clock"></i> ${v.last_updated_time || 'N/A'}</span>
@@ -1145,7 +1157,17 @@
                 const v = vehicles[i];
                 if (!v.lat || !v.lng) continue;
                 const snapped = await getFinalSnappedPosition(v.lat, v.lng);
-                const role = (assignMap[v.device_id] || {}).role || '';
+                const info = assignMap[v.device_id] || {};
+                const role = info.role || '';
+                const roleInfo = {
+                    'SUPER_ADMIN': { name: 'Super Admin', icon: 'fa-user-shield' },
+                    'AKHADA_USER': { name: 'Akhada', icon: 'fa-place-of-worship' },
+                    'RATH_USER': { name: 'Rath', icon: 'fa-dharmachakra' },
+                    'MAINTENANCE_USER': { name: 'Maintenance', icon: 'fa-tools' },
+                    'POLICE_STATION': { name: 'Police Station', icon: 'fa-shield-alt' },
+                    'EXTRA_VEHICLE': { name: 'Extra Vehicle', icon: 'fa-truck-pickup' }
+                };
+                const rInfo = roleInfo[role.toUpperCase()] || { name: 'Unassigned', icon: 'fa-tag' };
                 const marker = L.marker([snapped.lat, snapped.lng], { icon: makeIcon(role) }).addTo(map);
 
                 const popupContent = `
@@ -1154,7 +1176,7 @@
                             ${v.device_id}
                         </h4>
                         <div style="font-size:0.85rem; color:#4b5563; line-height:1.6;">
-                            <strong>Godown:</strong> ${v.godown_manager || 'N/A'}<br>
+                            <strong>Assignment:</strong> ${rInfo.name}<br>
                             <strong>Status:</strong> ${v.has_gps ? '<span style="color:#059669; font-weight:600;">Online</span>' : 'Offline'}<br>
                             <strong>Speed:</strong> ${v.speed || 0} km/h<br>
                             <div style="margin-top:8px;">
@@ -1180,7 +1202,7 @@
                         const activeCard = document.querySelector('.vehicle-card.active');
                         const activeId = activeCard ? activeCard.getAttribute('data-id') : null;
 
-                        vehicles = data;
+                        vehicles = data.filter(v => v.is_registered);
 
                         // Update markers on the map
                         for (let i = 0; i < vehicles.length; i++) {
@@ -1188,7 +1210,17 @@
                             if (!v.lat || !v.lng) continue;
 
                             const snapped = await getFinalSnappedPosition(v.lat, v.lng);
-                            const role = (assignMap[v.device_id] || {}).role || '';
+                            const info = assignMap[v.device_id] || {};
+                            const role = info.role || '';
+                            const roleInfo = {
+                                'SUPER_ADMIN': { name: 'Super Admin', icon: 'fa-user-shield' },
+                                'AKHADA_USER': { name: 'Akhada', icon: 'fa-place-of-worship' },
+                                'RATH_USER': { name: 'Rath', icon: 'fa-dharmachakra' },
+                                'MAINTENANCE_USER': { name: 'Maintenance', icon: 'fa-tools' },
+                                'POLICE_STATION': { name: 'Police Station', icon: 'fa-shield-alt' },
+                                'EXTRA_VEHICLE': { name: 'Extra Vehicle', icon: 'fa-truck-pickup' }
+                            };
+                            const rInfo = roleInfo[role.toUpperCase()] || { name: 'Unassigned', icon: 'fa-tag' };
 
                             const popupContent = `
                                 <div style="min-width: 200px; font-family: 'Poppins', sans-serif;">
@@ -1196,7 +1228,7 @@
                                         ${v.device_id}
                                     </h4>
                                     <div style="font-size:0.85rem; color:#4b5563; line-height:1.6;">
-                                        <strong>Godown:</strong> ${v.godown_manager || 'N/A'}<br>
+                                        <strong>Assignment:</strong> ${rInfo.name}<br>
                                         <strong>Status:</strong> ${v.has_gps ? '<span style="color:#059669; font-weight:600;">Online</span>' : 'Offline'}<br>
                                         <strong>Speed:</strong> ${v.speed || 0} km/h<br>
                                         <div style="margin-top:8px;">
