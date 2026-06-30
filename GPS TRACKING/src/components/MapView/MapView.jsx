@@ -118,6 +118,17 @@ function MapController({ centerTarget, vehicles }) {
   return null;
 }
 
+function MapResizeTrigger({ showSidebar, showDetailPanel }) {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [showSidebar, showDetailPanel, map]);
+  return null;
+}
+
 // Rotates the map pane to support Course Up mode (similar to Android Auto navigation)
 function AndroidAutoMapRotator({ selectedId, vehicles, enabled }) {
   const map = useMap();
@@ -488,6 +499,8 @@ export function MapView({
   selectedRecordVehicleId = null,
   totalRawPoints = 0,
   deviceList = [],
+  showSidebar = true,
+  showDetailPanel = true,
 }) {
   const vehicleIds  = Object.keys(vehicles);
   
@@ -905,6 +918,7 @@ export function MapView({
         </LayersControl>
 
         <MapController vehicles={vehicles} centerTarget={centerTarget} />
+        <MapResizeTrigger showSidebar={showSidebar} showDetailPanel={showDetailPanel} />
 
         {/* ── GPS Click Inspector ─────────────────────────────────────── */}
         <MapClickInspector
