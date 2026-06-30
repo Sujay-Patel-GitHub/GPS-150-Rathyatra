@@ -430,6 +430,20 @@
                     <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#f97316;">Operator Details</div>
                     <div id="detailTitle" style="font-size:0.95rem;font-weight:700;color:#111827;margin-top:2px;"></div>
                 </div>
+                <div style="display:flex;gap:8px;align-items:center;margin-left:auto;margin-right:12px;">
+                    <button id="editAssignBtn" onclick="toggleAssignEdit(true)"
+                        style="background: white; border: 1px solid #d1d5db; color: #374151; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s; display: none;">
+                        <i class="fas fa-edit" style="margin-right: 4px;"></i> Edit
+                    </button>
+                    <button id="saveAssignBtn" onclick="saveAssignChanges()"
+                        style="background: #2563eb; border: none; color: white; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s; display: none;">
+                        <i class="fas fa-save" style="margin-right: 4px;"></i> Save
+                    </button>
+                    <button id="cancelAssignBtn" onclick="toggleAssignEdit(false)"
+                        style="background: #ef4444; border: none; color: white; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s; display: none;">
+                        <i class="fas fa-times" style="margin-right: 4px;"></i> Cancel
+                    </button>
+                </div>
                 <button onclick="closeDetails()" style="background:none;border:none;font-size:1.3rem;color:#9ca3af;cursor:pointer;line-height:1;">×</button>
             </div>
             <div id="detailBody" style="padding:18px 22px 22px;"></div>
@@ -903,67 +917,183 @@
         }
 
         let _currentTruckId = '';
+        let currentAssignData = null;
 
         async function viewAssignDetails(truckId, role) {
             _currentTruckId = truckId;
+            _pwLoaded = false; // Reset password loaded flag
             document.getElementById('detailsModal').style.display = "flex";
             document.getElementById('detailTitle').innerText = role + ' — ' + truckId;
             document.getElementById('detailBody').innerHTML = '<div style="text-align:center;padding:30px;color:#9ca3af;"><i class="fas fa-spinner fa-spin" style="font-size:1.5rem;"></i></div>';
+            
+            // Hide edit buttons initially until loaded
+            document.getElementById('editAssignBtn').style.display = 'none';
+            document.getElementById('saveAssignBtn').style.display = 'none';
+            document.getElementById('cancelAssignBtn').style.display = 'none';
+
             const res  = await fetch('/api/assign_device/' + encodeURIComponent(truckId));
             const data = await res.json();
             if (!data.ok) {
                 document.getElementById('detailBody').innerHTML = '<p style="color:#dc2626;text-align:center;padding:20px;">Failed to load details.</p>';
                 return;
             }
-            const d = data.doc;
-            const row = (icon, lbl, val) => val ? `
-                <div style="display:flex;align-items:flex-start;gap:12px;padding:10px;background:#f9fafb;border-radius:8px;margin-bottom:8px;">
-                    <div style="width:32px;height:32px;background:#fff7ed;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                        <i class="fas ${icon}" style="color:#f97316;font-size:0.78rem;"></i>
-                    </div>
-                    <div>
-                        <div style="font-size:0.67rem;color:#9ca3af;margin-bottom:2px;text-transform:uppercase;letter-spacing:.06em;">${lbl}</div>
-                        <div style="font-size:0.88rem;color:#111827;font-weight:600;word-break:break-all;">${val}</div>
-                    </div>
-                </div>` : '';
-            let html = row('fa-truck',        'Truck ID',           d.truck_id)
-                     + row('fa-user',         'Username',           d.username)
-                     + row('fa-tag',          'Role',               d.role)
-                     + row('fa-calendar',     'Assigned At',        d.assigned_at ? d.assigned_at.slice(0,19) : '')
-                     + row('fa-user-shield',  'Officer in Charge',  d.officer_pi)
-                     + row('fa-phone',        'PI Contact',         d.pi_contact)
-                     + row('fa-building',     'Police Station',     d.police_station)
-                     + row('fa-id-card',      'Vehicle Plate',      d.vehicle_plate)
-                     + row('fa-id-badge',     'Driver Name',        d.driver_name)
-                     + row('fa-mobile-alt',   'Driver Mobile',      d.driver_mobile)
-                     + row('fa-hard-hat',     'Contractor Name',    d.contractor_name)
-                     + row('fa-phone-alt',    'Contractor Mobile',  d.contractor_mobile)
-                     + row('fa-video',        'Front RTMP',         d.front_rtmp)
-                     + row('fa-video',        'Rear RTMP',          d.rear_rtmp);
+            currentAssignData = data.doc;
+            
+            // Show Edit button
+            document.getElementById('editAssignBtn').style.display = 'block';
+            
+            renderAssignDetails(currentAssignData, false);
+        }
 
-            // Password section
-            html += `<div style="margin-top:14px;border-top:1px solid #f1f5f9;padding-top:14px;">
-                <div style="font-size:0.72rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Password</div>
-                <div style="display:flex;gap:8px;margin-bottom:10px;">
-                    <input id="pwDisplay" type="password" readonly value="" placeholder="••••••••"
-                        style="flex:1;padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:0.88rem;background:#f9fafb;outline:none;">
-                    <button onclick="toggleShowPw('${truckId}')" id="btnShowPw"
-                        style="padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;cursor:pointer;font-size:0.8rem;color:#6b7280;white-space:nowrap;">
-                        <i class="fas fa-eye"></i> Show
-                    </button>
-                </div>
-                <div style="display:flex;gap:8px;align-items:center;">
-                    <input id="pwNew" type="password" placeholder="New password"
-                        style="flex:1;padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:0.88rem;outline:none;">
-                    <button onclick="changePw('${truckId}')"
-                        style="padding:8px 14px;background:#f97316;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:0.82rem;font-weight:600;white-space:nowrap;">
-                        <i class="fas fa-key"></i> Change
-                    </button>
-                </div>
-                <div id="pwMsg" style="font-size:0.78rem;margin-top:6px;"></div>
-            </div>`;
+        function renderAssignDetails(d, isEditMode) {
+            const row = (icon, lbl, key, val, type="text") => {
+                if (isEditMode) {
+                    if (key === 'truck_id') {
+                        return `
+                            <div style="display:flex;align-items:flex-start;gap:12px;padding:10px;background:#f9fafb;border-radius:8px;margin-bottom:8px;">
+                                <div style="width:32px;height:32px;background:#fff7ed;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas ${icon}" style="color:#f97316;font-size:0.78rem;"></i>
+                                </div>
+                                <div style="flex:1;">
+                                    <div style="font-size:0.67rem;color:#9ca3af;margin-bottom:2px;text-transform:uppercase;letter-spacing:.06em;">${lbl}</div>
+                                    <div style="font-size:0.88rem;color:#6b7280;font-weight:600;">${val || ''} <span style="font-size:0.7rem;font-weight:normal;color:#9ca3af;">(Read-only)</span></div>
+                                </div>
+                            </div>`;
+                    }
+                    if (key === 'role') {
+                        const roles = ["SUPER_ADMIN", "RATH_USER", "AKHADA_USER", "TRUCK_USER", "MAINTENANCE_USER"];
+                        const options = roles.map(r => `<option value="${r}" ${r === val ? 'selected' : ''}>${r}</option>`).join('');
+                        return `
+                            <div style="display:flex;align-items:flex-start;gap:12px;padding:10px;background:#f9fafb;border-radius:8px;margin-bottom:8px;">
+                                <div style="width:32px;height:32px;background:#fff7ed;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas ${icon}" style="color:#f97316;font-size:0.78rem;"></i>
+                                </div>
+                                <div style="flex:1;">
+                                    <div style="font-size:0.67rem;color:#9ca3af;margin-bottom:2px;text-transform:uppercase;letter-spacing:.06em;">${lbl}</div>
+                                    <select id="edit-assign-${key}" style="width:100%;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:0.85rem;outline:none;background:#fff;color:#111827;font-weight:600;">
+                                        ${options}
+                                    </select>
+                                </div>
+                            </div>`;
+                    }
+                    return `
+                        <div style="display:flex;align-items:flex-start;gap:12px;padding:10px;background:#f9fafb;border-radius:8px;margin-bottom:8px;">
+                            <div style="width:32px;height:32px;background:#fff7ed;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas ${icon}" style="color:#f97316;font-size:0.78rem;"></i>
+                            </div>
+                            <div style="flex:1;">
+                                <div style="font-size:0.67rem;color:#9ca3af;margin-bottom:2px;text-transform:uppercase;letter-spacing:.06em;">${lbl}</div>
+                                <input id="edit-assign-${key}" type="${type}" value="${val || ''}" 
+                                    style="width:100%;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:0.88rem;outline:none;color:#111827;font-weight:600;background:#fff;">
+                            </div>
+                        </div>`;
+                } else {
+                    return val ? `
+                        <div style="display:flex;align-items:flex-start;gap:12px;padding:10px;background:#f9fafb;border-radius:8px;margin-bottom:8px;">
+                            <div style="width:32px;height:32px;background:#fff7ed;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas ${icon}" style="color:#f97316;font-size:0.78rem;"></i>
+                            </div>
+                            <div>
+                                <div style="font-size:0.67rem;color:#9ca3af;margin-bottom:2px;text-transform:uppercase;letter-spacing:.06em;">${lbl}</div>
+                                <div style="font-size:0.88rem;color:#111827;font-weight:600;word-break:break-all;">${val}</div>
+                            </div>
+                        </div>` : '';
+                }
+            };
+
+            let html = row('fa-truck',        'Truck ID',           'truck_id',           d.truck_id)
+                     + row('fa-user',         'Username',           'username',           d.username)
+                     + row('fa-tag',          'Role',               'role',               d.role)
+                     + (isEditMode ? '' : row('fa-calendar', 'Assigned At', 'assigned_at', d.assigned_at ? d.assigned_at.slice(0,19) : ''))
+                     + row('fa-user-shield',  'Officer in Charge',  'officer_pi',         d.officer_pi)
+                     + row('fa-phone',        'PI Contact',         'pi_contact',         d.pi_contact)
+                     + row('fa-building',     'Police Station',     'police_station',     d.police_station)
+                     + row('fa-id-card',      'Vehicle Plate',      'vehicle_plate',      d.vehicle_plate)
+                     + row('fa-id-badge',     'Driver Name',        'driver_name',        d.driver_name)
+                     + row('fa-mobile-alt',   'Driver Mobile',      'driver_mobile',      d.driver_mobile)
+                     + row('fa-hard-hat',     'Contractor Name',    'contractor_name',    d.contractor_name)
+                     + row('fa-phone-alt',    'Contractor Mobile',  'contractor_mobile',  d.contractor_mobile)
+                     + row('fa-video',        'Front RTMP',         'front_rtmp',         d.front_rtmp)
+                     + row('fa-video',        'Rear RTMP',          'rear_rtmp',          d.rear_rtmp);
+
+            if (!isEditMode) {
+                html += `<div style="margin-top:14px;border-top:1px solid #f1f5f9;padding-top:14px;">
+                    <div style="font-size:0.72rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Password</div>
+                    <div style="display:flex;gap:8px;margin-bottom:10px;">
+                        <input id="pwDisplay" type="password" readonly value="" placeholder="••••••••"
+                            style="flex:1;padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:0.88rem;background:#f9fafb;outline:none;">
+                        <button onclick="toggleShowPw('${d.truck_id}')" id="btnShowPw"
+                            style="padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;cursor:pointer;font-size:0.8rem;color:#6b7280;white-space:nowrap;">
+                            <i class="fas fa-eye"></i> Show
+                        </button>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input id="pwNew" type="password" placeholder="New password"
+                            style="flex:1;padding:8px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:0.88rem;outline:none;">
+                        <button onclick="changePw('${d.truck_id}')"
+                            style="padding:8px 14px;background:#f97316;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:0.82rem;font-weight:600;white-space:nowrap;">
+                            <i class="fas fa-key"></i> Change
+                        </button>
+                    </div>
+                    <div id="pwMsg" style="font-size:0.78rem;margin-top:6px;"></div>
+                </div>`;
+            }
 
             document.getElementById('detailBody').innerHTML = html || '<p style="color:#9ca3af;text-align:center;padding:20px;">No details recorded.</p>';
+        }
+
+        function toggleAssignEdit(isEdit) {
+            document.getElementById('editAssignBtn').style.display = isEdit ? 'none' : 'block';
+            document.getElementById('saveAssignBtn').style.display = isEdit ? 'block' : 'none';
+            document.getElementById('cancelAssignBtn').style.display = isEdit ? 'block' : 'none';
+            renderAssignDetails(currentAssignData, isEdit);
+        }
+
+        async function saveAssignChanges() {
+            const updates = {
+                truck_id: currentAssignData.truck_id
+            };
+
+            const fields = ["username", "role", "officer_pi", "pi_contact", "police_station", 
+                            "vehicle_plate", "driver_name", "driver_mobile", 
+                            "contractor_name", "contractor_mobile", "front_rtmp", "rear_rtmp"];
+
+            fields.forEach(f => {
+                const el = document.getElementById(`edit-assign-${f}`);
+                if (el) {
+                    updates[f] = el.value.trim();
+                }
+            });
+
+            const saveBtn = document.getElementById('saveAssignBtn');
+            const originalText = saveBtn.innerHTML;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            saveBtn.disabled = true;
+
+            try {
+                const res = await fetch('/api/assign_device', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updates)
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    alert('Details updated successfully!');
+                    Object.assign(currentAssignData, updates);
+                    toggleAssignEdit(false);
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to save changes.'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Connection error. Failed to save changes.');
+            } finally {
+                saveBtn.innerHTML = originalText;
+                saveBtn.disabled = false;
+            }
         }
 
         let _pwLoaded = false;
