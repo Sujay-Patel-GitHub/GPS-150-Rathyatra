@@ -31,6 +31,7 @@ export default function App() {
   const [selectedId, setSelectedId] = useState(null);
   const [useCompass, setUseCompass] = useState(true);
   const [showDetailPanel, setShowDetailPanel] = useState(true);
+  const [showSidebar, setShowSidebar] = useState(true);
 
   const [playbackMode, setPlaybackMode] = useState(false);
   const [playbackIndex, setPlaybackIndex] = useState(0);
@@ -769,7 +770,9 @@ export default function App() {
   return (
     <div className="fixed inset-0 flex bg-gray-950 overflow-hidden">
       {/* Sidebar — vehicle list */}
-      <div className="w-64 shrink-0 flex flex-col">
+      <div className={`shrink-0 flex flex-col border-r border-white/10 bg-gray-900 transition-all duration-300 ${
+        showSidebar ? "w-64" : "w-0 overflow-hidden border-r-0"
+      }`}>
         <Sidebar
           vehicles={filteredVehicles}
           selectedId={selectedId}
@@ -832,6 +835,17 @@ export default function App() {
           playbackRoutePoints={playbackRoutePoints}
         />
         
+        {/* Toggle Left Sidebar Button */}
+        <button
+          onClick={() => setShowSidebar(p => !p)}
+          className="absolute top-4 left-4 z-[1000] p-2.5 bg-gray-900/90 hover:bg-gray-800/90 border border-white/10 text-white rounded-xl shadow-2xl transition-all cursor-pointer flex items-center justify-center active:scale-95"
+          title={showSidebar ? "Hide Sidebar" : "Show Sidebar"}
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+
         {/* Toggle Right Sidebar Button */}
         <button
           onClick={() => setShowDetailPanel(p => !p)}

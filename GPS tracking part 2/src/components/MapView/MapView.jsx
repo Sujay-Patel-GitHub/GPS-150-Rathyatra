@@ -503,6 +503,7 @@ export function MapView({
   }, [yatraRoute]);
 
   const [centerTarget, setCenterTarget] = useState(null);
+  const [settingsMinimized, setSettingsMinimized] = useState(false);
   const [selectedZoom, setSelectedZoom] = useState(17);
   const [hasAutoCentered, setHasAutoCentered] = useState(false);
 
@@ -1297,12 +1298,16 @@ export function MapView({
 
       {/* ── LIVE badge (top-left) ── */}
       {!isAndroidAuto && (
-        <div className="absolute top-3 left-3 z-[1000] flex items-center gap-2
-          px-3 py-1.5 bg-gray-950/90 backdrop-blur-md border border-white/10
-          rounded-full text-xs font-bold text-white pointer-events-none select-none shadow-md">
+        <button
+          onClick={() => setSettingsMinimized(!settingsMinimized)}
+          className="absolute top-3 left-16 z-[1100] flex items-center gap-2
+            px-3 py-1.5 bg-gray-950/90 hover:bg-gray-900/90 active:scale-95 border border-white/10
+            rounded-full text-xs font-bold text-white pointer-events-auto cursor-pointer select-none shadow-md transition-all"
+          title={settingsMinimized ? "Maximize Settings" : "Minimize Settings"}
+        >
           <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-[0_0_6px_#22c55e]" />
-          Live GPS Tracking
-        </div>
+          Live GPS Tracking {settingsMinimized ? "＋" : "－"}
+        </button>
       )}
 
       {/* ── GPS Inspector floating panel ── */}
@@ -1375,7 +1380,7 @@ export function MapView({
       )}
 
       {/* ── Settings & Recording Dock (top-left) ── */}
-      {!isAndroidAuto && (
+      {!isAndroidAuto && !settingsMinimized && (
         <div className="absolute top-12 left-3 z-[1000] flex flex-col gap-3 p-4
           bg-gray-950/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl pointer-events-auto select-none min-w-[210px] transition-all duration-300">
           
@@ -1676,24 +1681,7 @@ export function MapView({
         </div>
       )}
 
-      {/* ── CENTER button ── */}
-      {vehicleIds.length > 0 && !isAndroidAuto && (
-        <div className="absolute bottom-20 left-3 z-[1000] flex items-center gap-2
-          bg-gray-950/90 backdrop-blur-md border border-white/10 p-1.5 rounded-xl shadow-lg pointer-events-auto select-none">
-          <button
-            onClick={() => {
-              const target = selectedId || vehicleIds[0];
-              setCenterTarget({ id: target, t: Date.now(), zoom: selectedZoom });
-            }}
-            className="flex items-center gap-1.5 px-3 py-2
-              bg-orange-500 hover:bg-orange-600 active:scale-[0.98]
-              text-white text-xs font-bold rounded-lg
-              transition-all duration-200 cursor-pointer"
-          >
-            🎯 Center
-          </button>
-        </div>
-      )}
+
 
       {/* ── Trail legend (bottom-left) ── */}
       {!isAndroidAuto && vehicleIds.some((id) => (vehicles[id]?.trail?.length || 0) >= 2) && (

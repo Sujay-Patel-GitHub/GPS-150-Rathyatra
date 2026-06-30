@@ -198,19 +198,7 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Access Level Controller */}
-      <div className="px-5 py-3 border-b border-white/10 bg-black/20 flex items-center justify-between">
-        <span className="text-[10px] uppercase font-black text-white/40 tracking-wider">Access Control</span>
-        <button
-          onClick={() => onToggleAdminMode(!adminMode)}
-          className={`px-3 py-1 rounded-full text-[10px] font-extrabold transition-all duration-200 cursor-pointer border uppercase tracking-wider
-            ${adminMode 
-              ? "bg-red-500/20 border-red-500/30 text-red-400 hover:bg-red-500/30 shadow-[0_0_10px_rgba(239,68,68,0.15)]" 
-              : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white"}`}
-        >
-          {adminMode ? "🔓 Admin Mode" : "🔒 User Mode"}
-        </button>
-      </div>
+
 
       {/* Search Box & Filter Tabs */}
       <div className="px-4 py-2.5 border-b border-white/10 bg-black/10 flex flex-col gap-2">
