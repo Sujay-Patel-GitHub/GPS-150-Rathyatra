@@ -218,181 +218,204 @@ async function selectCol(name) {
 }
 
 // ── Truck grid ────────────────────────────────────────────
+// ── Truck grid ────────────────────────────────────────────
 async function loadTruckGrid() {
-  // Clear any existing timer immediately to prevent race conditions
+  // Clear any pending timer immediately to prevent race conditions
   clearInterval(refreshTimer);
   
-  const res = await fetch("/api/mongo_data/new_devices");
-  const docs = await res.json();
-  
-  // Guard clause: If the user navigated away while the fetch was in flight, abort
-  if (activeCol !== "new_devices" || activeTruck !== null) return;
+  try {
+    const res = await fetch("/api/mongo_data/new_devices");
+    if (!res.ok) throw new Error("HTTP error " + res.status);
+    const docs = await res.json();
+    
+    // Guard clause: If the user navigated away while the fetch was in flight, abort
+    if (activeCol !== "new_devices" || activeTruck !== null) return;
 
-  const trucks = {};
-  for (const d of docs) { const t = d.truck_id || "unknown"; if (!trucks[t]) trucks[t] = []; trucks[t].push(d); }
-  const ids = Object.keys(trucks).sort();
+    const trucks = {};
+    for (const d of docs) { const t = d.truck_id || "unknown"; if (!trucks[t]) trucks[t] = []; trucks[t].push(d); }
+    const ids = Object.keys(trucks).sort();
 
-  if (!ids.length) {
+    if (!ids.length) {
+      document.getElementById("mainPanel").innerHTML = `
+        <div class="toolbar"><h2>&#128666; new_devices</h2>
+          <label class="auto-label" style="margin-left:auto;"><input type="checkbox" ${autoRefresh?"checked":""} onchange="toggleAuto(this)"> Auto-refresh</label>
+          <button class="refresh-btn" onclick="loadTruckGrid()">&#8635; Refresh</button>
+        </div><div class="empty"><i>&#128666;</i>No trucks connected yet.</div>`;
+      return;
+    }
+
+    const cards = ids.map(tid => {
+      const latest = trucks[tid][0];
+      return `<div class="truck-card" onclick="showTruckDetail('${esc(tid)}')">
+        <h3>&#128666; ${tid}</h3>
+        <div class="tc-section">GPS</div>
+        <div class="tc-row">Lat: <span class="gv">${n2(latest.lat,6)}</span></div>
+        <div class="tc-row">Lng: <span class="gv">${n2(latest.lng,6)}</span></div>
+        <div class="tc-row">Speed: <span class="gv">${n2(latest.speed,1)} km/h</span></div>
+        <div style="margin-top:10px">${motionBadge(latest.motion)}</div>
+        <div class="tc-foot">${trucks[tid].length} records &nbsp;&middot;&nbsp; ${latest.timestamp||""}</div>
+      </div>`;
+    }).join("");
+
     document.getElementById("mainPanel").innerHTML = `
-      <div class="toolbar"><h2>&#128666; new_devices</h2>
-        <label class="auto-label" style="margin-left:auto;"><input type="checkbox" ${autoRefresh?"checked":""} onchange="toggleAuto(this)"> Auto-refresh</label>
+      <div class="toolbar">
+        <h2>&#128666; new_devices</h2>
+        <span style="font-size:.75rem;color:#94a3b8;background:#0f172a;padding:3px 10px;border-radius:999px;">${ids.length} truck${ids.length!==1?"s":""}</span>
+        <label class="auto-label" style="margin-left:auto;"><input type="checkbox" ${autoRefresh?"checked":""} onchange="toggleAuto(this)"> Auto-refresh (1s)</label>
         <button class="refresh-btn" onclick="loadTruckGrid()">&#8635; Refresh</button>
-      </div><div class="empty"><i>&#128666;</i>No trucks connected yet.</div>`;
-    return;
+        <span style="font-size:.72rem;color:#475569;" id="lastRefresh"></span>
+      </div>
+      <div class="truck-grid">${cards}</div>`;
+    document.getElementById("lastRefresh").textContent = "Updated " + new Date().toLocaleTimeString();
+    await loadCollections();
+  } catch (err) {
+    console.error("Error in loadTruckGrid:", err);
+  } finally {
+    // Only schedule next tick if we are still on this view and autoRefresh is true
+    if (activeCol === "new_devices" && activeTruck === null && autoRefresh) {
+      clearInterval(refreshTimer);
+      refreshTimer = setTimeout(loadTruckGrid, 1000);
+    }
   }
-
-  const cards = ids.map(tid => {
-    const latest = trucks[tid][0];
-    return `<div class="truck-card" onclick="showTruckDetail('${esc(tid)}')">
-      <h3>&#128666; ${tid}</h3>
-      <div class="tc-section">GPS</div>
-      <div class="tc-row">Lat: <span class="gv">${n2(latest.lat,6)}</span></div>
-      <div class="tc-row">Lng: <span class="gv">${n2(latest.lng,6)}</span></div>
-      <div class="tc-row">Speed: <span class="gv">${n2(latest.speed,1)} km/h</span></div>
-      <div style="margin-top:10px">${motionBadge(latest.motion)}</div>
-      <div class="tc-foot">${trucks[tid].length} records &nbsp;&middot;&nbsp; ${latest.timestamp||""}</div>
-    </div>`;
-  }).join("");
-
-  document.getElementById("mainPanel").innerHTML = `
-    <div class="toolbar">
-      <h2>&#128666; new_devices</h2>
-      <span style="font-size:.75rem;color:#94a3b8;background:#0f172a;padding:3px 10px;border-radius:999px;">${ids.length} truck${ids.length!==1?"s":""}</span>
-      <label class="auto-label" style="margin-left:auto;"><input type="checkbox" ${autoRefresh?"checked":""} onchange="toggleAuto(this)"> Auto-refresh (1s)</label>
-      <button class="refresh-btn" onclick="loadTruckGrid()">&#8635; Refresh</button>
-      <span style="font-size:.72rem;color:#475569;" id="lastRefresh"></span>
-    </div>
-    <div class="truck-grid">${cards}</div>`;
-  document.getElementById("lastRefresh").textContent = "Updated " + new Date().toLocaleTimeString();
-  await loadCollections();
-  
-  // Clear again just in case another action happened, then set the interval
-  clearInterval(refreshTimer);
-  if (autoRefresh) refreshTimer = setInterval(loadTruckGrid, 1000);
 }
 
 // ── Truck detail table ────────────────────────────────────
 async function showTruckDetail(truckId) {
-  // Clear any existing timer immediately to prevent race conditions
+  // Clear any pending timer immediately to prevent race conditions
   clearInterval(refreshTimer);
   activeTruck = truckId;
   
-  const res = await fetch("/api/mongo_data/new_devices");
-  const all = await res.json();
-  
-  // Guard clause: If the user navigated away while the fetch was in flight, abort
-  if (activeTruck !== truckId || activeCol !== "new_devices") return;
+  try {
+    const res = await fetch("/api/mongo_data/new_devices");
+    if (!res.ok) throw new Error("HTTP error " + res.status);
+    const all = await res.json();
+    
+    // Guard clause: If the user navigated away while the fetch was in flight, abort
+    if (activeTruck !== truckId || activeCol !== "new_devices") return;
 
-  const docs = all.filter(d => d.truck_id === truckId);
+    const docs = all.filter(d => d.truck_id === truckId);
 
-  const rows = docs.map(d => `<tr>
-    <td class="truck-id">${d.truck_id||""}</td>
-    <td class="gps-val">${n2(d.lat,6)}</td>
-    <td class="gps-val">${n2(d.lng,6)}</td>
-    <td class="gps-val">${n2(d.speed,1)}</td>
-    <td>${motionBadge(d.motion)}</td>
-    <td class="ts-val">${d.timestamp||""}</td>
-  </tr>`).join("");
+    const rows = docs.map(d => `<tr>
+      <td class="truck-id">${d.truck_id||""}</td>
+      <td class="gps-val">${n2(d.lat,6)}</td>
+      <td class="gps-val">${n2(d.lng,6)}</td>
+      <td class="gps-val">${n2(d.speed,1)}</td>
+      <td>${motionBadge(d.motion)}</td>
+      <td class="ts-val">${d.timestamp||""}</td>
+    </tr>`).join("");
 
-  document.getElementById("mainPanel").innerHTML = `
-    <div class="toolbar">
-      <button class="back-btn" onclick="selectCol('new_devices')">&#8592; All Trucks</button>
-      <h2>&#128666; ${truckId}</h2>
-      <span style="font-size:.75rem;color:#94a3b8;background:#0f172a;padding:3px 10px;border-radius:999px;">${docs.length} records</span>
-      <button class="btn-delete-confirm" style="background:#dc2626;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:.8rem;font-weight:600;margin-left:15px;" onclick="confirmDeleteTruck('${esc(truckId)}')">&#128465; Delete Truck</button>
-      <label class="auto-label" style="margin-left:auto;"><input type="checkbox" ${autoRefresh?"checked":""} onchange="toggleAuto(this)"> Auto-refresh</label>
-      <button class="refresh-btn" onclick="showTruckDetail('${esc(truckId)}')">&#8635; Refresh</button>
-    </div>
-    <div class="table-wrap"><table>
-      <thead>
-        <tr>
-          <th class="meta-h">Truck</th>
-          <th class="gps-h">Lat</th><th class="gps-h">Lng</th><th class="gps-h">Speed</th>
-          <th class="meta-h">Motion</th>
-          <th class="meta-h">Timestamp</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table></div>`;
-
-  // Clear again just in case another action happened, then set the interval
-  clearInterval(refreshTimer);
-  if (autoRefresh) refreshTimer = setInterval(() => showTruckDetail(truckId), 1000);
+    document.getElementById("mainPanel").innerHTML = `
+      <div class="toolbar">
+        <button class="back-btn" onclick="selectCol('new_devices')">&#8592; All Trucks</button>
+        <h2>&#128666; ${truckId}</h2>
+        <span style="font-size:.75rem;color:#94a3b8;background:#0f172a;padding:3px 10px;border-radius:999px;">${docs.length} records</span>
+        <button class="btn-delete-confirm" style="background:#dc2626;color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:.8rem;font-weight:600;margin-left:15px;" onclick="confirmDeleteTruck('${esc(truckId)}')">&#128465; Delete Truck</button>
+        <label class="auto-label" style="margin-left:auto;"><input type="checkbox" ${autoRefresh?"checked":""} onchange="toggleAuto(this)"> Auto-refresh</label>
+        <button class="refresh-btn" onclick="showTruckDetail('${esc(truckId)}')">&#8635; Refresh</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead>
+          <tr>
+            <th class="meta-h">Truck</th>
+            <th class="gps-h">Lat</th><th class="gps-h">Lng</th><th class="gps-h">Speed</th>
+            <th class="meta-h">Motion</th>
+            <th class="meta-h">Timestamp</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table></div>`;
+  } catch (err) {
+    console.error("Error in showTruckDetail:", err);
+  } finally {
+    // Only schedule next tick if we are still on this view and autoRefresh is true
+    if (activeCol === "new_devices" && activeTruck === truckId && autoRefresh) {
+      clearInterval(refreshTimer);
+      refreshTimer = setTimeout(() => showTruckDetail(truckId), 1000);
+    }
+  }
 }
 
 // ── Generic collection ────────────────────────────────────
 async function loadData() {
   if (!activeCol) return;
   
-  // Clear any existing timer immediately to prevent race conditions
+  // Clear any pending timer immediately to prevent race conditions
   clearInterval(refreshTimer);
+  const currentCol = activeCol;
   
-  const res = await fetch("/api/mongo_data/" + activeCol);
-  const docs = await res.json();
-  
-  // Guard clause: If the user navigated away while the fetch was in flight, abort
-  if (activeCol === "new_devices" || activeTruck !== null) return;
+  try {
+    const res = await fetch("/api/mongo_data/" + activeCol);
+    if (!res.ok) throw new Error("HTTP error " + res.status);
+    const docs = await res.json();
+    
+    // Guard clause: If the user navigated away while the fetch was in flight, abort
+    if (activeCol !== currentCol || activeTruck !== null) return;
 
-  if (!docs.length) {
-    document.getElementById("mainPanel").innerHTML = `<div class="toolbar"><h2>${activeCol}</h2></div><div class="empty"><i>&#128205;</i>No data yet.</div>`;
-    return;
-  }
-  
-  // Gather all unique keys across all documents to ensure all columns and data are shown
-  const keySet = new Set();
-  docs.forEach(d => Object.keys(d).forEach(k => keySet.add(k)));
-  const keys = Array.from(keySet);
-
-  const rows = docs.map(d => `<tr>${keys.map(k => {
-    let v = d[k];
-    if (v === null || v === undefined) {
-      v = "";
-    } else if (typeof v === 'object') {
-      v = JSON.stringify(v);
+    if (!docs.length) {
+      document.getElementById("mainPanel").innerHTML = `<div class="toolbar"><h2>${activeCol}</h2></div><div class="empty"><i>&#128205;</i>No data yet.</div>`;
+      return;
     }
     
-    // Highlight styling for critical keys
-    if (k === "lat" || k === "lng" || k === "lon") {
-      return `<td class="gps-val">${v}</td>`;
-    }
-    if (k === "speed") {
-      return `<td class="gps-val" style="color: #34d399; font-weight: bold;">${v}</td>`;
-    }
-    if (k === "timestamp" || k === "created_at" || k === "updated_at") {
-      return `<td class="ts-val">${v}</td>`;
-    }
-    if (k === "device_id" || k === "truck_id") {
-      return `<td class="truck-id">${v}</td>`;
-    }
-    return `<td>${v}</td>`;
-  }).join("")}</tr>`).join("");
+    // Gather all unique keys across all documents to ensure all columns and data are shown
+    const keySet = new Set();
+    docs.forEach(d => Object.keys(d).forEach(k => keySet.add(k)));
+    const keys = Array.from(keySet);
 
-  const theadHeaders = keys.map(k => {
-    let cls = "";
-    if (k === "lat" || k === "lng" || k === "lon" || k === "speed") cls = "gps-h";
-    else if (k === "timestamp" || k === "created_at" || k === "updated_at") cls = "meta-h";
-    else if (k === "device_id" || k === "truck_id") cls = "acc-h";
-    return `<th class="${cls}">${k}</th>`;
-  }).join("");
+    const rows = docs.map(d => `<tr>${keys.map(k => {
+      let v = d[k];
+      if (v === null || v === undefined) {
+        v = "";
+      } else if (typeof v === 'object') {
+        v = JSON.stringify(v);
+      }
+      
+      // Highlight styling for critical keys
+      if (k === "lat" || k === "lng" || k === "lon") {
+        return `<td class="gps-val">${v}</td>`;
+      }
+      if (k === "speed") {
+        return `<td class="gps-val" style="color: #34d399; font-weight: bold;">${v}</td>`;
+      }
+      if (k === "timestamp" || k === "created_at" || k === "updated_at") {
+        return `<td class="ts-val">${v}</td>`;
+      }
+      if (k === "device_id" || k === "truck_id") {
+        return `<td class="truck-id">${v}</td>`;
+      }
+      return `<td>${v}</td>`;
+    }).join("")}</tr>`).join("");
 
-  document.getElementById("mainPanel").innerHTML = `
-    <div class="toolbar">
-      <h2>${activeCol}</h2>
-      <span style="font-size:.75rem;color:#94a3b8;background:#0f172a;padding:3px 10px;border-radius:999px;">${docs.length} rows</span>
-      <label class="auto-label" style="margin-left:auto;"><input type="checkbox" ${autoRefresh?"checked":""} onchange="toggleAuto(this)"> Auto-refresh (1s)</label>
-      <button class="refresh-btn" onclick="loadData()">&#8635; Refresh</button>
-      <span style="font-size:.72rem;color:#475569;" id="lastRefresh"></span>
-    </div>
-    <div class="table-wrap"><table>
-      <thead><tr>${theadHeaders}</tr></thead>
-      <tbody>${rows}</tbody>
-    </table></div>`;
-  document.getElementById("lastRefresh").textContent = "Updated " + new Date().toLocaleTimeString();
-  await loadCollections();
-  
-  // Clear again just in case another action happened, then set the interval
-  clearInterval(refreshTimer);
-  if (autoRefresh) refreshTimer = setInterval(loadData, 1000);
+    const theadHeaders = keys.map(k => {
+      let cls = "";
+      if (k === "lat" || k === "lng" || k === "lon" || k === "speed") cls = "gps-h";
+      else if (k === "timestamp" || k === "created_at" || k === "updated_at") cls = "meta-h";
+      else if (k === "device_id" || k === "truck_id") cls = "acc-h";
+      return `<th class="${cls}">${k}</th>`;
+    }).join("");
+
+    document.getElementById("mainPanel").innerHTML = `
+      <div class="toolbar">
+        <h2>${activeCol}</h2>
+        <span style="font-size:.75rem;color:#94a3b8;background:#0f172a;padding:3px 10px;border-radius:999px;">${docs.length} rows</span>
+        <label class="auto-label" style="margin-left:auto;"><input type="checkbox" ${autoRefresh?"checked":""} onchange="toggleAuto(this)"> Auto-refresh (1s)</label>
+        <button class="refresh-btn" onclick="loadData()">&#8635; Refresh</button>
+        <span style="font-size:.72rem;color:#475569;" id="lastRefresh"></span>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr>${theadHeaders}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>`;
+    document.getElementById("lastRefresh").textContent = "Updated " + new Date().toLocaleTimeString();
+    await loadCollections();
+  } catch (err) {
+    console.error("Error in loadData:", err);
+  } finally {
+    // Only schedule next tick if we are still on this view and autoRefresh is true
+    if (activeCol === currentCol && activeTruck === null && autoRefresh) {
+      clearInterval(refreshTimer);
+      refreshTimer = setTimeout(loadData, 1000);
+    }
+  }
 }
 
 function toggleAuto(cb) {
@@ -400,9 +423,9 @@ function toggleAuto(cb) {
   clearInterval(refreshTimer);
   if (!autoRefresh || !activeCol) return;
   if (activeCol === "new_devices") {
-    refreshTimer = activeTruck ? setInterval(()=>showTruckDetail(activeTruck),1000) : setInterval(loadTruckGrid,1000);
+    refreshTimer = activeTruck ? setTimeout(()=>showTruckDetail(activeTruck),1000) : setTimeout(loadTruckGrid,1000);
   } else {
-    refreshTimer = setInterval(loadData, 1000);
+    refreshTimer = setTimeout(loadData, 1000);
   }
 }
 
