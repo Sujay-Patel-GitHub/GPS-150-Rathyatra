@@ -48,7 +48,14 @@
             padding: 0 !important;
             height: calc(100vh - 70px);
             overflow: hidden;
+            margin-left: 240px !important;
+            width: calc(100% - 240px) !important;
             transition: all 0.3s ease;
+        }
+
+        body.sidebar-collapsed .main {
+            margin-left: 75px !important;
+            width: calc(100% - 75px) !important;
         }
 
         /* Sub-sidebar for categories and devices */
