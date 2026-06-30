@@ -25,7 +25,7 @@ function VehicleCard({ vehicleId, data, isSelected, onSelect }) {
         <div className="flex items-center gap-3 min-w-0">
           <span className="text-2xl transition-transform duration-200 group-hover:scale-110">{icon}</span>
           <div className="min-w-0">
-            <p className="font-bold text-white text-sm truncate">{label}</p>
+            <p className="font-bold text-white text-sm">{label}</p>
             <p className="text-[10px] text-white/35 font-mono tracking-wider mt-0.5">{vehicleId}</p>
           </div>
         </div>
