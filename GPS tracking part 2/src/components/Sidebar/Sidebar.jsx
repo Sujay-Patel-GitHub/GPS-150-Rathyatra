@@ -81,12 +81,20 @@ function VehicleCard({ vehicleId, data, isSelected, onSelect }) {
         )}
 
         {data && (
-          <div className="flex items-center justify-between text-[11px] text-white/40 font-medium">
-            <span>Sats / HDOP</span>
-            <span className="text-white/80 font-semibold font-mono">
-              {data.satellites ?? 0}sats · {data.hdop ? Number(data.hdop).toFixed(1) : "—"}
-            </span>
-          </div>
+          <>
+            <div className="flex items-center justify-between text-[11px] text-white/40 font-medium">
+              <span>Latitude</span>
+              <span className="text-white/80 font-semibold font-mono">
+                {data.lat !== undefined && data.lat !== null ? Number(data.lat).toFixed(6) : "—"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-[11px] text-white/40 font-medium">
+              <span>Longitude</span>
+              <span className="text-white/80 font-semibold font-mono">
+                {data.lng !== undefined && data.lng !== null ? Number(data.lng).toFixed(6) : "—"}
+              </span>
+            </div>
+          </>
         )}
       </div>
     </button>
